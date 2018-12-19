@@ -6,6 +6,7 @@
   <description>MIMXRT1061DVL6A</description>
   <licenseText>
 Copyright 2016-2018 NXP
+All rights reserved.
 
 SPDX-License-Identifier: BSD-3-Clause
   </licenseText>
@@ -8097,13 +8098,6 @@ SPDX-License-Identifier: BSD-3-Clause
                 </enumeratedValue>
               </enumeratedValues>
             </field>
-            <field>
-              <name>CM7_INIT_VTOR</name>
-              <description>Vector table offset register out of reset</description>
-              <bitOffset>7</bitOffset>
-              <bitWidth>25</bitWidth>
-              <access>read-write</access>
-            </field>
           </fields>
         </register>
         <register>
@@ -8729,145 +8723,6 @@ SPDX-License-Identifier: BSD-3-Clause
               <bitWidth>1</bitWidth>
               <access>read-write</access>
             </field>
-            <field>
-              <name>Reserved</name>
-              <description>Reserved</description>
-              <bitOffset>3</bitOffset>
-              <bitWidth>29</bitWidth>
-              <access>read-only</access>
-            </field>
-          </fields>
-        </register>
-        <register>
-          <name>OCRAM_MAGIC_ADDR</name>
-          <description>OCRAM Magic Address Register</description>
-          <addressOffset>0x4</addressOffset>
-          <size>32</size>
-          <access>read-write</access>
-          <resetValue>0</resetValue>
-          <resetMask>0xFFFFFFFF</resetMask>
-          <fields>
-            <field>
-              <name>OCRAM_WR_RD_SEL</name>
-              <description>OCRAM Write Read Select</description>
-              <bitOffset>0</bitOffset>
-              <bitWidth>1</bitWidth>
-              <access>read-write</access>
-              <enumeratedValues>
-                <enumeratedValue>
-                  <name>OCRAM_WR_RD_SEL_0</name>
-                  <description>When OCRAM read access hits magic address, it will generate interrupt.</description>
-                  <value>0</value>
-                </enumeratedValue>
-                <enumeratedValue>
-                  <name>OCRAM_WR_RD_SEL_1</name>
-                  <description>When OCRAM write access hits magic address, it will generate interrupt.</description>
-                  <value>0x1</value>
-                </enumeratedValue>
-              </enumeratedValues>
-            </field>
-            <field>
-              <name>OCRAM_MAGIC_ADDR</name>
-              <description>OCRAM Magic Address</description>
-              <bitOffset>1</bitOffset>
-              <bitWidth>16</bitWidth>
-              <access>read-write</access>
-            </field>
-            <field>
-              <name>Reserved</name>
-              <description>Reserved</description>
-              <bitOffset>17</bitOffset>
-              <bitWidth>15</bitWidth>
-              <access>read-only</access>
-            </field>
-          </fields>
-        </register>
-        <register>
-          <name>DTCM_MAGIC_ADDR</name>
-          <description>DTCM Magic Address Register</description>
-          <addressOffset>0x8</addressOffset>
-          <size>32</size>
-          <access>read-write</access>
-          <resetValue>0</resetValue>
-          <resetMask>0xFFFFFFFF</resetMask>
-          <fields>
-            <field>
-              <name>DTCM_WR_RD_SEL</name>
-              <description>DTCM Write Read Select</description>
-              <bitOffset>0</bitOffset>
-              <bitWidth>1</bitWidth>
-              <access>read-write</access>
-              <enumeratedValues>
-                <enumeratedValue>
-                  <name>DTCM_WR_RD_SEL_0</name>
-                  <description>When DTCM read access hits magic address, it will generate interrupt.</description>
-                  <value>0</value>
-                </enumeratedValue>
-                <enumeratedValue>
-                  <name>DTCM_WR_RD_SEL_1</name>
-                  <description>When DTCM write access hits magic address, it will generate interrupt.</description>
-                  <value>0x1</value>
-                </enumeratedValue>
-              </enumeratedValues>
-            </field>
-            <field>
-              <name>DTCM_MAGIC_ADDR</name>
-              <description>DTCM Magic Address</description>
-              <bitOffset>1</bitOffset>
-              <bitWidth>16</bitWidth>
-              <access>read-write</access>
-            </field>
-            <field>
-              <name>Reserved</name>
-              <description>Reserved</description>
-              <bitOffset>17</bitOffset>
-              <bitWidth>15</bitWidth>
-              <access>read-only</access>
-            </field>
-          </fields>
-        </register>
-        <register>
-          <name>ITCM_MAGIC_ADDR</name>
-          <description>ITCM Magic Address Register</description>
-          <addressOffset>0xC</addressOffset>
-          <size>32</size>
-          <access>read-write</access>
-          <resetValue>0</resetValue>
-          <resetMask>0xFFFFFFFF</resetMask>
-          <fields>
-            <field>
-              <name>ITCM_WR_RD_SEL</name>
-              <description>ITCM Write Read Select</description>
-              <bitOffset>0</bitOffset>
-              <bitWidth>1</bitWidth>
-              <access>read-write</access>
-              <enumeratedValues>
-                <enumeratedValue>
-                  <name>ITCM_WR_RD_SEL_0</name>
-                  <description>When ITCM read access hits magic address, it will generate interrupt.</description>
-                  <value>0</value>
-                </enumeratedValue>
-                <enumeratedValue>
-                  <name>ITCM_WR_RD_SEL_1</name>
-                  <description>When ITCM write access hits magic address, it will generate interrupt.</description>
-                  <value>0x1</value>
-                </enumeratedValue>
-              </enumeratedValues>
-            </field>
-            <field>
-              <name>ITCM_MAGIC_ADDR</name>
-              <description>ITCM Magic Address</description>
-              <bitOffset>1</bitOffset>
-              <bitWidth>16</bitWidth>
-              <access>read-write</access>
-            </field>
-            <field>
-              <name>Reserved</name>
-              <description>Reserved</description>
-              <bitOffset>17</bitOffset>
-              <bitWidth>15</bitWidth>
-              <access>read-only</access>
-            </field>
           </fields>
         </register>
         <register>
@@ -8879,66 +8734,6 @@ SPDX-License-Identifier: BSD-3-Clause
           <resetValue>0</resetValue>
           <resetMask>0xFFFFFFFF</resetMask>
           <fields>
-            <field>
-              <name>ITCM_MAM_STATUS</name>
-              <description>ITCM Magic Address Match Status</description>
-              <bitOffset>0</bitOffset>
-              <bitWidth>1</bitWidth>
-              <access>read-write</access>
-              <modifiedWriteValues>oneToClear</modifiedWriteValues>
-              <enumeratedValues>
-                <enumeratedValue>
-                  <name>ITCM_MAM_STATUS_0</name>
-                  <description>ITCM did not access magic address.</description>
-                  <value>0</value>
-                </enumeratedValue>
-                <enumeratedValue>
-                  <name>ITCM_MAM_STATUS_1</name>
-                  <description>ITCM accessed magic address.</description>
-                  <value>0x1</value>
-                </enumeratedValue>
-              </enumeratedValues>
-            </field>
-            <field>
-              <name>DTCM_MAM_STATUS</name>
-              <description>DTCM Magic Address Match Status</description>
-              <bitOffset>1</bitOffset>
-              <bitWidth>1</bitWidth>
-              <access>read-write</access>
-              <modifiedWriteValues>oneToClear</modifiedWriteValues>
-              <enumeratedValues>
-                <enumeratedValue>
-                  <name>DTCM_MAM_STATUS_0</name>
-                  <description>DTCM did not access magic address.</description>
-                  <value>0</value>
-                </enumeratedValue>
-                <enumeratedValue>
-                  <name>DTCM_MAM_STATUS_1</name>
-                  <description>DTCM accessed magic address.</description>
-                  <value>0x1</value>
-                </enumeratedValue>
-              </enumeratedValues>
-            </field>
-            <field>
-              <name>OCRAM_MAM_STATUS</name>
-              <description>OCRAM Magic Address Match Status</description>
-              <bitOffset>2</bitOffset>
-              <bitWidth>1</bitWidth>
-              <access>read-write</access>
-              <modifiedWriteValues>oneToClear</modifiedWriteValues>
-              <enumeratedValues>
-                <enumeratedValue>
-                  <name>OCRAM_MAM_STATUS_0</name>
-                  <description>OCRAM did not access magic address.</description>
-                  <value>0</value>
-                </enumeratedValue>
-                <enumeratedValue>
-                  <name>OCRAM_MAM_STATUS_1</name>
-                  <description>OCRAM accessed magic address.</description>
-                  <value>0x1</value>
-                </enumeratedValue>
-              </enumeratedValues>
-            </field>
             <field>
               <name>ITCM_ERR_STATUS</name>
               <description>ITCM Access Error Status</description>
@@ -8999,13 +8794,6 @@ SPDX-License-Identifier: BSD-3-Clause
                 </enumeratedValue>
               </enumeratedValues>
             </field>
-            <field>
-              <name>Reserved</name>
-              <description>Reserved</description>
-              <bitOffset>6</bitOffset>
-              <bitWidth>26</bitWidth>
-              <access>read-only</access>
-            </field>
           </fields>
         </register>
         <register>
@@ -9017,63 +8805,6 @@ SPDX-License-Identifier: BSD-3-Clause
           <resetValue>0</resetValue>
           <resetMask>0xFFFFFFFF</resetMask>
           <fields>
-            <field>
-              <name>ITCM_MAM_STAT_EN</name>
-              <description>ITCM Magic Address Match Status Enable</description>
-              <bitOffset>0</bitOffset>
-              <bitWidth>1</bitWidth>
-              <access>read-write</access>
-              <enumeratedValues>
-                <enumeratedValue>
-                  <name>ITCM_MAM_STAT_EN_0</name>
-                  <description>Masked</description>
-                  <value>0</value>
-                </enumeratedValue>
-                <enumeratedValue>
-                  <name>ITCM_MAM_STAT_EN_1</name>
-                  <description>Enabled</description>
-                  <value>0x1</value>
-                </enumeratedValue>
-              </enumeratedValues>
-            </field>
-            <field>
-              <name>DTCM_MAM_STAT_EN</name>
-              <description>DTCM Magic Address Match Status Enable</description>
-              <bitOffset>1</bitOffset>
-              <bitWidth>1</bitWidth>
-              <access>read-write</access>
-              <enumeratedValues>
-                <enumeratedValue>
-                  <name>DTCM_MAM_STAT_EN_0</name>
-                  <description>Masked</description>
-                  <value>0</value>
-                </enumeratedValue>
-                <enumeratedValue>
-                  <name>DTCM_MAM_STAT_EN_1</name>
-                  <description>Enabled</description>
-                  <value>0x1</value>
-                </enumeratedValue>
-              </enumeratedValues>
-            </field>
-            <field>
-              <name>OCRAM_MAM_STAT_EN</name>
-              <description>OCRAM Magic Address Match Status Enable</description>
-              <bitOffset>2</bitOffset>
-              <bitWidth>1</bitWidth>
-              <access>read-write</access>
-              <enumeratedValues>
-                <enumeratedValue>
-                  <name>OCRAM_MAM_STAT_EN_0</name>
-                  <description>Masked</description>
-                  <value>0</value>
-                </enumeratedValue>
-                <enumeratedValue>
-                  <name>OCRAM_MAM_STAT_EN_1</name>
-                  <description>Enabled</description>
-                  <value>0x1</value>
-                </enumeratedValue>
-              </enumeratedValues>
-            </field>
             <field>
               <name>ITCM_ERR_STAT_EN</name>
               <description>ITCM Access Error Status Enable</description>
@@ -9131,13 +8862,6 @@ SPDX-License-Identifier: BSD-3-Clause
                 </enumeratedValue>
               </enumeratedValues>
             </field>
-            <field>
-              <name>Reserved</name>
-              <description>Reserved</description>
-              <bitOffset>6</bitOffset>
-              <bitWidth>26</bitWidth>
-              <access>read-only</access>
-            </field>
           </fields>
         </register>
         <register>
@@ -9149,63 +8873,6 @@ SPDX-License-Identifier: BSD-3-Clause
           <resetValue>0</resetValue>
           <resetMask>0xFFFFFFFF</resetMask>
           <fields>
-            <field>
-              <name>ITCM_MAM_SIG_EN</name>
-              <description>ITCM Magic Address Match Interrupt Enable</description>
-              <bitOffset>0</bitOffset>
-              <bitWidth>1</bitWidth>
-              <access>read-write</access>
-              <enumeratedValues>
-                <enumeratedValue>
-                  <name>ITCM_MAM_SIG_EN_0</name>
-                  <description>Masked</description>
-                  <value>0</value>
-                </enumeratedValue>
-                <enumeratedValue>
-                  <name>ITCM_MAM_SIG_EN_1</name>
-                  <description>Enabled</description>
-                  <value>0x1</value>
-                </enumeratedValue>
-              </enumeratedValues>
-            </field>
-            <field>
-              <name>DTCM_MAM_SIG_EN</name>
-              <description>DTCM Magic Address Match Interrupt Enable</description>
-              <bitOffset>1</bitOffset>
-              <bitWidth>1</bitWidth>
-              <access>read-write</access>
-              <enumeratedValues>
-                <enumeratedValue>
-                  <name>DTCM_MAM_SIG_EN_0</name>
-                  <description>Masked</description>
-                  <value>0</value>
-                </enumeratedValue>
-                <enumeratedValue>
-                  <name>DTCM_MAM_SIG_EN_1</name>
-                  <description>Enabled</description>
-                  <value>0x1</value>
-                </enumeratedValue>
-              </enumeratedValues>
-            </field>
-            <field>
-              <name>OCRAM_MAM_SIG_EN</name>
-              <description>OCRAM Magic Address Match Interrupt Enable</description>
-              <bitOffset>2</bitOffset>
-              <bitWidth>1</bitWidth>
-              <access>read-write</access>
-              <enumeratedValues>
-                <enumeratedValue>
-                  <name>OCRAM_MAM_SIG_EN_0</name>
-                  <description>Masked</description>
-                  <value>0</value>
-                </enumeratedValue>
-                <enumeratedValue>
-                  <name>OCRAM_MAM_SIG_EN_1</name>
-                  <description>Enabled</description>
-                  <value>0x1</value>
-                </enumeratedValue>
-              </enumeratedValues>
-            </field>
             <field>
               <name>ITCM_ERR_SIG_EN</name>
               <description>ITCM Access Error Interrupt Enable</description>
@@ -9262,13 +8929,6 @@ SPDX-License-Identifier: BSD-3-Clause
                   <value>0x1</value>
                 </enumeratedValue>
               </enumeratedValues>
-            </field>
-            <field>
-              <name>Reserved</name>
-              <description>Reserved</description>
-              <bitOffset>6</bitOffset>
-              <bitWidth>26</bitWidth>
-              <access>read-only</access>
             </field>
           </fields>
         </register>
@@ -78936,6 +78596,94 @@ SPDX-License-Identifier: BSD-3-Clause
           </fields>
         </register>
         <register>
+          <name>DBG1</name>
+          <description>Debug 1 register</description>
+          <addressOffset>0x58</addressOffset>
+          <size>32</size>
+          <access>read-only</access>
+          <resetValue>0x10000</resetValue>
+          <resetMask>0xFFFFFFFF</resetMask>
+          <fields>
+            <field>
+              <name>CFSM</name>
+              <description>CAN Finite State Machine</description>
+              <bitOffset>0</bitOffset>
+              <bitWidth>6</bitWidth>
+              <access>read-only</access>
+            </field>
+            <field>
+              <name>CBN</name>
+              <description>CAN Bit Number</description>
+              <bitOffset>24</bitOffset>
+              <bitWidth>5</bitWidth>
+              <access>read-only</access>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>DBG2</name>
+          <description>Debug 2 register</description>
+          <addressOffset>0x5C</addressOffset>
+          <size>32</size>
+          <access>read-only</access>
+          <resetValue>0</resetValue>
+          <resetMask>0xFFFFFFFF</resetMask>
+          <fields>
+            <field>
+              <name>RMP</name>
+              <description>Rx Matching Pointer</description>
+              <bitOffset>0</bitOffset>
+              <bitWidth>7</bitWidth>
+              <access>read-only</access>
+            </field>
+            <field>
+              <name>MPP</name>
+              <description>Matching Process in Progress</description>
+              <bitOffset>7</bitOffset>
+              <bitWidth>1</bitWidth>
+              <access>read-only</access>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>MPP_0</name>
+                  <description>No matching process ongoing.</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>MPP_1</name>
+                  <description>Matching process is in progress.</description>
+                  <value>0x1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+            <field>
+              <name>TAP</name>
+              <description>Tx Arbitration Pointer</description>
+              <bitOffset>8</bitOffset>
+              <bitWidth>7</bitWidth>
+              <access>read-only</access>
+            </field>
+            <field>
+              <name>APP</name>
+              <description>Arbitration Process in Progress</description>
+              <bitOffset>15</bitOffset>
+              <bitWidth>1</bitWidth>
+              <access>read-only</access>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>APP_0</name>
+                  <description>No matching process ongoing.</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>APP_1</name>
+                  <description>Matching process is in progress.</description>
+                  <value>0x1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+          </fields>
+        </register>
+        <register>
           <dim>64</dim>
           <dimIncrement>0x4</dimIncrement>
           <dimIndex>0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63</dimIndex>
@@ -140289,13 +140037,6 @@ SPDX-License-Identifier: BSD-3-Clause
               <access>read-only</access>
             </field>
             <field>
-              <name>SRK</name>
-              <description>SRK</description>
-              <bitOffset>14</bitOffset>
-              <bitWidth>1</bitWidth>
-              <access>read-only</access>
-            </field>
-            <field>
               <name>ROM_PATCH</name>
               <description>ROM_PATCH</description>
               <bitOffset>15</bitOffset>
@@ -140592,7 +140333,7 @@ SPDX-License-Identifier: BSD-3-Clause
         </register>
         <register>
           <name>ANA0</name>
-          <description>Value of OTP Bank1 Word5 (Analog Info.)</description>
+          <description>Value of OTP Bank1 Word5 (Memory Related Info.)</description>
           <addressOffset>0x4D0</addressOffset>
           <size>32</size>
           <access>read-write</access>
@@ -140610,7 +140351,7 @@ SPDX-License-Identifier: BSD-3-Clause
         </register>
         <register>
           <name>ANA1</name>
-          <description>Value of OTP Bank1 Word6 (Analog Info.)</description>
+          <description>Value of OTP Bank1 Word6 (General Purpose Customer Defined Info.)</description>
           <addressOffset>0x4E0</addressOffset>
           <size>32</size>
           <access>read-write</access>
@@ -140628,7 +140369,7 @@ SPDX-License-Identifier: BSD-3-Clause
         </register>
         <register>
           <name>ANA2</name>
-          <description>Value of OTP Bank1 Word7 (Analog Info.)</description>
+          <description>Value of OTP Bank1 Word7 (General Purpose Customer Defined Info.)</description>
           <addressOffset>0x4F0</addressOffset>
           <size>32</size>
           <access>read-write</access>
@@ -141006,7 +140747,7 @@ SPDX-License-Identifier: BSD-3-Clause
         </register>
         <register>
           <name>MAC2</name>
-          <description>Value of OTP Bank4 Word4 (MAC Address)</description>
+          <description>Value of OTP Bank4 Word4 (MAC2 Address)</description>
           <addressOffset>0x640</addressOffset>
           <size>32</size>
           <access>read-write</access>
