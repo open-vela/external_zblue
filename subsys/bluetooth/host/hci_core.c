@@ -1033,6 +1033,11 @@ static void hci_disconn_complete(struct net_buf *buf)
 #endif /* defined(CONFIG_BT_CENTRAL) && !defined(CONFIG_BT_FILTER_ACCEPT_LIST) */
 
 	bt_conn_unref(conn);
+
+advertise:
+	if (IS_ENABLED(CONFIG_BT_PERIPHERAL)) {
+		bt_le_adv_resume();
+	}
 }
 
 int bt_hci_le_read_remote_features(struct bt_conn *conn)
