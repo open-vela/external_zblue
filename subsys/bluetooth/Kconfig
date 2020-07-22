@@ -38,6 +38,8 @@ endchoice
 # The Bluetooth subsystem requires the system workqueue to execute at
 # a cooperative priority.
 config SYSTEM_WORKQUEUE_PRIORITY
+	int "Buffer headroom needed for HCI transport"
+	default -1
 	range -256 -1
 
 if BT_HCI
