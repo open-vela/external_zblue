@@ -2236,6 +2236,14 @@ static void deferred_work(struct k_work *work)
 		 * state transition.
 		 */
 		bt_conn_unref(conn);
+
+		/* A new reference likely to have been released here,
+		 * Resume advertising.
+		 */
+		if (IS_ENABLED(CONFIG_BT_PERIPHERAL)) {
+			bt_le_adv_resume();
+		}
+
 		return;
 	}
 
