@@ -1,0 +1,112 @@
+#
+# For a description of the syntax of this configuration file,
+# see kconfig-language at https://www.kernel.org/doc/Documentation/kbuild/kconfig-language.txt
+#
+
+if BT
+
+config NET_BUF
+	bool "Network buffer support"
+	help
+	  This option enables support for generic network protocol
+	  buffers.
+
+config POLL
+	bool "Async I/O Framework"
+	help
+	  Asynchronous notification framework. Enable the k_poll() and
+	  k_poll_signal_raise() APIs.  The former can wait on multiple events
+	  concurrently, which can be either directly triggered or triggered by
+	  the availability of some kernel objects (semaphores and fifos).
+
+config NET_L2_BT
+  bool "Enable Bluetooth support"
+  help
+    Enable Bluetooth driver that send and receives IPv6 packets,
+    does header compression on it and writes it to the
+    Bluetooth stack via L2CAP channel.
+
+config NET_BUF_RX_COUNT
+  int "How many network buffers are allocated for receiving data"
+  default 16
+  help
+    Each data buffer will occupy CONFIG_NET_BUF_DATA_SIZE + smallish
+    header (sizeof(struct net_buf)) amount of data.
+
+config NET_BUF_TX_COUNT
+  int "How many network buffers are allocated for sending data"
+  default 16
+  help
+    Each data buffer will occupy CONFIG_NET_BUF_DATA_SIZE + smallish
+    header (sizeof(struct net_buf)) amount of data.
+
+config NET_BUF_USER_DATA_SIZE
+  int "Size of user_data available in every network buffer"
+  default 4
+  help
+    Amount of memory reserved in each network buffer for user data. In
+    most cases this can be left as the default value.
+
+config NUM_COOP_PRIORITIES
+  int "Number of coop priorities"
+  default 95
+  help
+    Number of cooperative priorities configured in the system.
+
+config BT_UART_ON_DEV_NAME
+  string "Device Name of UART Device for Bluetooth"
+  default "/dev/ttyS3"
+  help
+    This option specifies the name of UART device to be used
+    for Bluetooth.
+
+config BT_DEBUG_LOG_LEVEL
+  int "BT Debug Log Level"
+  default 6
+  help
+    Sets log level for the BT stack.
+
+config BT_NO_DRIVER
+  bool "No default HCI driver"
+  help
+    This is intended for unit tests where no internal driver
+    should be selected.
+
+menuconfig BT_SAMPLE
+  tristate "Bluetooth Stack Examples"
+  default n
+  ---help---
+    Enable Bluetooth Stack Examples
+
+if BT_SAMPLE
+
+config BT_SAMPLE_PERIPHERAL
+  bool "Enable Bluetooth peripheral example"
+  default n
+  depends on BT_PERIPHERAL
+  help
+    Enable Bluetooth peripheral example
+
+config BT_SAMPLE_CENTRAL
+  bool "Enable Bluetooth central example"
+  default n
+  depends on BT_CENTRAL
+  help
+    Enable Bluetooth central example
+
+config BT_SAMPLE_MESH
+  bool "Enable Bluetooth mesh example"
+  default n
+  depends on BT_MESH
+  help
+    Enable Bluetooth mesh example
+
+config BT_LIBUSB
+  bool "HCI using LIBUSB"
+  default n
+  help
+    Bluetooth HCI driver for communication with USB driver.
+
+endif
+
+endif
