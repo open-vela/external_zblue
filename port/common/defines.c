@@ -150,3 +150,35 @@ struct net_buf_pool *net_buf_pool_list[] =
 int net_buf_pool_list_size = ARRAY_SIZE(net_buf_pool_list);
 
 /* net_buf_pool END */
+
+/* settings_handler_static START */
+
+extern struct settings_handler_static settings_handler_bt_dis;
+extern struct settings_handler_static settings_handler_bt_mesh;
+extern struct settings_handler_static settings_handler_bt_link_key;
+extern struct settings_handler_static settings_handler_bt_keys;
+extern struct settings_handler_static settings_handler_bt_ccc;
+extern struct settings_handler_static settings_handler_bt_sc;
+extern struct settings_handler_static settings_handler_bt_cf;
+extern struct settings_handler_static settings_handler_bt_hash;
+extern struct settings_handler_static settings_handler_bt;
+
+struct settings_handler_static *_settings_handler_static_list[] =
+{
+	&settings_handler_bt_keys,
+	&settings_handler_bt_dis,
+#if !IS_ENABLED(CONFIG_BT_SETTINGS_CCC_LAZY_LOADING)
+	&settings_handler_bt_ccc,
+#endif
+	&settings_handler_bt_sc,
+	&settings_handler_bt_cf,
+	&settings_handler_bt_hash,
+#if defined(CONFIG_BT_BREDR)
+	&settings_handler_bt_link_key,
+#endif
+	&settings_handler_bt,
+	&settings_handler_bt_mesh,
+	NULL,
+};
+
+/* settings_handler_end START */
