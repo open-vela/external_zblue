@@ -211,7 +211,7 @@ endif
 ifneq ($(CONFIG_BT_SAMPLE),)
 
   PRIORITY = SCHED_PRIORITY_DEFAULT
-  STACKSIZE = $(CONFIG_DEFAULT_TASK_STACKSIZE)
+  STACKSIZE = $(CONFIG_BT_SAMPLE_STACKSIZE)
   MODULE = $(CONFIG_BT_SAMPLE)
 
   ifneq ($(CONFIG_BT_SAMPLE_PERIPHERAL),)
@@ -227,10 +227,14 @@ ifneq ($(CONFIG_BT_SAMPLE),)
   endif
 
   ifneq ($(CONFIG_BT_SAMPLE_MESH),)
+    PROGNAME += mesh
+    MAINSRC += samples/bluetooth/mesh/src/main.c
     PROGNAME += mesh_demo
     MAINSRC += samples/bluetooth/mesh_demo/src/main.c
-    #PROGNAME += mesh_provisioner
-    #MAINSRC += samples/bluetooth/mesh_provisioner/src/main.c
+    ifneq ($(CONFIG_BT_MESH_PROVISIONER),)
+      PROGNAME += mesh_provisioner
+      MAINSRC += samples/bluetooth/mesh_provisioner/src/main.c
+    endif
   endif
 
 endif

@@ -504,7 +504,5 @@ static struct bt_hci_driver driver = {
 
 int libusb_bt_stack_initialize(void)
 {
-	bt_hci_driver_register(&driver);
-
-	return bt_enable(NULL);
+	return bt_hci_driver_register(&driver);
 }
