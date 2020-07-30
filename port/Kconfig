@@ -80,6 +80,13 @@ menuconfig BT_SAMPLE
 
 if BT_SAMPLE
 
+config BT_SAMPLE_STACKSIZE
+  int "BT sample stack size"
+  default 40960 if ARCH_SIM
+  default DEFAULT_TASK_STACKSIZE
+  help
+    Sets log level for the BT stack.
+
 config BT_SAMPLE_PERIPHERAL
   bool "Enable Bluetooth peripheral example"
   default n
