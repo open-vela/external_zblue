@@ -33,8 +33,7 @@ static pthread_mutex_t g_irq_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 
 static inline unsigned int irq_lock(void)
 {
-	pthread_mutex_lock(&g_irq_mutex);
-	return 0;
+	return pthread_mutex_lock(&g_irq_mutex);
 }
 
 static inline void irq_unlock(unsigned int key)
