@@ -187,9 +187,8 @@
  */
 #define Z_STRUCT_SECTION_FOREACH(struct_type, iterator) \
 	extern struct struct_type *_CONCAT(_##struct_type, _list)[]; \
-	struct struct_type **_iterator, *iterator; \
-	for (_iterator = _CONCAT(_##struct_type, _list), \
-		iterator = (struct struct_type *) *_iterator; \
+	struct struct_type **_iterator = _CONCAT(_##struct_type, _list); \
+	for (struct struct_type *iterator = (struct struct_type *) *_iterator; \
 		*_iterator; iterator = (struct struct_type *) *(++_iterator))
 
 #endif /* ZEPHYR_INCLUDE_TOOLCHAIN_COMMON_H_ */

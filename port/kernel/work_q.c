@@ -76,7 +76,7 @@ int k_delayed_work_submit_to_queue(struct k_work_q *work_q,
 	struct work_s *nwork = &work->work.nwork;
 
 	if (work_available(nwork))
-		return work_queue(LPWORK, nwork, (worker_t)work->work.handler, work, delay);
+		return work_queue(LPWORK, nwork, (worker_t)work->work.handler, work, MSEC2TICK(delay));
 
 	return 0;
 }
