@@ -42,6 +42,10 @@ static void handle_poll_events(struct k_queue *queue, u32_t state)
 	_handle_obj_poll_events(&queue->poll_events, state);
 }
 
+void k_queue_cancel_wait(struct k_queue *queue)
+{
+}
+
 void k_queue_init(struct k_queue *queue)
 {
 	k_spinlock_key_t key = k_spin_lock(&queue->lock);

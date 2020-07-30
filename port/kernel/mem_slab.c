@@ -51,4 +51,5 @@ int k_mem_slab_alloc(struct k_mem_slab *slab,
 void k_mem_slab_free(struct k_mem_slab *slab, void **mem)
 {
 	free(*mem);
+	*mem = NULL;
 }
