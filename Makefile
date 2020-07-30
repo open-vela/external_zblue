@@ -171,6 +171,7 @@ CSRCS += port/kernel/poll.c
 CSRCS += port/kernel/mem_slab.c
 CSRCS += port/kernel/atomic_c.c
 CSRCS += port/kernel/sem.c
+CSRCS += port/kernel/mutex.c
 CSRCS += port/kernel/queue.c
 CSRCS += port/kernel/thread.c
 CSRCS += port/subsys/net/buf.c
