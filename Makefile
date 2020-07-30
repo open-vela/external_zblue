@@ -164,6 +164,21 @@ endif
 
 CSRCS += $(wildcard $(SUBDIR)/common/*.c)
 
+ifeq ($(CONFIG_SETTINGS),y)
+  CSRCS += subsys/settings/src/settings.c
+  CSRCS += subsys/settings/src/settings_store.c
+  CSRCS += subsys/settings/src/settings_init.c
+  CSRCS += subsys/settings/src/settings_line.c
+  ifeq ($(CONFIG_SETTINGS_FS),y)
+    CSRCS += subsys/settings/src/settings_file.c
+  endif
+  CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" $(APPDIR)/external/zblue/subsys/settings/include}
+endif
+
+ifeq ($(CONFIG_FILE_SYSTEM),y)
+  CSRCS += port/subsys/fs/fs.c
+endif
+
 CSRCS += port/kernel/sched.c
 CSRCS += port/kernel/timeout.c
 CSRCS += port/kernel/work_q.c

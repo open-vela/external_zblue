@@ -116,4 +116,9 @@ config BT_LIBUSB
 
 endif
 
+config FILE_SYSTEM
+  bool "File system support"
+  help
+    Enables support for file system.
+
 endif
