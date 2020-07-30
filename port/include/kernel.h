@@ -35,6 +35,7 @@ extern "C" {
 #endif
 
 struct k_thread;
+struct k_mutex;
 struct k_sem;
 struct k_queue;
 struct k_fifo;
@@ -265,8 +266,28 @@ static inline int k_delayed_work_submit(struct k_delayed_work *work,
 
 s32_t k_delayed_work_remaining_get(struct k_delayed_work *work);
 
+struct k_mutex {
+	pthread_mutex_t mutex;
+};
+
+#define Z_MUTEX_INITIALIZER(obj) \
+{ \
+	.mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP, \
+}
+
+#define K_MUTEX_INITIALIZER __DEPRECATED_MACRO Z_MUTEX_INITIALIZER
+
+#define K_MUTEX_DEFINE(name) \
+	Z_STRUCT_SECTION_ITERABLE(k_mutex, name) = \
+Z_MUTEX_INITIALIZER(name)
+
+__syscall int k_mutex_init(struct k_mutex *mutex);
+__syscall int k_mutex_lock(struct k_mutex *mutex, k_timeout_t timeout);
+__syscall int k_mutex_unlock(struct k_mutex *mutex);
+
 struct k_sem {
 	sem_t sem;
+	dq_queue_t poll_events;
 };
 
 #define Z_SEM_INITIALIZER(obj, initial_count, count_limit) \
