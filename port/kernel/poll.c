@@ -44,23 +44,19 @@ typedef struct {
 
 static dq_queue_t g_event_callback_list;
 
-void k_poll_event_init(struct k_poll_event *event,
-		u32_t type, int mode, void *obj)
+void k_poll_event_init(struct k_poll_event *event, u32_t type, int mode, void *obj)
 {
-	event->type   = type;
-	event->state  = K_POLL_STATE_NOT_READY;
-	event->mode   = mode;
-	event->unused = 0;
-	event->obj    = obj;
+	event->type  = type;
+	event->state = K_POLL_STATE_NOT_READY;
+	event->obj   = obj;
 }
 
 void _handle_obj_poll_events(dq_queue_t *events, u32_t state)
 {
-	struct k_poll_event *event, *_event;
+	struct k_poll_event *event;
 	event_callback_t *callback;
 	FAR dq_entry_t *entry;
 	unsigned int key;
-	int found = false;
 	int i;
 
 	key = irq_lock();
@@ -77,20 +73,10 @@ void _handle_obj_poll_events(dq_queue_t *events, u32_t state)
 	for (entry = dq_peek(&g_event_callback_list); entry; entry = dq_next(entry)) {
 		callback = (event_callback_t *)entry;
 		for (i = 0; i < callback->num_events; i++) {
-			_event = &callback->events[i];
-			if (_event != event)
-				continue;
-
-			if (state == K_POLL_STATE_NOT_READY || event->type == state) {
-				found = true;
+			if (event == &callback->events[i] && event->type == state) {
+				k_sem_give(&callback->sem);
 				break;
 			}
-		}
-
-		if (found) {
-			dq_rem(&callback->next, &g_event_callback_list);
-			k_sem_give(&callback->sem);
-			break;
 		}
 	}
 
@@ -104,59 +90,45 @@ int k_poll_signal_raise(struct k_poll_signal *signal, int result)
 	return 0;
 }
 
-static inline void k_poll_del_event(struct k_poll_event *event)
+static void k_poll_event_process(struct k_poll_event *event, bool queue)
 {
-	switch (event->type) {
-		case K_POLL_TYPE_DATA_AVAILABLE:
-			dq_rem(&event->_node, &(event->queue->poll_events));
-			break;
-		case K_POLL_TYPE_SIGNAL:
-			dq_rem(&event->_node, &(event->signal->poll_events));
-			break;
-		case K_POLL_TYPE_SEM_AVAILABLE:
-			dq_rem(&event->_node, &(event->sem->poll_events));
-			break;
-	}
+	dq_queue_t *events;
+
+	if (event->type == K_POLL_TYPE_DATA_AVAILABLE)
+		events = &(event->queue->poll_events);
+	else if (event->type == K_POLL_TYPE_SIGNAL)
+		events = &(event->signal->poll_events);
+	else if (event->type == K_POLL_TYPE_SEM_AVAILABLE)
+		events = &(event->sem->poll_events);
+	else
+		return;
+
+	if (queue)
+		dq_addlast(&event->_node, events);
+	else
+		dq_rem(&event->_node, events);
 }
 
-static inline int k_poll_add_event(struct k_poll_event *event)
+static int k_poll_event_ready(struct k_poll_event *event)
 {
 	switch (event->type) {
-		case K_POLL_TYPE_SEM_AVAILABLE:
-			{
-				k_sem_reset(event->sem);
-				dq_addlast(&event->_node, &(event->sem->poll_events));
-				break;
-			}
-		case K_POLL_TYPE_DATA_AVAILABLE:
-			dq_addlast(&event->_node, &(event->queue->poll_events));
-			break;
-		case K_POLL_TYPE_SIGNAL:
-			dq_addlast(&event->_node, &(event->signal->poll_events));
-			break;
-	}
-
-	return 0;
-}
-
-static inline int k_poll_event_ready(struct k_poll_event *event)
-{
-	switch (event->type) {
-		case K_POLL_TYPE_SEM_AVAILABLE:
-			if (k_sem_count_get(event->sem) > 0) {
-				event->state |= K_POLL_TYPE_SEM_AVAILABLE;
-				return true;
-			}
-			break;
 		case K_POLL_TYPE_DATA_AVAILABLE:
 			if (!sq_empty(&event->queue->data_q)) {
-				event->state |= K_POLL_TYPE_DATA_AVAILABLE;
+				event->state |= event->type;
+				return true;
+			}
+			break;
+		case K_POLL_TYPE_SEM_AVAILABLE:
+			if (k_sem_count_get(event->sem) > 0) {
+				k_sem_reset(event->sem);
+				event->state |= event->type;
 				return true;
 			}
 			break;
 		case K_POLL_TYPE_SIGNAL:
-			if (event->signal->signaled != 0U) {
-				event->state |= K_POLL_TYPE_SIGNAL;
+			if (event->signal->signaled != 0) {
+				event->signal->signaled = 0;
+				event->state |= event->type;
 				return true;
 			}
 			break;
@@ -170,9 +142,8 @@ static bool k_poll_events(struct k_poll_event *events, int num_events, s32_t tim
 	int i;
 
 	for (i = 0; i < num_events; i++)
-		if (k_poll_event_ready(&events[i])) {
+		if (k_poll_event_ready(&events[i]))
 			return false;
-		}
 
 	return (timeout == K_NO_WAIT) ? false : true;
 }
@@ -184,16 +155,15 @@ int k_poll(struct k_poll_event *events, int num_events, s32_t timeout)
 
 	key = irq_lock();
 
-	callback.events     = events;
-	callback.num_events = num_events;
-	k_sem_init(&callback.sem, 0, 1);
-
 	if (!k_poll_events(events, num_events, timeout))
 		goto nowait;
 
 	for (i = 0; i < num_events; i++)
-		k_poll_add_event(&events[i]);
+		k_poll_event_process(&events[i], true);
 
+	callback.events     = events;
+	callback.num_events = num_events;
+	k_sem_init(&callback.sem, 0, 1);
 	dq_addlast(&callback.next, &g_event_callback_list);
 
 	irq_unlock(key);
@@ -202,15 +172,15 @@ int k_poll(struct k_poll_event *events, int num_events, s32_t timeout)
 
 	key = irq_lock();
 
-	k_poll_events(events, num_events, K_NO_WAIT);
-
-nowait:
-
+	dq_rem(&callback.next, &g_event_callback_list);
 	k_sem_delete(&callback.sem);
 
-	for (i = 0; i < num_events; i++)
-		k_poll_del_event(&events[i]);
+	k_poll_events(events, num_events, K_NO_WAIT);
 
+	for (i = 0; i < num_events; i++)
+		k_poll_event_process(&events[i], false);
+
+nowait:
 	irq_unlock(key);
 
 	return 0;
