@@ -39,11 +39,15 @@
 int k_mutex_init(struct k_mutex *mutex)
 {
 	pthread_mutexattr_t attr;
+	int ret;
 
 	pthread_mutexattr_init(&attr);
 	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
 
-	return pthread_mutex_init(&mutex->mutex, &attr);
+	ret = pthread_mutex_init(&mutex->mutex, &attr);
+	pthread_mutexattr_destroy(&attr);
+
+	return ret;
 }
 
 int k_mutex_lock(struct k_mutex *mutex, k_timeout_t timeout)
