@@ -6,4 +6,3 @@
 source "$APPSDIR/external/zblue/subsys/bluetooth/Kconfig"
 source "$APPSDIR/external/zblue/subsys/settings/Kconfig"
 source "$APPSDIR/external/zblue/port/Kconfig"
-

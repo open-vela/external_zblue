@@ -179,6 +179,27 @@ ifeq ($(CONFIG_FILE_SYSTEM),y)
   CSRCS += port/subsys/fs/fs.c
 endif
 
+ifeq ($(CONFIG_BT_SHELL),y)
+  CSRCS += $(SUBDIR)/shell/bt.c
+  CSRCS += $(SUBDIR)/shell/hci.c
+  ifeq ($(CONFIG_BT_CONN),y)
+    CSRCS += $(SUBDIR)/shell/gatt.c
+  endif
+  ifeq ($(CONFIG_BT_BREDR),y)
+    CSRCS += $(SUBDIR)/shell/bredr.c
+  endif
+  ifeq ($(CONFIG_BT_L2CAP_DYNAMIC_CHANNEL),y)
+    CSRCS += $(SUBDIR)/shell/l2cap.c
+  endif
+  ifeq ($(CONFIG_BT_RFCOMM),y)
+    CSRCS += $(SUBDIR)/shell/rfcomm.c
+  endif
+  ifneq ($(CONFIG_BT_SHELL),)
+    PROGNAME += bt
+    MAINSRC += port/subsys/bluetooth/shell/bt_shell.c
+  endif
+endif
+
 CSRCS += port/kernel/sched.c
 CSRCS += port/kernel/timeout.c
 CSRCS += port/kernel/work_q.c
@@ -226,10 +247,6 @@ endif
 
 ifneq ($(CONFIG_BT_SAMPLE),)
 
-  PRIORITY = SCHED_PRIORITY_DEFAULT
-  STACKSIZE = $(CONFIG_BT_SAMPLE_STACKSIZE)
-  MODULE = $(CONFIG_BT_SAMPLE)
-
   ifneq ($(CONFIG_BT_SAMPLE_PERIPHERAL),)
     PROGNAME += peripheral
     CSRCS += samples/bluetooth/peripheral/src/cts.c
@@ -254,5 +271,9 @@ ifneq ($(CONFIG_BT_SAMPLE),)
   endif
 
 endif
+
+PRIORITY  = SCHED_PRIORITY_DEFAULT
+STACKSIZE = $(CONFIG_BT_SAMPLE_STACKSIZE)
+MODULE    = $(CONFIG_BT_SAMPLE)
 
 include $(APPDIR)/Application.mk
