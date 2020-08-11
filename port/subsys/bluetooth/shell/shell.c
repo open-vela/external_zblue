@@ -35,93 +35,37 @@
 #include <zephyr.h>
 #include <shell/shell.h>
 
-#include <syslog.h>
-#include <nuttx/syslog/syslog.h>
-
-#define CONFIG_SHELL_STR_SIZE 32
-
-extern const struct shell_static_entry shell_bt_cmds[];
-
-void shell_hexdump_line(const struct shell *shell, unsigned int offset,
-		const uint8_t *data, size_t len)
-{
-	int i;
-
-	shell_fprintf(shell, SHELL_NORMAL, "%08X: ", offset);
-
-	for (i = 0; i < SHELL_HEXDUMP_BYTES_IN_LINE; i++) {
-		if (i > 0 && !(i % 8)) {
-			shell_fprintf(shell, SHELL_NORMAL, " ");
-		}
-
-		if (i < len) {
-			shell_fprintf(shell, SHELL_NORMAL, "%02x ",
-					data[i] & 0xFF);
-		} else {
-			shell_fprintf(shell, SHELL_NORMAL, "   ");
-		}
-	}
-
-	shell_fprintf(shell, SHELL_NORMAL, "|");
-
-	for (i = 0; i < SHELL_HEXDUMP_BYTES_IN_LINE; i++) {
-		if (i > 0 && !(i % 8)) {
-			shell_fprintf(shell, SHELL_NORMAL, " ");
-		}
-
-		if (i < len) {
-			char c = data[i];
-
-			shell_fprintf(shell, SHELL_NORMAL, "%c",
-					isprint((int)c) ? c : '.');
-		} else {
-			shell_fprintf(shell, SHELL_NORMAL, " ");
-		}
-	}
-
-	shell_print(shell, "|");
-}
-
-void shell_hexdump(const struct shell *shell, const uint8_t *data, size_t len)
-{
-	const uint8_t *p = data;
-	size_t line_len;
-
-	while (len) {
-		line_len = MIN(len, SHELL_HEXDUMP_BYTES_IN_LINE);
-
-		shell_hexdump_line(shell, p - data, p, line_len);
-
-		len -= line_len;
-		p += line_len;
-	}
-}
-
-void shell_help(const struct shell *shell)
-{
-	int i;
-
-	syslog(LOG_INFO, "Bluetooth shell commands:\n");
-
-	for (i = 0; shell_bt_cmds[i].syntax; i++) {
-		syslog(LOG_INFO, "[%02d]: bt %s : %s\n", i,
-				shell_bt_cmds[i].syntax, shell_bt_cmds[i].help);
-	}
-}
-
-void shell_fprintf(const struct shell *shell, enum shell_vt100_color color,
-		const char *fmt, ...)
-{
-	va_list args;
-
-	va_start(args, fmt);
-	nx_vsyslog(LOG_INFO, fmt, &args);
-	va_end(args);
-}
+#if defined(CONFIG_BT_BT_SHELL)
+extern const struct shell_cmd_entry shell_cmd_bt;
+static const struct shell_cmd_entry *g_shell_cmd = &shell_cmd_bt;
+#elif defined(CONFIG_BT_GATT_SHELL)
+extern const struct shell_cmd_entry shell_cmd_gatt;
+static const struct shell_cmd_entry *g_shell_cmd = &shell_cmd_gatt;
+#elif defined(CONFIG_BT_L2CAP_SHELL)
+extern const struct shell_cmd_entry shell_cmd_l2cap;
+static const struct shell_cmd_entry *g_shell_cmd = &shell_cmd_l2cap;
+#elif defined(CONFIG_BT_TICKER_SHELL)
+extern const struct shell_cmd_entry shell_cmd_ticker;
+static const struct shell_cmd_entry *g_shell_cmd = &shell_cmd_ticker;
+#elif defined(CONFIG_BT_BREDR_SHELL)
+extern const struct shell_cmd_entry shell_cmd_bredr;
+static const struct shell_cmd_entry *g_shell_cmd = &shell_cmd_bredr;
+#elif defined(CONFIG_BT_MESH_SHELL)
+extern const struct shell_cmd_entry shell_cmd_mesh;
+static const struct shell_cmd_entry *g_shell_cmd = &shell_cmd_mesh;
+#elif defined(CONFIG_BT_RPCOMM_SHELL)
+extern const struct shell_cmd_entry shell_cmd_rfcomm;
+static const struct shell_cmd_entry *g_shell_cmd = &shell_cmd_rfcomm;
+#else
+static const struct shell_cmd_entry shell_cmd_dummy;
+static const struct shell_cmd_entry *g_shell_cmd = &shell_cmd_dummy;
+#endif
 
 int main(int argc, FAR char *argv[])
 {
-	const struct shell_static_entry *cmds = &shell_bt_cmds[0];
+	const struct shell_static_entry *cmds =
+		g_shell_cmd->u.entry->subcmd->u.entry;
+	struct shell sh = { .cmd = g_shell_cmd };
 
 	if (argc < 2)
 		goto bail;
@@ -137,10 +81,10 @@ int main(int argc, FAR char *argv[])
 			cmds->args.mandatory > argc)
 		goto bail;
 
-	return cmds->handler(NULL, argc, &argv[1]);
+	return cmds->handler(&sh, argc, &argv[1]);
 
 bail:
-	shell_help(NULL);
+	shell_help(&sh);
 
 	return 0;
 }

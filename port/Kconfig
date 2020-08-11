@@ -121,4 +121,10 @@ config FILE_SYSTEM
   help
     Enables support for file system.
 
+config SHELL_STR_SIZE
+  int "Shell Command String Size"
+  default 32
+  help
+    Shell Command String Size
+
 endif
