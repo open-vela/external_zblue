@@ -72,6 +72,16 @@ static inline s32_t k_msleep(s32_t ms)
 	return k_sleep(Z_TIMEOUT_MS(ms));
 }
 
+static inline uint32_t k_cycle_get_32(void)
+{
+	return z_tick_get();
+}
+
+static inline uint64_t k_cyc_to_ns_floor64(uint64_t t)
+{
+	return t;
+}
+
 #define K_NO_WAIT     Z_TIMEOUT_NO_WAIT
 #define K_NSEC(t)     Z_TIMEOUT_NS(t)
 #define K_USEC(t)     Z_TIMEOUT_US(t)
