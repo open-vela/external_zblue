@@ -617,26 +617,7 @@ enum shell_flag {
  * @brief Shell instance internals.
  */
 struct shell {
-	const char *default_prompt; /*!< shell default prompt. */
-
-	const struct shell_transport *iface; /*!< Transport interface.*/
-	struct shell_ctx *ctx; /*!< Internal context.*/
-
-	struct shell_history *history;
-
-	const enum shell_flag shell_flag;
-
-	const struct shell_fprintf *fprintf_ctx;
-
-	struct shell_stats *stats;
-
-	const struct shell_log_backend *log_backend;
-
-	//LOG_INSTANCE_PTR_DECLARE(log);
-
-	const char *thread_name;
-	struct k_thread *thread;
-	k_thread_stack_t *stack;
+	const struct shell_cmd_entry *cmd;
 };
 
 extern void shell_print_stream(const void *user_ctx, const char *data,

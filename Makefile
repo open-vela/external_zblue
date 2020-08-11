@@ -180,23 +180,51 @@ ifeq ($(CONFIG_FILE_SYSTEM),y)
 endif
 
 ifeq ($(CONFIG_BT_SHELL),y)
-  CSRCS += $(SUBDIR)/shell/bt.c
-  CSRCS += $(SUBDIR)/shell/hci.c
+  CSRCS += port/subsys/shell/shell.c
+
+  CSRCS    += $(SUBDIR)/shell/bt.c
+  CSRCS    += $(SUBDIR)/shell/hci.c
+  MAINSRC  += port/$(SUBDIR)/shell/bt.c
+  PROGNAME += bt
+  port/$(SUBDIR)/shell/bt.c_CFLAGS    += -DCONFIG_BT_BT_SHELL
+  port/$(SUBDIR)/shell/bt.c_CELFFLAGS += -DCONFIG_BT_BT_SHELL
+
   ifeq ($(CONFIG_BT_CONN),y)
-    CSRCS += $(SUBDIR)/shell/gatt.c
+    CSRCS    += $(SUBDIR)/shell/gatt.c
+    MAINSRC  += port/$(SUBDIR)/shell/gatt.c
+    PROGNAME += gatt
+    port/$(SUBDIR)/shell/gatt.c_CFLAGS    += -DCONFIG_BT_GATT_SHELL
+    port/$(SUBDIR)/shell/gatt.c_CELFFLAGS += -DCONFIG_BT_GATT_SHELL
   endif
   ifeq ($(CONFIG_BT_BREDR),y)
-    CSRCS += $(SUBDIR)/shell/bredr.c
+    CSRCS    += $(SUBDIR)/shell/bredr.c
+    MAINSRC  += port/$(SUBDIR)/shell/bredr.c
+    PROGNAME += bredr
+    port/$(SUBDIR)/shell/bredr.c_CFLAGS    += -DCONFIG_BT_BREDR_SHELL
+    port/$(SUBDIR)/shell/bredr.c_CELFFLAGS += -DCONFIG_BT_BREDR_SHELL
   endif
   ifeq ($(CONFIG_BT_L2CAP_DYNAMIC_CHANNEL),y)
-    CSRCS += $(SUBDIR)/shell/l2cap.c
+    CSRCS    += $(SUBDIR)/shell/l2cap.c
+    MAINSRC  += port/$(SUBDIR)/shell/l2cap.c
+    PROGNAME += l2cap
+    port/$(SUBDIR)/shell/l2cap.c_CFLAGS    += -DCONFIG_BT_L2CAP_SHELL
+    port/$(SUBDIR)/shell/l2cap.c_CELFFLAGS += -DCONFIG_BT_L2CAP_SHELL
   endif
   ifeq ($(CONFIG_BT_RFCOMM),y)
-    CSRCS += $(SUBDIR)/shell/rfcomm.c
+    CSRCS    += $(SUBDIR)/shell/rfcomm.c
+    MAINSRC  += port/$(SUBDIR)/shell/rfcomm.c
+    PROGNAME += rfcomm
+    port/$(SUBDIR)/shell/rfcomm.c_CFLAGS    += -DCONFIG_BT_RFCOMM_SHELL
+    port/$(SUBDIR)/shell/rfcomm.c_CELFFLAGS += -DCONFIG_BT_RFCOMM_SHELL
   endif
-  ifneq ($(CONFIG_BT_SHELL),)
-    PROGNAME += bt
-    MAINSRC += port/subsys/bluetooth/shell/bt_shell.c
+  ifeq ($(CONFIG_BT_MESH),y)
+    ifeq ($(CONFIG_BT_MESH_SHELL),y)
+      CSRCS    += $(SUBDIR)/mesh/shell.c
+      MAINSRC  += port/$(SUBDIR)/shell/mesh.c
+      PROGNAME += mesh
+      port/$(SUBDIR)/shell/rfcomm.c_CFLAGS    += -DCONFIG_BT_MESH_SHELL
+      port/$(SUBDIR)/shell/rfcomm.c_CELFFLAGS += -DCONFIG_BT_MESH_SHELL
+    endif
   endif
 endif
 
@@ -260,7 +288,7 @@ ifneq ($(CONFIG_BT_SAMPLE),)
   endif
 
   ifneq ($(CONFIG_BT_SAMPLE_MESH),)
-    PROGNAME += mesh
+    PROGNAME += btmesh
     MAINSRC += samples/bluetooth/mesh/src/main.c
     PROGNAME += mesh_demo
     MAINSRC += samples/bluetooth/mesh_demo/src/main.c
