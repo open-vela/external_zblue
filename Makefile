@@ -155,9 +155,6 @@ endif
 ifeq ($(CONFIG_BT_MESH_SELF_TEST),y)
   CSRCS += $(SUBDIR)/mesh/test.c
 endif
-ifeq ($(CONFIG_BT_MESH_SHELL),y)
-  CSRCS += $(SUBDIR)/mesh/shell.c
-endif
 ifeq ($(CONFIG_BT_MESH_CDB),y)
   CSRCS += $(SUBDIR)/mesh/cdb.c
 endif
