@@ -301,4 +301,16 @@ PRIORITY  = SCHED_PRIORITY_DEFAULT
 STACKSIZE = $(CONFIG_BT_SAMPLE_STACKSIZE)
 MODULE    = $(CONFIG_BT_SAMPLE)
 
+depend::
+	$(Q) ln -sf ../../include/drivers port/include/drivers
+	$(Q) ln -sf ../../include/fs port/include/fs
+	$(Q) ln -sf ../../include/settings port/include/settings
+	$(Q) ln -sf shell.c port/subsys/bluetooth/shell/bredr.c
+	$(Q) ln -sf shell.c port/subsys/bluetooth/shell/bt.c
+	$(Q) ln -sf shell.c port/subsys/bluetooth/shell/gatt.c
+	$(Q) ln -sf shell.c port/subsys/bluetooth/shell/l2cap.c
+	$(Q) ln -sf shell.c port/subsys/bluetooth/shell/mesh.c
+	$(Q) ln -sf shell.c port/subsys/bluetooth/shell/rfcomm.c
+	$(Q) ln -sf shell.c port/subsys/bluetooth/shell/ticker.c
+
 include $(APPDIR)/Application.mk
