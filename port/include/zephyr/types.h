@@ -13,15 +13,19 @@
 extern "C" {
 #endif
 
-typedef signed char         s8_t;
-typedef signed short        s16_t;
-typedef signed int          s32_t;
-typedef signed long long    s64_t;
+#ifdef CONFIG_DEPRECATED_ZEPHYR_INT_TYPES
 
-typedef unsigned char       u8_t;
-typedef unsigned short      u16_t;
-typedef unsigned int        u32_t;
-typedef unsigned long long  u64_t;
+typedef signed char         int8_t;
+typedef signed short        int16_t;
+typedef signed int          int32_t;
+typedef signed long long    int64_t;
+
+typedef unsigned char       uint8_t;
+typedef unsigned short      uint16_t;
+typedef unsigned int        uint32_t;
+typedef unsigned long long  uint64_t;
+
+#endif
 
 /* 32 bits on ILP32 builds, 64 bits on LP64 builts */
 typedef unsigned long       ulong_t;

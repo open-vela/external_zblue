@@ -159,6 +159,9 @@ do {                                                                    \
 			__attribute__((long_call, section(".ramfunc")))
 #endif /* !CONFIG_XIP */
 
+#ifndef __fallthrough
+#define __fallthrough        __attribute__((fallthrough))
+#endif
 #ifndef __packed
 #define __packed        __attribute__((__packed__))
 #endif
@@ -389,7 +392,7 @@ do {                                                                    \
  * @note Macro has limited usage compared to the standard macro as it cannot be
  *	 used:
  *	 - to generate constant integer, e.g. __aligned(Z_MAX(4,5))
- *	 - static variable, e.g. array like static u8_t array[Z_MAX(...)];
+ *	 - static variable, e.g. array like static uint8_t array[Z_MAX(...)];
  */
 #define Z_MAX(a, b) ({ \
 		/* random suffix to avoid naming conflict */ \

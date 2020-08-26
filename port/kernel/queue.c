@@ -37,7 +37,7 @@
 #include <toolchain.h>
 #include <spinlock.h>
 
-static void handle_poll_events(struct k_queue *queue, u32_t state)
+static void handle_poll_events(struct k_queue *queue, uint32_t state)
 {
 	_handle_obj_poll_events(&queue->poll_events, state);
 }

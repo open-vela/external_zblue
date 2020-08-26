@@ -35,17 +35,17 @@
 #include <kernel.h>
 #include <sys_clock.h>
 
-s64_t z_tick_get(void)
+int64_t z_tick_get(void)
 {
 	return clock_systime_ticks();
 }
 
-s64_t k_uptime_ticks(void)
+int64_t k_uptime_ticks(void)
 {
 	return z_tick_get();
 }
 
-u64_t z_timeout_end_calc(k_timeout_t timeout)
+uint64_t z_timeout_end_calc(k_timeout_t timeout)
 {
 	k_ticks_t dt;
 
@@ -59,7 +59,7 @@ u64_t z_timeout_end_calc(k_timeout_t timeout)
 	return z_tick_get() + MAX(1, dt);
 }
 
-u64_t k_ticks_to_ms_floor64(u64_t t)
+uint64_t k_ticks_to_ms_floor64(uint64_t t)
 {
 	return TICK2MSEC(t);
 }

@@ -16,7 +16,7 @@
 #include <errno.h>
 
 /* File operations */
-int fs_open(struct fs_file_t *zfp, const char *file_name)
+int fs_open(struct fs_file_t *zfp, const char *file_name, fs_mode_t flags)
 {
 	zfp->filep = fopen(file_name, "a+");
 	return zfp->filep ? 0 : -EINVAL;
