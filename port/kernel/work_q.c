@@ -87,7 +87,7 @@ void k_work_submit_to_queue(struct k_work_q *work_q, struct k_work *work)
 		work_queue(LPWORK, &work->nwork, (worker_t)work->handler, work, 0);
 }
 
-s32_t k_delayed_work_remaining_get(struct k_delayed_work *work)
+int32_t k_delayed_work_remaining_get(struct k_delayed_work *work)
 {
 	k_timeout_t qtime, curr;
 	struct work_s *nwork;

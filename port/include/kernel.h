@@ -54,10 +54,10 @@ typedef struct k_thread *k_tid_t;
 __syscall         k_tid_t k_thread_create(struct k_thread *new_thread,
 		k_thread_stack_t *stack, size_t stack_size,
 		k_thread_entry_t entry, void *p1, void *p2, void *p3,
-		int prio, u32_t options, k_timeout_t delay);
+		int prio, uint32_t options, k_timeout_t delay);
 __syscall int     k_thread_join(struct k_thread *thread, k_timeout_t timeout);
-__syscall s32_t   k_sleep(k_timeout_t timeout);
-__syscall s32_t   k_usleep(s32_t us);
+__syscall int32_t   k_sleep(k_timeout_t timeout);
+__syscall int32_t   k_usleep(int32_t us);
 __syscall void    k_yield(void);
 __syscall k_tid_t k_current_get(void);
 __syscall int     k_thread_priority_get(k_tid_t thread);
@@ -67,7 +67,7 @@ const char       *k_thread_name_get(k_tid_t thread_id);
 __syscall int     k_thread_name_copy(k_tid_t thread_id, char *buf, size_t size);
 const char       *k_thread_state_str(k_tid_t thread_id);
 
-static inline s32_t k_msleep(s32_t ms)
+static inline int32_t k_msleep(int32_t ms)
 {
 	return k_sleep(Z_TIMEOUT_MS(ms));
 }
@@ -93,16 +93,16 @@ static inline uint64_t k_cyc_to_ns_floor64(uint64_t t)
 #define K_HOURS(h)    K_MINUTES((h) * 60)
 #define K_FOREVER     Z_FOREVER
 
-__syscall s64_t k_uptime_ticks(void);
+__syscall int64_t k_uptime_ticks(void);
 
-static inline s64_t k_uptime_get(void)
+static inline int64_t k_uptime_get(void)
 {
 	return k_ticks_to_ms_floor64(k_uptime_ticks());
 }
 
-static inline u32_t k_uptime_get_32(void)
+static inline uint32_t k_uptime_get_32(void)
 {
-	return (u32_t)k_uptime_get();
+	return (uint32_t)k_uptime_get();
 }
 
 struct k_queue {
@@ -127,9 +127,9 @@ struct k_queue {
 __syscall void  k_queue_init(struct k_queue *queue);
 __syscall void  k_queue_cancel_wait(struct k_queue *queue);
 extern void     k_queue_append(struct k_queue *queue, void *data);
-__syscall s32_t k_queue_alloc_append(struct k_queue *queue, void *data);
+__syscall int32_t k_queue_alloc_append(struct k_queue *queue, void *data);
 extern void     k_queue_prepend(struct k_queue *queue, void *data);
-__syscall s32_t k_queue_alloc_prepend(struct k_queue *queue, void *data);
+__syscall int32_t k_queue_alloc_prepend(struct k_queue *queue, void *data);
 extern void     k_queue_insert(struct k_queue *queue, void *prev, void *data);
 extern int      k_queue_append_list(struct k_queue *queue, void *head, void *tail);
 extern int      k_queue_merge_slist(struct k_queue *queue, sys_slist_t *list);
@@ -221,7 +221,7 @@ Z_LIFO_INITIALIZER(name)
 
 struct k_work;
 
-typedef int (*_poller_cb_t)(struct k_poll_event *event, u32_t state);
+typedef int (*_poller_cb_t)(struct k_poll_event *event, uint32_t state);
 struct _poller {
 	volatile bool is_polling;
 	struct k_thread *thread;
@@ -274,7 +274,7 @@ static inline int k_delayed_work_submit(struct k_delayed_work *work,
 	return k_delayed_work_submit_to_queue(&k_sys_work_q, work, delay);
 }
 
-s32_t k_delayed_work_remaining_get(struct k_delayed_work *work);
+int32_t k_delayed_work_remaining_get(struct k_delayed_work *work);
 
 struct k_mutex {
 	pthread_mutex_t mutex;
@@ -320,11 +320,11 @@ BUILD_ASSERT(((count_limit) != 0) && \
 		((initial_count) <= (count_limit)));
 
 struct k_mem_slab {
-	u32_t num_blocks;
+	uint32_t num_blocks;
 	size_t block_size;
 	char *buffer;
 	char *free_list;
-	u32_t num_used;
+	uint32_t num_used;
 };
 
 #define Z_MEM_SLAB_INITIALIZER(obj, slab_buffer, slab_block_size, \
@@ -347,12 +347,12 @@ Z_MEM_SLAB_INITIALIZER(name, _k_mem_slab_buf_##name, \
 		WB_UP(slab_block_size), slab_num_blocks)
 
 extern int k_mem_slab_init(struct k_mem_slab *slab, void *buffer,
-		size_t block_size, u32_t num_blocks);
+		size_t block_size, uint32_t num_blocks);
 extern int k_mem_slab_alloc(struct k_mem_slab *slab, void **mem,
 		k_timeout_t timeout);
 extern void k_mem_slab_free(struct k_mem_slab *slab, void **mem);
 
-static inline u32_t k_mem_slab_num_free_get(struct k_mem_slab *slab)
+static inline uint32_t k_mem_slab_num_free_get(struct k_mem_slab *slab)
 {
 	return slab->num_blocks - slab->num_used;
 }
@@ -491,19 +491,19 @@ struct k_poll_event {
 	struct _poller *poller;
 
 	/** optional user-specified tag, opaque, untouched by the API */
-	u32_t tag:8;
+	uint32_t tag:8;
 
 	/** bitfield of event types (bitwise-ORed K_POLL_TYPE_xxx values) */
-	u32_t type:_POLL_NUM_TYPES;
+	uint32_t type:_POLL_NUM_TYPES;
 
 	/** bitfield of event states (bitwise-ORed K_POLL_STATE_xxx values) */
-	u32_t state:_POLL_NUM_STATES;
+	uint32_t state:_POLL_NUM_STATES;
 
 	/** mode of operation, from enum k_poll_modes */
-	u32_t mode:1;
+	uint32_t mode:1;
 
 	/** unused bits in 32-bit word */
-	u32_t unused:_POLL_EVENT_NUM_UNUSED_BITS;
+	uint32_t unused:_POLL_EVENT_NUM_UNUSED_BITS;
 
 	/** per-type data */
 	union {
@@ -536,7 +536,7 @@ struct k_poll_event {
 	.obj = event_obj, \
 }
 
-extern void    k_poll_event_init(struct k_poll_event *event, u32_t type, int mode, void *obj);
+extern void    k_poll_event_init(struct k_poll_event *event, uint32_t type, int mode, void *obj);
 __syscall int  k_poll(struct k_poll_event *events, int num_events, k_timeout_t timeout);
 __syscall void k_poll_signal_init(struct k_poll_signal *signal);
 __syscall void k_poll_signal_reset(struct k_poll_signal *signal);
