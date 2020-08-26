@@ -39,7 +39,7 @@ void k_yield(void)
 	sched_yield();
 }
 
-s32_t k_sleep(k_timeout_t timeout)
+int32_t k_sleep(k_timeout_t timeout)
 {
 	usleep(timeout * 1000);
 	return timeout;

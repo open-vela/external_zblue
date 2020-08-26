@@ -44,14 +44,14 @@ typedef struct {
 
 static dq_queue_t g_event_callback_list;
 
-void k_poll_event_init(struct k_poll_event *event, u32_t type, int mode, void *obj)
+void k_poll_event_init(struct k_poll_event *event, uint32_t type, int mode, void *obj)
 {
 	event->type  = type;
 	event->state = K_POLL_STATE_NOT_READY;
 	event->obj   = obj;
 }
 
-void _handle_obj_poll_events(dq_queue_t *events, u32_t state)
+void _handle_obj_poll_events(dq_queue_t *events, uint32_t state)
 {
 	struct k_poll_event *event;
 	event_callback_t *callback;
@@ -137,7 +137,7 @@ static int k_poll_event_ready(struct k_poll_event *event)
 	return false;
 }
 
-static bool k_poll_events(struct k_poll_event *events, int num_events, s32_t timeout)
+static bool k_poll_events(struct k_poll_event *events, int num_events, int32_t timeout)
 {
 	int i;
 
@@ -148,7 +148,7 @@ static bool k_poll_events(struct k_poll_event *events, int num_events, s32_t tim
 	return (timeout == K_NO_WAIT) ? false : true;
 }
 
-int k_poll(struct k_poll_event *events, int num_events, s32_t timeout)
+int k_poll(struct k_poll_event *events, int num_events, int32_t timeout)
 {
 	event_callback_t callback;
 	int key, i;
