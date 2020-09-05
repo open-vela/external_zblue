@@ -16,6 +16,7 @@
 #include <kernel_includes.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <assert.h>
 #include <toolchain.h>
 
 #ifdef __cplusplus
@@ -545,8 +546,8 @@ __syscall void k_poll_signal_reset(struct k_poll_signal *signal);
 __syscall void k_poll_signal_check(struct k_poll_signal *signal, unsigned int *signaled, int *result);
 __syscall int  k_poll_signal_raise(struct k_poll_signal *signal, int result);
 
-#define k_oops()
-#define k_panic()
+#define k_oops()  assert(false)
+#define k_panic() assert(false)
 
 #ifdef __cplusplus
 }
