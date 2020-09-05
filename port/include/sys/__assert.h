@@ -9,9 +9,23 @@
 
 #include <stdbool.h>
 
-#define __ASSERT(test, fmt, ...) do { if (!(test)) printf("%s: %d: %s\n", __func__, __LINE__, fmt); } while (0)
-#define __ASSERT_NO_MSG(test) __ASSERT(test, "")
-#define __ASSERT_LOC(test) __ASSERT_NO_MSG(test)
-#define __ASSERT_MSG_INFO(fmt, ...) __ASSERT(false, fmt, ##__VA_ARGS__)
+#define __ASSERT(test, fmt, ...) \
+  do { \
+    if (!(test)) { \
+      printk(fmt"\n", ##__VA_ARGS__); \
+      k_panic(); \
+    } \
+  } while (0)
+
+#define __ASSERT_NO_MSG(test) \
+  do { \
+    if (!(test)) { \
+      printk("%s: %d: ", __func__, __LINE__); \
+      k_panic(); \
+    } \
+  } while (0)
+
+#define __ASSERT_LOC(test)          printk("FAIL @ %s:%d\n", __FILE__, __LINE__)
+#define __ASSERT_MSG_INFO(fmt, ...) printk(fmt, ##__VA_ARGS__)
 
 #endif /* ZEPHYR_INCLUDE_SYS___ASSERT_H_ */

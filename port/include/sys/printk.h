@@ -12,6 +12,7 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <inttypes.h>
+#include <syslog.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,9 +21,9 @@ extern "C" {
 extern int snprintf(char *str, size_t size, const char *format, ...);
 extern int vsnprintf(char *str, size_t size, const char *format, va_list ap);
 
-#define printk    printf
-#define snprintk  snprintf
-#define vsnprintk vsnprintf
+#define printk(fmt, ...)    syslog(LOG_INFO, fmt, ##__VA_ARGS__)
+#define snprintk            snprintf
+#define vsnprintk           vsnprintf
 
 #ifdef __cplusplus
 }
