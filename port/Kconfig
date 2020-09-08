@@ -72,6 +72,40 @@ config BT_NO_DRIVER
     This is intended for unit tests where no internal driver
     should be selected.
 
+config BT_LIBUSB
+  bool "HCI using LIBUSB"
+  default n
+  help
+    Bluetooth HCI driver for communication with USB driver.
+
+config BT_TESTER
+  bool "Bluetooth Profile Tuning Suite Tester"
+  default n
+  help
+    Bluetooth Profile Tuning Suite Tester.
+
+if BT_TESTER
+
+config UART_PIPE_ON_DEV_NAME
+  string "Device Name of UART Device for pipe UART"
+  default "/dev/ttyS4"
+  help
+    This option specifies the name of UART device to be used
+    for pipe UART.
+
+config UART_PIPE_RX_PRIO
+  # Hidden option for Co-Operative Rx thread priority
+  int
+  default 8
+
+config UART_PIPE_RX_STACK_SIZE
+  int "Size of the pipe receiving thread stack"
+  default DEFAULT_TASK_STACKSIZE
+  help
+    Size of the pipe receiving thread stack.
+
+endif
+
 menuconfig BT_SAMPLE
   tristate "Bluetooth Stack Examples"
   default n
@@ -107,12 +141,6 @@ config BT_SAMPLE_MESH
   depends on BT_MESH
   help
     Enable Bluetooth mesh example
-
-config BT_LIBUSB
-  bool "HCI using LIBUSB"
-  default n
-  help
-    Bluetooth HCI driver for communication with USB driver.
 
 endif
 
