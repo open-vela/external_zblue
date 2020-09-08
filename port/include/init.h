@@ -41,16 +41,22 @@ struct device;
  * if the init entry is not used for a device driver but a service.
  */
 struct init_entry {
-	int (*init)(struct device *dev);
-	struct device *dev;
+	/** Initialization function for the init entry which will take
+	 * the dev attribute as parameter. See below.
+	 */
+	int (*init)(const struct device *dev);
+	/** Pointer to a device driver instance structure. Can be NULL
+	 * if the init entry is not used for a device driver but a services.
+	 */
+	const struct device *dev;
 };
 
-void z_sys_init_run_level(int32_t level);
+void z_sys_init_run_level(int32_t _level);
 
 /* A counter is used to avoid issues when two or more system devices
  * are declared in the same C file with the same init function.
  */
-#define Z_SYS_NAME(init_fn) _CONCAT(_CONCAT(sys_init_, init_fn), __COUNTER__)
+#define Z_SYS_NAME(_init_fn) _CONCAT(_CONCAT(sys_init_, _init_fn), __COUNTER__)
 
 /**
  * @def Z_INIT_ENTRY_DEFINE
@@ -63,14 +69,39 @@ void z_sys_init_run_level(int32_t level);
  * not be used directly, use relevant macro such as SYS_INIT() or
  * DEVICE_AND_API_INIT() instead.
  *
- * @param entry_name Init entry name. It is the name this instance exposes to
+ * @param _entry_name Init entry name. It is the name this instance exposes to
  * the system.
  *
- * @param init_fn Address to the init function of the entry.
+ * @param _init_fn Address to the init function of the entry.
  *
- * @param device A device driver instance pointer or NULL
+ * @param _device A device driver instance pointer or NULL
  *
- * @param level The initialization level at which configuration occurs.
+ * @param _level The initialization level at which configuration
+ * occurs.  See SYS_INIT().
+ *
+ * @param prio The initialization priority of the object, relative to
+ * other objects of the same initialization level. See SYS_INIT().
+ */
+#define Z_INIT_ENTRY_DEFINE(_entry_name, _init_fn, _device, _level, _prio)	\
+	static const Z_DECL_ALIGN(struct init_entry)			\
+		_CONCAT(__init_, _entry_name) __used			\
+	__attribute__((__section__(".init_" #_level STRINGIFY(_prio)))) = { \
+		.init = (_init_fn),					\
+		.dev = (_device),					\
+	}
+
+/**
+ * @def SYS_INIT
+ *
+ * @ingroup device_model
+ *
+ * @brief Run an initialization function at boot at specified priority
+ *
+ * @details This macro lets you run a function at system boot.
+ *
+ * @param _init_fn Pointer to the boot function to run
+ *
+ * @param _level The initialization level at which configuration occurs.
  * Must be one of the following symbols, which are listed in the order
  * they are performed by the kernel:
  * \n
@@ -93,7 +124,7 @@ void z_sys_init_run_level(int32_t level);
  * that need automatic configuration. These objects can use all services
  * provided by the kernel during configuration.
  *
- * @param prio The initialization priority of the object, relative to
+ * @param _prio The initialization priority of the object, relative to
  * other objects of the same initialization level. Specified as an integer
  * value in the range 0 to 99; lower values indicate earlier initialization.
  * Must be a decimal integer literal without leading zeroes or sign (e.g. 32),
@@ -101,30 +132,8 @@ void z_sys_init_run_level(int32_t level);
  * expressions are *not* permitted
  * (e.g. CONFIG_KERNEL_INIT_PRIORITY_DEFAULT + 5).
  */
-#define Z_INIT_ENTRY_DEFINE(entry_name, init_fn, device, level, prio)	\
-	static const Z_DECL_ALIGN(struct init_entry)			\
-		_CONCAT(__init_, entry_name) __used			\
-	__attribute__((__section__(".init_" #level STRINGIFY(prio)))) = { \
-		.init = (init_fn),					\
-		.dev = (device),					\
-	}
-
-/**
- * @def SYS_INIT
- *
- * @brief Run an initialization function at boot at specified priority
- *
- * @details This macro lets you run a function at system boot.
- *
- * @param init_fn Pointer to the boot function to run
- *
- * @param level The initialization level, See Z_INIT_ENTRY_DEFINE for details.
- *
- * @param prio Priority within the selected initialization level. See
- * Z_INIT_ENTRY_DEFINE for details.
- */
-#define SYS_INIT(init_fn, level, prio)					\
-	Z_INIT_ENTRY_DEFINE(Z_SYS_NAME(init_fn), init_fn, NULL, level, prio)
+#define SYS_INIT(_init_fn, _level, _prio)					\
+	Z_INIT_ENTRY_DEFINE(Z_SYS_NAME(_init_fn), _init_fn, NULL, _level, _prio)
 
 #ifdef __cplusplus
 }
