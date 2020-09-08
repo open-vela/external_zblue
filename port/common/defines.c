@@ -73,13 +73,13 @@ struct bt_gatt_service_static *_bt_gatt_service_static_list[] =
 	&_1_gatt_svc,
 	&_2_gap_svc,
 #endif
-#if defined(CONFIG_BT_GATT_BAS)
+#if defined(CONFIG_BT_BAS)
 	&bas,
 #endif
-#if defined(CONFIG_BT_GATT_DIS)
+#if defined(CONFIG_BT_DIS)
 	&dis_svc,
 #endif
-#if defined(CONFIG_BT_GATT_HRS)
+#if defined(CONFIG_BT_HRS)
 	&hrs_svc,
 #endif
   NULL
@@ -166,7 +166,9 @@ extern struct settings_handler_static settings_handler_bt;
 struct settings_handler_static *_settings_handler_static_list[] =
 {
 	&settings_handler_bt_keys,
+#if defined(CONFIG_BT_SETTINGS) && defined(CONFIG_BT_DIS_SETTINGS)
 	&settings_handler_bt_dis,
+#endif
 #if !IS_ENABLED(CONFIG_BT_SETTINGS_CCC_LAZY_LOADING)
 	&settings_handler_bt_ccc,
 #endif

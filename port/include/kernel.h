@@ -297,12 +297,14 @@ __syscall int k_mutex_unlock(struct k_mutex *mutex);
 
 struct k_sem {
 	sem_t sem;
+	uint32_t limit;
 	dq_queue_t poll_events;
 };
 
 #define Z_SEM_INITIALIZER(obj, initial_count, count_limit) \
 { \
-	.sem = SEM_INITIALIZER(initial_count) \
+	.sem = SEM_INITIALIZER(initial_count), \
+	.limit = count_limit, \
 }
 
 #define K_SEM_INITIALIZER __DEPRECATED_MACRO Z_SEM_INITIALIZER
