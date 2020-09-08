@@ -50,12 +50,15 @@ static const struct shell_cmd_entry *g_shell_cmd = &shell_cmd_ticker;
 #elif defined(CONFIG_BT_BREDR_SHELL)
 extern const struct shell_cmd_entry shell_cmd_bredr;
 static const struct shell_cmd_entry *g_shell_cmd = &shell_cmd_bredr;
-#elif defined(CONFIG_BT_MESH_SHELL)
-extern const struct shell_cmd_entry shell_cmd_mesh;
-static const struct shell_cmd_entry *g_shell_cmd = &shell_cmd_mesh;
+#elif defined(CONFIG_BT_ISO_SHELL)
+extern const struct shell_cmd_entry shell_cmd_iso;
+static const struct shell_cmd_entry *g_shell_cmd = &shell_cmd_iso;
 #elif defined(CONFIG_BT_RPCOMM_SHELL)
 extern const struct shell_cmd_entry shell_cmd_rfcomm;
 static const struct shell_cmd_entry *g_shell_cmd = &shell_cmd_rfcomm;
+#elif defined(CONFIG_BT_MESH_SHELL)
+extern const struct shell_cmd_entry shell_cmd_mesh;
+static const struct shell_cmd_entry *g_shell_cmd = &shell_cmd_mesh;
 #else
 static const struct shell_cmd_entry shell_cmd_dummy;
 static const struct shell_cmd_entry *g_shell_cmd = &shell_cmd_dummy;

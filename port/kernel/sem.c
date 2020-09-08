@@ -41,6 +41,7 @@
 int k_sem_init(struct k_sem *sem,
 		unsigned int initial_count, unsigned int limit)
 {
+	sem->limit = limit;
 	return sem_init(&sem->sem, 0, initial_count);
 }
 

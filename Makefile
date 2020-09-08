@@ -68,6 +68,7 @@ ifeq ($(CONFIG_BT_BREDR),y)
   CSRCS += $(SUBDIR)/host/keys_br.c
   CSRCS += $(SUBDIR)/host/l2cap_br.c
   CSRCS += $(SUBDIR)/host/sdp.c
+  CSRCS += $(SUBDIR)/host/ssp.c
 endif
 
 ifeq ($(CONFIG_BT_HFP_HF),y)
@@ -75,6 +76,11 @@ ifeq ($(CONFIG_BT_HFP_HF),y)
   CSRCS += $(SUBDIR)/host/at.c
 endif
 
+ifeq ($(CONFIG_BT_AUDIO),y)
+  ifeq ($(CONFIG_BT_ISO),y)
+    CSRCS += $(SUBDIR)/host/audio/iso.c
+  endif
+endif
 
 ifeq ($(CONFIG_BT_HCI_HOST),y)
   CSRCS += $(SUBDIR)/host/uuid.c
@@ -97,18 +103,17 @@ ifeq ($(CONFIG_BT_HCI_HOST),y)
   else
     CSRCS += $(SUBDIR)/host/smp_null.c
   endif
-
 endif
 
-ifeq ($(CONFIG_BT_GATT_DIS),y)
+ifeq ($(CONFIG_BT_DIS),y)
   CSRCS += $(SUBDIR)/services/dis.c
 endif
 
-ifeq ($(CONFIG_BT_GATT_BAS),y)
+ifeq ($(CONFIG_BT_BAS),y)
   CSRCS += $(SUBDIR)/services/bas.c
 endif
 
-ifeq ($(CONFIG_BT_GATT_HRS),y)
+ifeq ($(CONFIG_BT_HRS),y)
   CSRCS += $(SUBDIR)/services/hrs.c
 endif
 
@@ -214,15 +219,25 @@ ifeq ($(CONFIG_BT_SHELL),y)
     port/$(SUBDIR)/shell/rfcomm.c_CFLAGS    += -DCONFIG_BT_RFCOMM_SHELL
     port/$(SUBDIR)/shell/rfcomm.c_CELFFLAGS += -DCONFIG_BT_RFCOMM_SHELL
   endif
+
+  ifeq ($(CONFIG_BT_AUDIO),y)
+    ifeq ($(CONFIG_BT_ISO),y)
+      CSRCS    += $(SUBDIR)/shell/iso.c
+      MAINSRC  += port/$(SUBDIR)/shell/iso.c
+      PROGNAME += iso
+      port/$(SUBDIR)/shell/iso.c_CFLAGS    += -DCONFIG_BT_ISO_SHELL
+      port/$(SUBDIR)/shell/iso.c_CELFFLAGS += -DCONFIG_BT_ISO_SHELL
+    endif
+  endif
+
   ifeq ($(CONFIG_BT_MESH),y)
     ifeq ($(CONFIG_BT_MESH_SHELL),y)
       CSRCS    += $(SUBDIR)/mesh/shell.c
       MAINSRC  += port/$(SUBDIR)/shell/mesh.c
       PROGNAME += mesh
-      port/$(SUBDIR)/shell/rfcomm.c_CFLAGS    += -DCONFIG_BT_MESH_SHELL
-      port/$(SUBDIR)/shell/rfcomm.c_CELFFLAGS += -DCONFIG_BT_MESH_SHELL
     endif
   endif
+
 endif
 
 CSRCS += port/kernel/sched.c
@@ -312,5 +327,20 @@ depend::
 	$(Q) ln -sf shell.c port/subsys/bluetooth/shell/mesh.c
 	$(Q) ln -sf shell.c port/subsys/bluetooth/shell/rfcomm.c
 	$(Q) ln -sf shell.c port/subsys/bluetooth/shell/ticker.c
+	$(Q) ln -sf shell.c port/subsys/bluetooth/shell/iso.c
+
+clean::
+	$(call DELFILE, .built)
+	$(call DELFILE, port/include/drivers)
+	$(call DELFILE, port/include/fs)
+	$(call DELFILE, port/include/settings)
+	$(call DELFILE, port/subsys/bluetooth/shell/bredr.c)
+	$(call DELFILE, port/subsys/bluetooth/shell/bt.c)
+	$(call DELFILE, port/subsys/bluetooth/shell/gatt.c)
+	$(call DELFILE, port/subsys/bluetooth/shell/l2cap.c)
+	$(call DELFILE, port/subsys/bluetooth/shell/mesh.c)
+	$(call DELFILE, port/subsys/bluetooth/shell/rfcomm.c)
+	$(call DELFILE, port/subsys/bluetooth/shell/ticker.c)
+	$(call DELFILE, port/subsys/bluetooth/shell/iso.c)
 
 include $(APPDIR)/Application.mk
