@@ -240,6 +240,27 @@ ifeq ($(CONFIG_BT_SHELL),y)
 
 endif
 
+ifeq ($(CONFIG_BT_TESTER),y)
+  CSRCS += tests/bluetooth/tester/src/bttester.c
+  CSRCS += tests/bluetooth/tester/src/gap.c
+  CSRCS += tests/bluetooth/tester/src/gatt.c
+  ifeq ($(CONFIG_BT_L2CAP_DYNAMIC_CHANNEL),y)
+    CSRCS += tests/bluetooth/tester/src/l2cap.c
+  endif
+  ifeq ($(CONFIG_BT_MESH),y)
+    CSRCS += tests/bluetooth/tester/src/mesh.c
+  endif
+  CSRCS += port/drivers/console/uart_pipe.c
+  CSRCS += port/tests/bluetooth/tester/src/system.c
+
+  CSRCS += port/subsys/power/reboot.c
+
+  MAINSRC  += tests/bluetooth/tester/src/main.c
+  PROGNAME += bttester
+
+  CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" $(APPDIR)/external/zblue/tests/bluetooth/tester/src}
+endif
+
 CSRCS += port/kernel/sched.c
 CSRCS += port/kernel/timeout.c
 CSRCS += port/kernel/work_q.c
@@ -320,6 +341,7 @@ depend::
 	$(Q) ln -sf ../../include/drivers port/include/drivers
 	$(Q) ln -sf ../../include/fs port/include/fs
 	$(Q) ln -sf ../../include/settings port/include/settings
+	$(Q) ln -sf ../../include/power port/include/power
 	$(Q) ln -sf shell.c port/subsys/bluetooth/shell/bredr.c
 	$(Q) ln -sf shell.c port/subsys/bluetooth/shell/bt.c
 	$(Q) ln -sf shell.c port/subsys/bluetooth/shell/gatt.c
@@ -334,6 +356,7 @@ clean::
 	$(call DELFILE, port/include/drivers)
 	$(call DELFILE, port/include/fs)
 	$(call DELFILE, port/include/settings)
+	$(call DELFILE, port/include/power)
 	$(call DELFILE, port/subsys/bluetooth/shell/bredr.c)
 	$(call DELFILE, port/subsys/bluetooth/shell/bt.c)
 	$(call DELFILE, port/subsys/bluetooth/shell/gatt.c)
