@@ -55,7 +55,7 @@ config NUM_COOP_PRIORITIES
 
 config BT_UART_ON_DEV_NAME
   string "Device Name of UART Device for Bluetooth"
-  default "/dev/ttyS3"
+  default "/dev/ttyBT"
   help
     This option specifies the name of UART device to be used
     for Bluetooth.
@@ -77,6 +77,13 @@ config BT_LIBUSB
   default n
   help
     Bluetooth HCI driver for communication with USB driver.
+
+config BT_H4
+  bool "H:4 UART"
+  default n
+  help
+    Bluetooth H:4 UART driver. Requires hardware flow control
+    lines to be available.
 
 config BT_TESTER
   bool "Bluetooth Profile Tuning Suite Tester"

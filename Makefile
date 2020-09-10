@@ -277,11 +277,6 @@ CSRCS += port/common/defines.c
 CSRCS += lib/os/dec.c
 CSRCS += lib/os/hex.c
 
-ifeq ($(CONFIG_ARCH_CHIP_AMEBAZ),y)
-  CSRCS += port/chip/amebaz/amebaz.c
-  CSRCS += port/chip/amebaz/amebaz_firmware.c
-endif
-
 ifeq ($(CONFIG_ARCH_CHIP_R328),y)
   CSRCS += port/chip/xr829/xr829.c
   CFLAGS += ${shell $(INCDIR) "$(CC)" $(TOPDIR)/arch/arm/src/r328/include/drivers}
@@ -290,6 +285,10 @@ endif
 
 ifeq ($(CONFIG_BT_LIBUSB),y)
   CSRCS += port/drivers/bluetooth/hci/libusb.c
+endif
+
+ifeq ($(CONFIG_BT_H4),y)
+  CSRCS += port/drivers/bluetooth/hci/h4.c
 endif
 
 CFLAGS += -Wno-implicit-function-declaration -Wno-unused-but-set-variable -Wno-unused-function
