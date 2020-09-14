@@ -224,6 +224,7 @@ static int amebaz_load_firmware(void)
 
 	while (fetch_command(command) != AMEBAZ_COMMAND_DONE) {
 		buffer_size = header_size + command[3];
+		usleep(10);
 		ret = data_send(command, buffer_size);
 		if (ret != buffer_size)
 			return ret;
