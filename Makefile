@@ -156,7 +156,7 @@ ifeq ($(CONFIG_SETTINGS),y)
   ifeq ($(CONFIG_SETTINGS_FS),y)
     CSRCS += subsys/settings/src/settings_file.c
   endif
-  CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" $(APPDIR)/external/zblue/subsys/settings/include}
+  CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" subsys/settings/include}
 endif
 
 ifeq ($(CONFIG_FILE_SYSTEM),y)
@@ -240,7 +240,7 @@ ifeq ($(CONFIG_BT_TESTER),y)
   MAINSRC  += tests/bluetooth/tester/src/main.c
   PROGNAME += bttester
 
-  CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" $(APPDIR)/external/zblue/tests/bluetooth/tester/src}
+  CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" tests/bluetooth/tester/src}
 endif
 
 CSRCS += port/kernel/sched.c
@@ -275,11 +275,12 @@ endif
 
 CFLAGS += -Wno-implicit-function-declaration -Wno-unused-but-set-variable -Wno-unused-function
 
-CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" $(APPDIR)/external/zblue/subsys/bluetooth}
-CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" $(APPDIR)/external/zblue/subsys/bluetooth/host}
-CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" $(APPDIR)/external/zblue/subsys/bluetooth/services}
-CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" $(APPDIR)/external/zblue/subsys/bluetooth/mesh}
-CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" $(APPDIR)/external/zblue/subsys/bluetooth/common}
+CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" port/include}
+CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" subsys/bluetooth}
+CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" subsys/bluetooth/host}
+CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" subsys/bluetooth/services}
+CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" subsys/bluetooth/mesh}
+CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" subsys/bluetooth/common}
 CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" $(APPDIR)/external/tinycrypt/lib/include}
 
 ifeq ($(CONFIG_ARCH_SIM),y)
@@ -293,7 +294,7 @@ ifneq ($(CONFIG_BT_SAMPLE),)
     PROGNAME += peripheral
     CSRCS += samples/bluetooth/peripheral/src/cts.c
     MAINSRC += samples/bluetooth/peripheral/src/main.c
-    CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" $(APPDIR)/external/zblue/samples/bluetooth/peripheral/src}
+    CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" samples/bluetooth/peripheral/src}
   endif
 
   ifneq ($(CONFIG_BT_SAMPLE_CENTRAL),)
@@ -319,6 +320,7 @@ STACKSIZE = $(CONFIG_BT_SAMPLE_STACKSIZE)
 MODULE    = $(CONFIG_BT_SAMPLE)
 
 depend::
+	$(Q) ln -sf ../../include/bluetooth port/include/bluetooth
 	$(Q) ln -sf ../../include/drivers port/include/drivers
 	$(Q) ln -sf ../../include/fs port/include/fs
 	$(Q) ln -sf ../../include/settings port/include/settings
@@ -334,6 +336,7 @@ depend::
 
 clean::
 	$(call DELFILE, .built)
+	$(call DELFILE, port/include/bluetooth)
 	$(call DELFILE, port/include/drivers)
 	$(call DELFILE, port/include/fs)
 	$(call DELFILE, port/include/settings)

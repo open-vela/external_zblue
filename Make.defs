@@ -16,6 +16,4 @@
 
 ifneq ($(CONFIG_BT),)
 CONFIGURED_APPS += $(APPDIR)/external/zblue
-CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" $(APPDIR)/external/zblue/port/include}
-CXXFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" $(APPDIR)/external/zblue/port/include}
 endif
