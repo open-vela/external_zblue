@@ -502,7 +502,7 @@ static struct bt_hci_driver driver = {
 	.send = h2_send,
 };
 
-int libusb_bt_stack_initialize(void)
+int bt_uart_init(void)
 {
 	return bt_hci_driver_register(&driver);
 }

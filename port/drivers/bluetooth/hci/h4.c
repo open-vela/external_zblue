@@ -245,12 +245,5 @@ static struct bt_hci_driver driver = {
 
 int bt_uart_init(void)
 {
-	int ret;
-
-	ret = bt_hci_driver_register(&driver);
-	if (ret < 0)
-		return ret;
-
-	return IS_ENABLED(CONFIG_BT_EARLY_INITIALIZE) ?
-		bt_enable(NULL) : 0;
+	return bt_hci_driver_register(&driver);
 }
