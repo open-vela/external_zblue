@@ -315,6 +315,9 @@ ifneq ($(CONFIG_BT_SAMPLE),)
 
 endif
 
+PROGNAME += zblue
+MAINSRC  += port/drivers/bluetooth/hci/hci.c
+
 PRIORITY  = SCHED_PRIORITY_DEFAULT
 STACKSIZE = $(CONFIG_BT_SAMPLE_STACKSIZE)
 MODULE    = $(CONFIG_BT_SAMPLE)

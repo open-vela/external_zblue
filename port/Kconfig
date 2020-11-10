@@ -85,12 +85,6 @@ config BT_H4
     Bluetooth H:4 UART driver. Requires hardware flow control
     lines to be available.
 
-config BT_EARLY_INITIALIZE
-  bool "Enable the Stack Early After Driver Register"
-  default n
-  help
-    Enable the Stack Early After Driver Register
-
 config BT_TESTER
   bool "Bluetooth Profile Tuning Suite Tester"
   default n
