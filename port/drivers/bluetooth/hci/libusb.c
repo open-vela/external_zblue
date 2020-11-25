@@ -39,6 +39,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
+#include <sys/time.h>
 
 #include <libusb-1.0/libusb.h>
 
