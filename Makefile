@@ -319,8 +319,13 @@ PROGNAME += zblue
 MAINSRC  += port/drivers/bluetooth/hci/hci.c
 
 PRIORITY  = SCHED_PRIORITY_DEFAULT
-STACKSIZE = $(CONFIG_BT_SAMPLE_STACKSIZE)
-MODULE    = $(CONFIG_BT_SAMPLE)
+ifneq ($(CONFIG_BT_SAMPLE),)
+  STACKSIZE = $(CONFIG_BT_SAMPLE_STACKSIZE)
+  MODULE    = $(CONFIG_BT_SAMPLE)
+else
+  STACKSIZE = $(CONFIG_DEFAULT_TASK_STACKSIZE)
+  MODULE    = n
+endif
 
 depend::
 	$(Q) ln -sf ../../include/bluetooth port/include/bluetooth
