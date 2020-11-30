@@ -56,7 +56,7 @@ int main(void)
 	int ret;
 
 	ret = bt_uart_init();
-	if (ret < 0) {
+	if (ret < 0 && ret != -EALREADY) {
 		return ret;
 	}
 
