@@ -497,10 +497,13 @@ static int h2_send(struct net_buf *buf)
 }
 
 static struct bt_hci_driver driver = {
-	.name = "H:2",
-	.bus  = BT_HCI_DRIVER_BUS_USB,
-	.open = h2_open,
-	.send = h2_send,
+	.name   = "H:2",
+	.bus    = BT_HCI_DRIVER_BUS_USB,
+	.open   = h2_open,
+	.send   = h2_send,
+#if defined(CONFIG_BT_QUIRK_NO_RESET)
+	.quirks = BT_QUIRK_NO_RESET;
+#endif
 };
 
 int bt_uart_init(void)
