@@ -85,6 +85,12 @@ config BT_H4
     Bluetooth H:4 UART driver. Requires hardware flow control
     lines to be available.
 
+config BT_QUIRK_NO_RESET
+  bool "The host should never send HCI_Reset"
+  default n
+  help
+    The host should never send HCI_Reset
+
 config BT_TESTER
   bool "Bluetooth Profile Tuning Suite Tester"
   default n
