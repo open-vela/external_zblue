@@ -237,10 +237,13 @@ bail:
 }
 
 static struct bt_hci_driver driver = {
-	.name = "H:4",
-	.bus  = BT_HCI_DRIVER_BUS_UART,
-	.open = h4_open,
-	.send = h4_send,
+	.name   = "H:4",
+	.bus    = BT_HCI_DRIVER_BUS_UART,
+	.open   = h4_open,
+	.send   = h4_send,
+#if defined(CONFIG_BT_QUIRK_NO_RESET)
+	.quirks = BT_QUIRK_NO_RESET;
+#endif
 };
 
 int bt_uart_init(void)
