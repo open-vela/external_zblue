@@ -102,5 +102,5 @@ int32_t k_delayed_work_remaining_get(struct k_delayed_work *work)
 	if (curr > qtime + nwork->delay)
 		return 0;
 
-	return curr - qtime;
+	return TICK2MSEC(curr - qtime);
 }
