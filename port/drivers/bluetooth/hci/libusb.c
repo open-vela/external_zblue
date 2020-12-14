@@ -502,7 +502,7 @@ static struct bt_hci_driver driver = {
 	.open   = h2_open,
 	.send   = h2_send,
 #if defined(CONFIG_BT_QUIRK_NO_RESET)
-	.quirks = BT_QUIRK_NO_RESET;
+	.quirks = BT_QUIRK_NO_RESET,
 #endif
 };
 
