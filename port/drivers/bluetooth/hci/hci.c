@@ -40,17 +40,6 @@
 
 extern int bt_uart_init(void);
 
-static void bt_ready(int err)
-{
-	if (err) {
-		return;
-	}
-
-	if (IS_ENABLED(CONFIG_SETTINGS)) {
-		settings_load();
-	}
-}
-
 int main(void)
 {
 	int ret;
@@ -60,5 +49,10 @@ int main(void)
 		return ret;
 	}
 
-	return bt_enable(bt_ready);
+	ret = bt_enable(NULL);
+	if (ret == 0 && IS_ENABLED(CONFIG_SETTINGS)) {
+		settings_load();
+	}
+
+	return ret;
 }
