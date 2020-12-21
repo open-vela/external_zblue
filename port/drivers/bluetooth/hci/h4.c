@@ -50,10 +50,26 @@
 #define H4_EVT  0x04
 #define H4_ISO  0x05
 
+//#define HCI_DEBUG
+
 static K_THREAD_STACK_DEFINE(rx_thread_stack, CONFIG_BT_RX_STACK_SIZE);
 static struct k_thread        rx_thread_data;
 static struct file            g_filep;
 static int                    g_fd = -1;
+
+static void h4_data_dump(const char *tag, uint8_t type, uint8_t *data, uint32_t len)
+{
+#ifdef HCI_DEBUG
+	struct iovec bufs[2];
+
+	bufs[0].iov_base = &type;
+	bufs[0].iov_len = 1;
+	bufs[1].iov_base = data;
+	bufs[1].iov_len = len;
+
+	lib_dumpvbuffer(tag, bufs, 2);
+#endif
+}
 
 static int h4_recv_data(uint8_t *buf, size_t count)
 {
@@ -97,9 +113,12 @@ static int h4_send_data(uint8_t *buf, size_t count)
 
 static void h4_rx_thread(void *p1, void *p2, void *p3)
 {
+	unsigned char buffer[CONFIG_BT_RX_BUF_LEN];
 	int hdr_len, data_len, ret;
 	struct net_buf *buf;
+	bool discardable;
 	uint8_t type;
+	uint8_t event;
 	union {
 		struct bt_hci_evt_hdr evt;
 		struct bt_hci_acl_hdr acl;
@@ -130,37 +149,68 @@ static void h4_rx_thread(void *p1, void *p2, void *p3)
 			break;
 
 		if (type == H4_EVT) {
-			buf = bt_buf_get_evt(hdr.evt.evt, false, K_FOREVER);
 			data_len = hdr.evt.len;
-			type = BT_BUF_EVT;
+			discardable = false;
+			if (hdr.evt.evt == BT_HCI_EVT_LE_META_EVENT) {
+				ret = h4_recv_data(&event, 1);
+				if (ret != 1)
+					break;
+
+				if (event == BT_HCI_EVT_LE_ADVERTISING_REPORT)
+					discardable = true;
+			}
+
+			buf = bt_buf_get_evt(hdr.evt.evt, discardable,
+					discardable ? K_NO_WAIT : K_FOREVER);
+			if (buf == NULL) {
+				if (discardable) {
+					h4_recv_data(buffer, data_len - 1);
+					continue;
+				} else
+					break;
+			}
+
+			memcpy(buf->data, &hdr, hdr_len);
+
+			if (hdr.evt.evt == BT_HCI_EVT_LE_META_EVENT) {
+				buf->data[sizeof(struct bt_hci_evt_hdr)] = event;
+				hdr_len += 1;
+				data_len -= 1;
+			}
+
+			bt_buf_set_type(buf, BT_BUF_EVT);
 		} else if (type == H4_ACL) {
 			buf = bt_buf_get_rx(BT_BUF_ACL_IN, K_FOREVER);
+			if (buf == NULL)
+				break;
+
 			data_len = hdr.acl.len;
-			type = BT_BUF_ACL_IN;
+			bt_buf_set_type(buf, BT_BUF_ACL_IN);
+			memcpy(buf->data, &hdr, hdr_len);
 		} else if (IS_ENABLED(CONFIG_BT_ISO) && type == H4_ISO) {
 			buf = bt_buf_get_rx(BT_BUF_ISO_IN, K_FOREVER);
+			if (buf == NULL)
+				break;
+
 			data_len = hdr.iso.len;
-			type = BT_BUF_ISO_IN;
+			bt_buf_set_type(buf, BT_BUF_ISO_IN);
+			memcpy(buf->data, &hdr, hdr_len);
 		} else
 			break;
 
-		if (buf == NULL)
-			break;
 
-		if (data_len > buf->size) {
+		if (data_len + hdr_len > buf->size) {
 			net_buf_unref(buf);
 			continue;
 		}
-
-		memcpy(buf->data, &hdr, hdr_len);
-
-		bt_buf_set_type(buf, type);
 
 		ret = h4_recv_data(buf->data + hdr_len, data_len);
 		if (ret != data_len)
 			break;
 
 		net_buf_add(buf, hdr_len + data_len);
+
+		h4_data_dump("BT RX", type, buf->data, hdr_len + data_len);
 
 		bt_recv(buf);
 	}
@@ -225,6 +275,8 @@ static int h4_send(struct net_buf *buf)
 			ret = -EINVAL;
 			goto bail;
 	}
+
+	h4_data_dump("BT TX", *type, buf->data, buf->len);
 
 	ret = h4_send_data(buf->data, buf->len);
 	if (ret != buf->len)
