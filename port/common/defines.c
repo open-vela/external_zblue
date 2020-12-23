@@ -173,8 +173,10 @@ struct settings_handler_static *_settings_handler_static_list[] =
 	&settings_handler_bt_ccc,
 #endif
 	&settings_handler_bt_sc,
+#if defined(CONFIG_BT_GATT_CACHING)
 	&settings_handler_bt_cf,
 	&settings_handler_bt_hash,
+#endif
 #if defined(CONFIG_BT_BREDR)
 	&settings_handler_bt_link_key,
 #endif
