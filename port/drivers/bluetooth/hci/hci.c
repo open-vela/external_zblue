@@ -32,6 +32,7 @@
  ****************************************************************************/
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <common/log.h>
 
@@ -40,12 +41,16 @@
 
 extern int bt_uart_init(void);
 
-int main(void)
+int main(int argc, char *argv[])
 {
 	int ret;
 
 	ret = bt_uart_init();
 	if (ret < 0 && ret != -EALREADY) {
+		return ret;
+	}
+
+	if (argc == 2 && 0 == atoi(argv[1])) {
 		return ret;
 	}
 
