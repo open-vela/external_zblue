@@ -14,6 +14,8 @@
 # limitations under the License.
 #
 
+menu "Bluetooth Stack: Zephyr Bluetooth Stack"
 source "$APPSDIR/external/zblue/subsys/bluetooth/Kconfig"
 source "$APPSDIR/external/zblue/subsys/settings/Kconfig"
 source "$APPSDIR/external/zblue/port/Kconfig"
+endmenu # Bluetooth Stack: Zephyr Bluetooth Stack
