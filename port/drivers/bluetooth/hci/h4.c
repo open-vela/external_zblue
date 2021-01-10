@@ -267,7 +267,7 @@ static int h4_send(struct net_buf *buf)
 			goto bail;
 	}
 
-	h4_data_dump("BT TX", *type, buf->data, buf->len);
+	h4_data_dump("BT TX", *type, buf->data + 1, buf->len - 1);
 
 	ret = h4_send_data(buf->data, buf->len);
 	if (ret != buf->len)
