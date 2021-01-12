@@ -55,7 +55,6 @@
 static K_THREAD_STACK_DEFINE(rx_thread_stack, CONFIG_BT_RX_STACK_SIZE);
 static struct k_thread        rx_thread_data;
 static struct file            g_filep;
-static int                    g_fd = -1;
 
 static void h4_data_dump(const char *tag, uint8_t type, uint8_t *data, uint32_t len)
 {
@@ -222,14 +221,7 @@ static int h4_open(void)
 {
 	int ret;
 
-	if (g_fd > 0)
-		return OK;
-
-	g_fd = open(CONFIG_BT_UART_ON_DEV_NAME, O_RDWR | O_BINARY);
-	if (g_fd < 0)
-		return g_fd;
-
-	ret = file_detach(g_fd, &g_filep);
+	ret = file_open(&g_filep, CONFIG_BT_UART_ON_DEV_NAME, O_RDWR | O_BINARY);
 	if (ret < 0)
 		goto bail;
 
@@ -248,8 +240,7 @@ static int h4_open(void)
 	return 0;
 
 bail:
-	close(g_fd);
-	g_fd = -1;
+	file_close(&g_filep);
 
 	return ret;
 }
