@@ -92,6 +92,7 @@ struct bt_gatt_service_static *_bt_gatt_service_static_list[] =
 extern struct net_buf_pool acl_in_pool;
 extern struct net_buf_pool acl_tx_pool;
 extern struct net_buf_pool adv_buf_pool;
+extern struct net_buf_pool loopback_buf_pool;
 extern struct net_buf_pool br_sig_pool;
 extern struct net_buf_pool discardable_pool;
 extern struct net_buf_pool disc_pool;
@@ -103,6 +104,7 @@ extern struct net_buf_pool hci_rx_pool;
 extern struct net_buf_pool hf_pool;
 extern struct net_buf_pool num_complete_pool;
 extern struct net_buf_pool prep_pool;
+extern struct net_buf_pool server_pool;
 extern struct net_buf_pool sdp_pool;
 
 struct net_buf_pool *net_buf_pool_list[] =
@@ -131,6 +133,7 @@ struct net_buf_pool *net_buf_pool_list[] =
 #endif
 #if defined(CONFIG_BT_MESH)
 	&adv_buf_pool,
+	&loopback_buf_pool,
 #endif
 #if defined(CONFIG_BT_MESH_FRIEND)
 	&friend_buf_pool,
@@ -144,6 +147,9 @@ struct net_buf_pool *net_buf_pool_list[] =
 #endif
 #if defined(CONFIG_BT_RFCOMM)
 	&dummy_pool,
+#endif
+#if defined(CONFIG_BT_TESTER)
+	&server_pool,
 #endif
 };
 
