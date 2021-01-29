@@ -48,7 +48,6 @@ LOG_MODULE_REGISTER(uart_pipe, CONFIG_UART_CONSOLE_LOG_LEVEL);
 static K_THREAD_STACK_DEFINE(pipe_thread_stack, CONFIG_UART_PIPE_RX_STACK_SIZE);
 static struct k_thread        pipe_thread_data;
 
-static int                    g_fd = -1;
 static struct file            g_filep;
 static uint8_t               *recv_buf;
 static size_t                 recv_buf_len;
@@ -117,20 +116,11 @@ int uart_pipe_send(const uint8_t *data, int len)
 
 void uart_pipe_register(uint8_t *buf, size_t len, uart_pipe_recv_cb cb)
 {
-	if (g_fd > 0)
-		return;
+	int ret;
 
-	g_fd = open(CONFIG_UART_PIPE_ON_DEV_NAME, O_RDWR | O_BINARY);
-	if (g_fd < 0) {
-		LOG_ERR("unable to open pipe device %s", CONFIG_UART_PIPE_ON_DEV_NAME);
+	ret = file_open(&g_filep, CONFIG_UART_PIPE_ON_DEV_NAME, O_RDWR | O_BINARY);
+	if(ret < 0)
 		return;
-	}
-
-	if (file_detach(g_fd, &g_filep) < 0) {
-		close(g_fd);
-		g_fd = -1;
-		return;
-	}
 
 	recv_buf = buf;
 	recv_buf_len = len;
