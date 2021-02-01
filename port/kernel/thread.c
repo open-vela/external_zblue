@@ -72,12 +72,12 @@ static int nxthread_create(FAR const char *name, uint8_t ttype, int priority,
 k_tid_t k_current_get(void)
 {
 	extern struct k_work_q k_sys_work_q;
-	pid_t pid = getpid();
+	extern bool k_work_in_critical(void);
 
-	if (pid == k_sys_work_q.thread.pid)
+	if (k_work_in_critical())
 		return &k_sys_work_q.thread;
 
-	return (k_tid_t)(intptr_t)pid;
+	return (k_tid_t)(intptr_t)getpid();
 }
 
 int k_thread_name_set(struct k_thread *thread, const char *value)

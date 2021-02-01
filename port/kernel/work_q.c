@@ -40,23 +40,59 @@
 #include <string.h>
 
 struct k_work_q k_sys_work_q;
-static struct work_s g_work;
-static bool init_sys_work_flag;
+static pid_t k_sys_pids[CONFIG_SCHED_LPNTHREADS];
 
-static void k_sys_work_init(FAR void *arg)
+static void k_work_update_context(void)
 {
-	k_sys_work_q.thread.pid = getpid();
+	int i;
+
+	for (i = 0; i < CONFIG_SCHED_LPNTHREADS; i++)
+		if (k_sys_pids[i] == 0)
+			k_sys_pids[i] = getpid();
+}
+
+bool k_work_in_critical(void)
+{
+	pid_t pid = getpid();
+	int i;
+
+	for (i = 0; i < CONFIG_SCHED_LPNTHREADS; i++)
+		if (k_sys_pids[i] == pid)
+			return true;
+
+	return false;
+}
+
+/* Work */
+
+static void k_work_callback(void *arg)
+{
+	struct k_work *work = arg;
+
+	k_work_update_context();
+	work->handler(work);
 }
 
 void k_work_init(struct k_work *work, k_work_handler_t handler)
 {
 	memset(work, 0, sizeof(*work));
 	work->handler = handler;
+}
 
-	if (init_sys_work_flag == false) {
-		init_sys_work_flag = true;
-		work_queue(LPWORK, &g_work, k_sys_work_init, NULL, 0);
-	}
+void k_work_submit_to_queue(struct k_work_q *work_q, struct k_work *work)
+{
+	if (work_available(&work->nwork))
+		work_queue(LPWORK, &work->nwork, k_work_callback, work, 0);
+}
+
+/* Delayed Work */
+
+static void k_delayed_work_callback(void *arg)
+{
+	struct k_delayed_work *work = arg;
+
+	k_work_update_context();
+	work->work.handler(&work->work);
 }
 
 void k_delayed_work_init(struct k_delayed_work *work, k_work_handler_t handler)
@@ -76,15 +112,9 @@ int k_delayed_work_submit_to_queue(struct k_work_q *work_q,
 	struct work_s *nwork = &work->work.nwork;
 
 	if (work_available(nwork))
-		return work_queue(LPWORK, nwork, (worker_t)work->work.handler, work, MSEC2TICK(delay));
+		return work_queue(LPWORK, nwork, k_delayed_work_callback, work, MSEC2TICK(delay));
 
 	return 0;
-}
-
-void k_work_submit_to_queue(struct k_work_q *work_q, struct k_work *work)
-{
-	if (work_available(&work->nwork))
-		work_queue(LPWORK, &work->nwork, (worker_t)work->handler, work, 0);
 }
 
 int32_t k_delayed_work_remaining_get(struct k_delayed_work *work)
