@@ -87,6 +87,7 @@ int k_thread_name_set(struct k_thread *thread, const char *value)
 
 static int k_thread_main(int argc, FAR char *argv[])
 {
+	struct sched_param param;
 	k_thread_main_t *_main;
 	void *_argv[4];
 
@@ -97,6 +98,9 @@ static int k_thread_main(int argc, FAR char *argv[])
 	memcpy(_argv, _main->argv, sizeof(_argv));
 
 	kmm_free(_main);
+
+	sched_getparam(0, &param);
+	sched_setscheduler(0, SCHED_FIFO, &param);
 
 	((k_thread_entry_t)_argv[0])(_argv[1], _argv[2], _argv[3]);
 	return 0;
