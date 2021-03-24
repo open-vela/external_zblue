@@ -166,10 +166,7 @@ struct shell_static_entry {
 			       mandatory, optional)			   \
 	const struct shell_static_entry UTIL_CAT(_shell_, syntax) = \
 	SHELL_CMD_ARG(syntax, subcmd, help, handler, mandatory, optional); \
-	const struct shell_cmd_entry UTIL_CAT(shell_cmd_, syntax)   \
-	__attribute__ ((section("."					   \
-			STRINGIFY(UTIL_CAT(shell_root_cmd_, syntax)))))	   \
-	__attribute__((used)) = {					   \
+	const struct shell_cmd_entry UTIL_CAT(shell_cmd_, syntax) = {	   \
 		.is_dynamic = false,					   \
 		.u = {.entry = &UTIL_CAT(_shell_, syntax)}		   \
 	}
