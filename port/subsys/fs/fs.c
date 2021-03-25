@@ -16,21 +16,29 @@
 #include <errno.h>
 
 #ifndef CONFIG_LIBC_TMPDIR
-#define CONFIG_LIBC_TMPDIR "/tmp"
+#define CONFIG_LIBC_TMPDIR      "/tmp"
 #endif
 
-struct fs_file_pair_s
+#define FS_FILE_FLUSH_INTERVAL  10
+#define FS_FILE_FLUSH_TIMEOUT   K_MSEC(5000)
+
+struct fs_file_internal_s
 {
-	char orig[MAX_FILE_NAME];
-	char temp[MAX_FILE_NAME];
-	void *filep;
+	sys_snode_t           node;
+	char                  orig[MAX_FILE_NAME];
+	FILE                  *filep;
+	int                   interval;
+	struct k_sem          flushsync;
+	struct k_delayed_work flushwork;
 };
+
+static sys_slist_t g_file_list;
 
 /* File operations */
 
-static int fs_dup(const char *oldpath, const char *newpath)
+static int fs_copy(const char *oldpath, const char *newpath)
 {
-	char swap[256];
+	char buf[256];
 	int old;
 	int new;
 	int ret;
@@ -45,8 +53,8 @@ static int fs_dup(const char *oldpath, const char *newpath)
 		return new;
 	}
 
-	while ((ret = read(old, swap, sizeof(swap))) > 0) {
-		ret = write(new, swap, ret);
+	while ((ret = read(old, buf, sizeof(buf))) > 0) {
+		ret = write(new, buf, ret);
 		if (ret < 0)
 			break;
 	}
@@ -57,75 +65,125 @@ static int fs_dup(const char *oldpath, const char *newpath)
 	return ret;
 }
 
-int fs_open(struct fs_file_t *zfp, const char *file_name, fs_mode_t flags)
+static void fs_covert_temp_name(const char *file_name, char *temp_name)
 {
-	struct fs_file_pair_s *pair;
-	char *rel;
-
-	pair = (struct fs_file_pair_s *)
-		calloc(1, sizeof(struct fs_file_pair_s));
-	if (pair == NULL)
-		return -ENOMEM;
+	const char *rel;
 
 	rel = strrchr(file_name, '/');
 	if (rel == NULL)
-		rel = (char *)file_name;
+		rel = file_name;
 
-	rel = tempnam(CONFIG_LIBC_TMPDIR, rel);
-	if (rel == NULL) {
-		free(pair);
-		return -ENOMEM;
+	snprintf(temp_name, MAX_FILE_NAME,
+			"%s%s", CONFIG_LIBC_TMPDIR, rel);
+}
+
+static bool fs_refresh(struct fs_file_internal_s *fp, bool force)
+{
+	char temp[MAX_FILE_NAME];
+	bool refresh = false;
+
+	(void)k_sem_take(&fp->flushsync, K_FOREVER);
+
+	if (force || (fp->interval++ > FS_FILE_FLUSH_INTERVAL)) {
+		fs_covert_temp_name(fp->orig, temp);
+		fs_copy(temp, fp->orig);
+		fp->interval = 0;
+		refresh = true;
 	}
 
-	strncpy(pair->orig, file_name, MAX_FILE_NAME);
-	strncpy(pair->temp, rel, MAX_FILE_NAME);
-	free(rel);
+	k_sem_give(&fp->flushsync);
 
-	if (access(pair->orig, F_OK) == 0 &&
-			access(pair->temp, F_OK) != 0)
-		fs_dup(pair->orig, pair->temp);
+	return refresh;
+}
 
-	pair->filep = fopen(pair->temp, "a+");
-	if (!pair->filep) {
-		free(pair);
+static void fs_refresh_work(struct k_work *work)
+{
+	struct fs_file_internal_s *fp = work->priv;
+
+	if (!fp)
+		return;
+
+	fs_refresh(fp, true);
+}
+
+int fs_open(struct fs_file_t *zfp, const char *file_name, fs_mode_t flags)
+{
+	struct fs_file_internal_s *fp;
+	char temp[MAX_FILE_NAME];
+
+	fs_covert_temp_name(file_name, temp);
+
+	SYS_SLIST_FOR_EACH_CONTAINER(&g_file_list, fp, node) {
+		if (strncmp(fp->orig, file_name, MAX_FILE_NAME))
+			continue;
+		fp->filep = fopen(temp, "a+");
+		if (!fp->filep)
+			return -EINVAL;
+		zfp->filep = fp;
+		return 0;
+	}
+
+	fp = (struct fs_file_internal_s *)
+		calloc(1, sizeof(struct fs_file_internal_s));
+	if (fp == NULL)
+		return -ENOMEM;
+
+	strncpy(fp->orig, file_name, MAX_FILE_NAME);
+
+	if (access(fp->orig, F_OK) == 0 &&
+			access(temp, F_OK) != 0)
+		fs_copy(fp->orig, temp);
+
+	fp->filep = fopen(temp, "a+");
+	if (!fp->filep) {
+		free(fp);
 		return -EINVAL;
 	}
 
-	zfp->filep = pair;
+	sys_slist_append(&g_file_list, &fp->node);
+
+	k_sem_init(&fp->flushsync, 1, 1);
+
+	k_delayed_work_init(&fp->flushwork, fs_refresh_work);
+	fp->flushwork.work.priv = fp;
+
+	zfp->filep = fp;
 
 	return 0;
 }
 
 int fs_close(struct fs_file_t *zfp)
 {
-	struct fs_file_pair_s *pair = zfp->filep;
+	struct fs_file_internal_s *fp = zfp->filep;
 
-	fclose(pair->filep);
-	fs_dup(pair->temp, pair->orig);
-	unlink(pair->temp);
+	fclose(fp->filep);
 
-	free(pair);
+	k_delayed_work_cancel(&fp->flushwork);
+
+	if (!fs_refresh(fp, false))
+		k_delayed_work_submit_to_queue(NULL, &fp->flushwork,
+				FS_FILE_FLUSH_TIMEOUT);
 
 	return 0;
 }
 
 ssize_t fs_read(struct fs_file_t *zfp, void *ptr, size_t size)
 {
-	struct fs_file_pair_s *pair = zfp->filep;
+	struct fs_file_internal_s *fp = zfp->filep;
 
-	return fread(ptr, 1, size, pair->filep);
+	return fread(ptr, 1, size, fp->filep);
 }
 
 ssize_t fs_write(struct fs_file_t *zfp, const void *ptr, size_t size)
 {
-	struct fs_file_pair_s *pair = zfp->filep;
+	struct fs_file_internal_s *fp = zfp->filep;
 
-	return fwrite(ptr, 1, size, pair->filep);
+	return fwrite(ptr, 1, size, fp->filep);
 }
 
 int fs_seek(struct fs_file_t *zfp, off_t offset, int whence)
 {
-	struct fs_file_pair_s *pair = zfp->filep;
+	struct fs_file_internal_s *fp = zfp->filep;
 	int _whence;
 	int ret;
 
@@ -143,27 +201,27 @@ int fs_seek(struct fs_file_t *zfp, off_t offset, int whence)
 			return -EINVAL;
 	}
 
-	ret = fseek(pair->filep, offset, _whence);
+	ret = fseek(fp->filep, offset, _whence);
 	return ret >= 0 ? 0 : ret;
 }
 
 off_t fs_tell(struct fs_file_t *zfp)
 {
-	struct fs_file_pair_s *pair = zfp->filep;
+	struct fs_file_internal_s *fp = zfp->filep;
 
-	return ftell(pair->filep);
+	return ftell(fp->filep);
 }
 
 int fs_truncate(struct fs_file_t *zfp, off_t length)
 {
-	struct fs_file_pair_s *pair = zfp->filep;
-	return ftruncate(fileno(pair->filep), length);
+	struct fs_file_internal_s *fp = zfp->filep;
+	return ftruncate(fileno(fp->filep), length);
 }
 
 int fs_sync(struct fs_file_t *zfp)
 {
-	struct fs_file_pair_s *pair = zfp->filep;
-	return fsync(fileno(pair->filep));
+	struct fs_file_internal_s *fp = zfp->filep;
+	return fsync(fileno(fp->filep));
 }
 
 /* Filesystem operations */

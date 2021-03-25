@@ -242,6 +242,7 @@ enum {
 struct k_work {
 	struct work_s nwork;
 	k_work_handler_t handler;
+	void *priv;
 };
 
 struct k_delayed_work {
