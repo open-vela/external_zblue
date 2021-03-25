@@ -38,7 +38,7 @@
 
 #define LOG_INF(fmt, ...) syslog(PORT_LOG_INFO,    fmt"\n", ##__VA_ARGS__)
 #define LOG_WRN(fmt, ...) syslog(PORT_LOG_WARNING, fmt"\n", ##__VA_ARGS__)
-#define LOG_ERR(fmt, ...) syslog(PORT_LOG_ERR,     fmt"\n", ##__VA_ARGS__)
+#define LOG_ERR(fmt, ...) do { dump_stack(); syslog(PORT_LOG_ERR, fmt"\n", ##__VA_ARGS__); } while (false)
 
 #define LOG_HEXDUMP_DBG(_data, _length, _str)
 
