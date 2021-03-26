@@ -236,20 +236,64 @@ int fs_mkdir(const char *abs_path)
 
 int fs_unlink(const char *abs_path)
 {
-	return unlink(abs_path);
+	char *_path = (void *)abs_path;
+	struct fs_file_internal_s *fp;
+	char name[MAX_FILE_NAME];
+
+	SYS_SLIST_FOR_EACH_CONTAINER(&g_file_list, fp, node) {
+		if (!strncmp(fp->orig, abs_path, MAX_FILE_NAME)) {
+			fs_covert_temp_name(abs_path, name);
+			_path = name;
+			k_delayed_work_cancel(&fp->flushwork);
+			k_delayed_work_submit_to_queue(NULL, &fp->flushwork,
+					FS_FILE_FLUSH_TIMEOUT);
+		}
+	}
+
+	return unlink(_path);
 }
 
 int fs_rename(const char *from, const char *to)
 {
-	return rename(from, to);
+	struct fs_file_internal_s *fp;
+	char from_tmp[MAX_FILE_NAME];
+	char from_to[MAX_FILE_NAME];
+	char *_from = (void *)from;
+	char *_to = (void *)to;
+
+	SYS_SLIST_FOR_EACH_CONTAINER(&g_file_list, fp, node) {
+		if (!strncmp(fp->orig, from, MAX_FILE_NAME)) {
+			fs_covert_temp_name(from, from_tmp);
+			_from = from_tmp;
+			k_delayed_work_cancel(&fp->flushwork);
+		} else if (!strncmp(fp->orig, to, MAX_FILE_NAME)) {
+			fs_covert_temp_name(to, from_to);
+			_to = from_to;
+			k_delayed_work_cancel(&fp->flushwork);
+			k_delayed_work_submit_to_queue(NULL, &fp->flushwork,
+					FS_FILE_FLUSH_TIMEOUT);
+		}
+	}
+
+	return rename(_from, _to);
 }
 
 int fs_stat(const char *abs_path, struct fs_dirent *entry)
 {
+	struct fs_file_internal_s *fp;
+	char tmp_path[MAX_FILE_NAME];
+	char *_path = (void *)abs_path;
 	struct stat buf;
 	int ret;
 
-	ret = lstat(abs_path, &buf);
+	SYS_SLIST_FOR_EACH_CONTAINER(&g_file_list, fp, node) {
+		if (!strncmp(fp->orig, abs_path, MAX_FILE_NAME)) {
+			fs_covert_temp_name(abs_path, tmp_path);
+			_path = tmp_path;
+		}
+	}
+
+	ret = lstat(_path, &buf);
 
 	if (ret == 0) {
 		strncpy(entry->name, abs_path, sizeof(entry->name));
