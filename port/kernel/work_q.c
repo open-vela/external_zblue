@@ -70,7 +70,8 @@ static void k_work_callback(void *arg)
 	struct k_work *work = arg;
 
 	k_work_update_context();
-	work->handler(work);
+	if (work->handler)
+		work->handler(work);
 }
 
 void k_work_init(struct k_work *work, k_work_handler_t handler)
@@ -81,7 +82,7 @@ void k_work_init(struct k_work *work, k_work_handler_t handler)
 
 void k_work_submit_to_queue(struct k_work_q *work_q, struct k_work *work)
 {
-	if (work_available(&work->nwork))
+	if (work->handler && work_available(&work->nwork))
 		work_queue(LPWORK, &work->nwork, k_work_callback, work, 0);
 }
 
@@ -92,7 +93,8 @@ static void k_delayed_work_callback(void *arg)
 	struct k_delayed_work *work = arg;
 
 	k_work_update_context();
-	work->work.handler(&work->work);
+	if (work->work.handler)
+		work->work.handler(&work->work);
 }
 
 void k_delayed_work_init(struct k_delayed_work *work, k_work_handler_t handler)
@@ -111,7 +113,7 @@ int k_delayed_work_submit_to_queue(struct k_work_q *work_q,
 {
 	struct work_s *nwork = &work->work.nwork;
 
-	if (work_available(nwork))
+	if (work->work.handler && work_available(nwork))
 		return work_queue(LPWORK, nwork, k_delayed_work_callback, work, MSEC2TICK(delay));
 
 	return 0;
