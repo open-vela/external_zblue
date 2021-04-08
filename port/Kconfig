@@ -49,7 +49,7 @@ config NET_BUF_USER_DATA_SIZE
 
 config NUM_COOP_PRIORITIES
   int "Number of coop priorities"
-  default 240
+  default 220
   help
     Number of cooperative priorities configured in the system.
 
