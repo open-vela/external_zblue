@@ -25,6 +25,7 @@
 #include <zephyr/types.h>
 #include <sys/dlist.h>
 #include <sys/util.h>
+#include <pthread.h>
 
 #define K_NUM_PRIORITIES \
 	(CONFIG_NUM_COOP_PRIORITIES + CONFIG_NUM_PREEMPT_PRIORITIES + 1)
@@ -66,7 +67,7 @@
 /* kernel spinlock type */
 
 struct k_spinlock {
-  spinlock_t lock;
+	pthread_mutex_t mutex;
 };
 
 #endif /* ZEPHYR_KERNEL_INCLUDE_KERNEL_STRUCTS_H_ */
