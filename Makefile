@@ -273,7 +273,7 @@ ifeq ($(CONFIG_BT_H4),y)
   CSRCS += port/drivers/bluetooth/hci/h4.c
 endif
 
-CFLAGS += -Wno-implicit-function-declaration -Wno-unused-but-set-variable -Wno-unused-function
+CFLAGS += -Wno-implicit-function-declaration -Wno-unused-but-set-variable -Wno-unused-function -Wno-unused-variable -Wno-implicit-int -Wno-shadow
 
 CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" port/include}
 CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" subsys/bluetooth}
