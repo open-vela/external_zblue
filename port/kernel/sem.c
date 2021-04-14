@@ -47,7 +47,12 @@ int k_sem_init(struct k_sem *sem,
 
 void k_sem_give(struct k_sem *sem)
 {
-	sem_post(&sem->sem);
+	int semcount;
+
+	sem_getvalue(&sem->sem, &semcount);
+
+	if (semcount < (int)sem->limit)
+		sem_post(&sem->sem);
 }
 
 int k_sem_take(struct k_sem *sem, k_timeout_t timeout)
