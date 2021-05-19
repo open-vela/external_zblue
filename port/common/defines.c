@@ -187,7 +187,9 @@ struct settings_handler_static *_settings_handler_static_list[] =
 	&settings_handler_bt_link_key,
 #endif
 	&settings_handler_bt,
+#if defined(CONFIG_BT_MESH)
 	&settings_handler_bt_mesh,
+#endif
 	NULL,
 };
 

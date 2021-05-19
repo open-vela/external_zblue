@@ -109,10 +109,9 @@ ifeq ($(CONFIG_BT_MESH),y)
   CSRCS += $(SUBDIR)/mesh/access.c
   CSRCS += $(SUBDIR)/mesh/cfg_srv.c
   CSRCS += $(SUBDIR)/mesh/health_srv.c
-endif
-
-ifeq ($(CONFIG_BT_SETTINGS),y)
-  CSRCS += $(SUBDIR)/mesh/settings.c
+  ifeq ($(CONFIG_BT_SETTINGS),y)
+    CSRCS += $(SUBDIR)/mesh/settings.c
+  endif
 endif
 
 ifeq ($(CONFIG_BT_MESH_LOW_POWER),y)
