@@ -121,18 +121,11 @@ int k_delayed_work_submit_to_queue(struct k_work_q *work_q,
 
 int32_t k_delayed_work_remaining_get(struct k_delayed_work *work)
 {
-	k_timeout_t qtime, curr;
 	struct work_s *nwork;
 
 	nwork = &work->work.nwork;
 	if (work_available(nwork))
 		return 0;
 
-	curr  = clock_systime_ticks();
-	qtime = nwork->qtime;
-
-	if (curr > qtime + nwork->delay)
-		return 0;
-
-	return TICK2MSEC(curr - qtime);
+	return TICK2MSEC(wd_gettime(&nwork->timer));
 }
