@@ -36,38 +36,12 @@
 #include <inttypes.h>
 #include <sys/prctl.h>
 
-#include <nuttx/kmalloc.h>
+#include <nuttx/kthread.h>
 
 typedef struct
 {
 	void *argv[4];
 } k_thread_main_t;
-
-static int nxthread_create(FAR const char *name, uint8_t ttype, int priority,
-		FAR void *stack, int stack_size, main_t entry, FAR char * const argv[])
-{
-	FAR struct task_tcb_s *ttcb;
-	pid_t pid;
-	int ret;
-
-	ttcb = (FAR struct task_tcb_s *)kmm_zalloc(sizeof(struct task_tcb_s));
-	if (!ttcb)
-		return -ENOMEM;
-
-	ttcb->cmn.flags = ttype;
-
-	ret = nxtask_init(ttcb, name, priority, stack, stack_size, entry, argv);
-	if (ret < OK) {
-		kmm_free(ttcb);
-		return ret;
-	}
-
-	pid = ttcb->cmn.pid;
-
-	nxtask_activate(&ttcb->cmn);
-
-	return (int)pid;
-}
 
 k_tid_t k_current_get(void)
 {
@@ -132,7 +106,7 @@ k_tid_t k_thread_create(struct k_thread *new_thread,
 	argv[1] = arg1;
 	argv[2] = NULL;
 
-	ret = nxthread_create("zephyr", TCB_FLAG_TTYPE_KERNEL, prio,
+	ret = kthread_create_with_stack("zephyr", prio,
 			stack, stack_size, k_thread_main, (FAR char * const *)argv);
 	if (ret < 0)
 		return (k_tid_t)-1;
