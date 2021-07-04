@@ -36,6 +36,7 @@
 #include <inttypes.h>
 #include <sys/prctl.h>
 
+#include <nuttx/kmalloc.h>
 #include <nuttx/kthread.h>
 
 typedef struct
