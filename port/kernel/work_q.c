@@ -127,5 +127,5 @@ int32_t k_delayed_work_remaining_get(struct k_delayed_work *work)
 	if (work_available(nwork))
 		return 0;
 
-	return TICK2MSEC(wd_gettime(&nwork->timer));
+	return TICK2MSEC(wd_gettime(&nwork->u.timer));
 }
