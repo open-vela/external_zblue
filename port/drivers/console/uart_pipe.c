@@ -61,14 +61,7 @@ static int data_send_internal(FAR const uint8_t *buf, size_t count, bool wait)
 	while (nwritten != count) {
 		ret = file_write(&g_filep, buf + nwritten, count - nwritten);
 		if (ret < 0) {
-			if (ret == -EAGAIN) {
-				if (wait) {
-					usleep(1 * 1000);
-					continue;
-				} else
-					return nwritten;
-			} else
-				return ret;
+			return ret;
 		}
 
 		nwritten += ret;

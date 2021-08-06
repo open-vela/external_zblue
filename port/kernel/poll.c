@@ -36,13 +36,13 @@
 #include <kernel_structs.h>
 
 typedef struct {
-	dq_entry_t          next;
+	sys_dnode_t         next;
 	struct k_poll_event *events;
 	int                 num_events;
 	struct k_sem        sem;
-} event_callback_t;
+} poll_event_cb_t;
 
-static dq_queue_t g_event_callback_list;
+static sys_dlist_t poll_list = SYS_DLIST_STATIC_INIT(&poll_list);
 
 void k_poll_event_init(struct k_poll_event *event, uint32_t type, int mode, void *obj)
 {
@@ -51,30 +51,52 @@ void k_poll_event_init(struct k_poll_event *event, uint32_t type, int mode, void
 	event->obj   = obj;
 }
 
-void _handle_obj_poll_events(dq_queue_t *events, uint32_t state)
+static bool event_match(struct k_poll_event *event, uint32_t state)
+{
+	if (state == K_POLL_STATE_SIGNALED &&
+	    event->type == K_POLL_TYPE_SIGNAL) {
+		return true;
+	} else if (state == K_POLL_STATE_DATA_AVAILABLE &&
+		   event->type == K_POLL_TYPE_DATA_AVAILABLE) {
+		return true;
+	} else if (state == K_POLL_STATE_MSGQ_DATA_AVAILABLE &&
+		   event->type == K_POLL_TYPE_MSGQ_DATA_AVAILABLE) {
+		return true;
+	} else if (state == K_POLL_STATE_MEM_SLAB_AVAILABLE &&
+		   event->type == K_POLL_TYPE_MEM_SLAB_AVAILABLE) {
+		return true;
+	} else {
+		return false;
+	}
+}
+
+void z_handle_obj_poll_events(sys_dlist_t *events, uint32_t state)
 {
 	struct k_poll_event *event;
-	event_callback_t *callback;
-	FAR dq_entry_t *entry;
+	poll_event_cb_t *cb, *cb_next;
 	unsigned int key;
 	int i;
 
 	key = irq_lock();
 
-	event = (struct k_poll_event *)dq_remfirst(events);
-	if (!event)
+	event = (struct k_poll_event *)sys_dlist_get(events);
+	if (!event) {
 		goto skip;
+	}
 
-	if (event->type == K_POLL_TYPE_SIGNAL)
-		event->signal->signaled = 1;
-	else if (event->type == K_POLL_TYPE_SEM_AVAILABLE)
-		k_sem_give(event->sem);
+	SYS_DLIST_FOR_EACH_CONTAINER_SAFE(&poll_list, cb, cb_next, next) {
+		for (i = 0; i < cb->num_events; i++) {
+			if (event != &cb->events[i]) {
+				continue;
+			}
 
-	for (entry = dq_peek(&g_event_callback_list); entry; entry = dq_next(entry)) {
-		callback = (event_callback_t *)entry;
-		for (i = 0; i < callback->num_events; i++) {
-			if (event == &callback->events[i] && event->type == state) {
-				k_sem_give(&callback->sem);
+			if (state == K_POLL_STATE_CANCELLED) {
+				k_sem_give(&cb->sem);
+				break;
+			}
+
+			if (event_match(event, state)) {
+				k_sem_give(&cb->sem);
 				break;
 			}
 		}
@@ -86,13 +108,14 @@ skip:
 
 int k_poll_signal_raise(struct k_poll_signal *signal, int result)
 {
-	_handle_obj_poll_events(&signal->poll_events, K_POLL_STATE_SIGNALED);
+	signal->signaled = 1;
+	z_handle_obj_poll_events(&signal->poll_events, K_POLL_STATE_SIGNALED);
 	return 0;
 }
 
-static void k_poll_event_process(struct k_poll_event *event, bool queue)
+static void poll_event_add(struct k_poll_event *event)
 {
-	dq_queue_t *events;
+	sys_dnode_t *events;
 
 	if (event->type == K_POLL_TYPE_DATA_AVAILABLE)
 		events = &(event->queue->poll_events);
@@ -100,35 +123,47 @@ static void k_poll_event_process(struct k_poll_event *event, bool queue)
 		events = &(event->signal->poll_events);
 	else if (event->type == K_POLL_TYPE_SEM_AVAILABLE)
 		events = &(event->sem->poll_events);
+	else if (event->type == K_POLL_TYPE_MEM_SLAB_AVAILABLE)
+		events = &(event->slab->poll_events);
 	else
 		return;
 
-	if (queue)
-		dq_addlast(&event->_node, events);
-	else
-		dq_rem(&event->_node, events);
+	sys_dlist_append(events, &event->_node);
+}
+
+static void poll_event_remove(struct k_poll_event *event)
+{
+	if (sys_dnode_is_linked(&event->_node)) {
+		sys_dlist_remove(&event->_node);
+	}
 }
 
 static int k_poll_event_ready(struct k_poll_event *event)
 {
 	switch (event->type) {
 		case K_POLL_TYPE_DATA_AVAILABLE:
-			if (!sq_empty(&event->queue->data_q)) {
-				event->state |= event->type;
+			if (!sys_sflist_is_empty(&event->queue->data_q)) {
+				event->state = K_POLL_STATE_DATA_AVAILABLE;
 				return true;
 			}
 			break;
 		case K_POLL_TYPE_SEM_AVAILABLE:
 			if (k_sem_count_get(event->sem) > 0) {
 				k_sem_reset(event->sem);
-				event->state |= event->type;
+				event->state = K_POLL_STATE_SEM_AVAILABLE;
 				return true;
 			}
 			break;
 		case K_POLL_TYPE_SIGNAL:
 			if (event->signal->signaled != 0) {
 				event->signal->signaled = 0;
-				event->state |= event->type;
+				event->state = K_POLL_STATE_SIGNALED;
+				return true;
+			}
+			break;
+		case K_POLL_TYPE_MEM_SLAB_AVAILABLE:
+			if (event->slab->free_list != NULL) {
+				event->state = K_POLL_STATE_MEM_SLAB_AVAILABLE;
 				return true;
 			}
 			break;
@@ -137,51 +172,54 @@ static int k_poll_event_ready(struct k_poll_event *event)
 	return false;
 }
 
-static bool k_poll_events(struct k_poll_event *events, int num_events, int32_t timeout)
+static bool poll_event_pending(struct k_poll_event *events, int num_events)
 {
 	int i;
 
-	for (i = 0; i < num_events; i++)
-		if (k_poll_event_ready(&events[i]))
-			return false;
+	for (i = 0; i < num_events; i++) {
+		if (k_poll_event_ready(&events[i])) {
+			return true;
+		}
+	}
 
-	return (timeout == K_NO_WAIT) ? false : true;
+	return false;
 }
 
-int k_poll(struct k_poll_event *events, int num_events, int32_t timeout)
+int k_poll(struct k_poll_event *events, int num_events, k_timeout_t timeout)
 {
-	event_callback_t callback;
-	int key, i;
+	poll_event_cb_t cb;
+	int key, i, err = 0;
 
 	key = irq_lock();
 
-	if (!k_poll_events(events, num_events, timeout))
-		goto nowait;
+	if (poll_event_pending(events, num_events) ||
+	    K_TIMEOUT_EQ(timeout, K_NO_WAIT)) {
+		goto end;
+	}
 
-	for (i = 0; i < num_events; i++)
-		k_poll_event_process(&events[i], true);
+	for (i = 0; i < num_events; i++) {
+		poll_event_add(&events[i]);
+	}
 
-	callback.events     = events;
-	callback.num_events = num_events;
-	k_sem_init(&callback.sem, 0, 1);
-	dq_addlast(&callback.next, &g_event_callback_list);
+	cb.events     = events;
+	cb.num_events = num_events;
 
+	k_sem_init(&cb.sem, 0, 1);
+	sys_dlist_append(&poll_list, &cb.next);
 	irq_unlock(key);
 
-	k_sem_take(&callback.sem, timeout);
-
+	err = k_sem_take(&cb.sem, timeout);
 	key = irq_lock();
+	sys_dlist_remove(&cb.next);
 
-	dq_rem(&callback.next, &g_event_callback_list);
-	k_sem_delete(&callback.sem);
+	poll_event_pending(events, num_events);
 
-	k_poll_events(events, num_events, K_NO_WAIT);
+	for (i = 0; i < num_events; i++) {
+		poll_event_remove(&events[i]);
+	}
 
-	for (i = 0; i < num_events; i++)
-		k_poll_event_process(&events[i], false);
-
-nowait:
+end:
 	irq_unlock(key);
 
-	return 0;
+	return err;
 }

@@ -916,8 +916,8 @@ static void enqueue_offer(struct bt_mesh_friend *frnd, int8_t rssi)
 
 	off = net_buf_simple_add(&sdu, sizeof(*off));
 
-	off->recv_win = (uint8_t)CONFIG_BT_MESH_FRIEND_RECV_WIN,
-	off->queue_size = (uint8_t)CONFIG_BT_MESH_FRIEND_QUEUE_SIZE,
+	off->recv_win = CONFIG_BT_MESH_FRIEND_RECV_WIN,
+	off->queue_size = CONFIG_BT_MESH_FRIEND_QUEUE_SIZE,
 	off->sub_list_size = ARRAY_SIZE(frnd->sub_list),
 	off->rssi = rssi,
 

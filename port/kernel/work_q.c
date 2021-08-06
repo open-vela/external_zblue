@@ -40,38 +40,59 @@
 #include <string.h>
 
 struct k_work_q k_sys_work_q;
-static pid_t k_sys_pids[CONFIG_SCHED_LPNTHREADS];
 
-static void k_work_update_context(void)
-{
-	int i;
-
-	for (i = 0; i < CONFIG_SCHED_LPNTHREADS; i++)
-		if (k_sys_pids[i] == 0)
-			k_sys_pids[i] = getpid();
-}
-
-bool k_work_in_critical(void)
-{
-	pid_t pid = getpid();
-	int i;
-
-	for (i = 0; i < CONFIG_SCHED_LPNTHREADS; i++)
-		if (k_sys_pids[i] == pid)
-			return true;
-
-	return false;
-}
-
-/* Work */
-
-static void k_work_callback(void *arg)
+static void work_cb(void *arg)
 {
 	struct k_work *work = arg;
 
-	k_work_update_context();
-	if (work->handler)
+	k_sys_work_q.thread.pid = getpid();
+
+	if (work->handler) {
 		work->handler(work);
+	}
+}
+
+static int work_submit(struct k_work_q *work_q,
+		       struct k_work *work,
+		       k_timeout_t delay)
+{
+	if (work_available(&work->nwork)) {
+		work_queue(LPWORK, &work->nwork, work_cb, work, delay.ticks);
+	}
+
+	return 0;
+}
+
+int k_work_cancel_delayable(struct k_work_delayable *dwork)
+{
+	return work_cancel(LPWORK, &dwork->work.nwork);
+}
+
+bool k_work_cancel_delayable_sync(struct k_work_delayable *dwork,
+				  struct k_work_sync *sync)
+{
+	return (bool)k_work_cancel_delayable(dwork);
+}
+
+int k_work_reschedule_for_queue(struct k_work_q *work_q,
+				struct k_work_delayable *dwork,
+				k_timeout_t delay)
+{
+	k_work_cancel_delayable(dwork);
+
+	return work_submit(work_q, &dwork->work, delay);
+}
+
+int k_work_schedule(struct k_work_delayable *dwork,
+		    k_timeout_t delay)
+{
+	return work_submit(NULL, &dwork->work, delay);
+}
+
+int k_work_reschedule(struct k_work_delayable *dwork,
+		      k_timeout_t delay)
+{
+	return k_work_reschedule_for_queue(NULL, dwork, delay);
 }
 
 void k_work_init(struct k_work *work, k_work_handler_t handler)
@@ -80,52 +101,46 @@ void k_work_init(struct k_work *work, k_work_handler_t handler)
 	work->handler = handler;
 }
 
-void k_work_submit_to_queue(struct k_work_q *work_q, struct k_work *work)
+int k_work_submit_to_queue(struct k_work_q *work_q, struct k_work *work)
 {
-	if (work->handler && work_available(&work->nwork))
-		work_queue(LPWORK, &work->nwork, k_work_callback, work, 0);
+	return work_submit(work_q, work, K_NO_WAIT);
 }
 
-/* Delayed Work */
-
-static void k_delayed_work_callback(void *arg)
+int k_work_submit(struct k_work *work)
 {
-	struct k_delayed_work *work = arg;
-
-	k_work_update_context();
-	if (work->work.handler)
-		work->work.handler(&work->work);
+	return k_work_submit_to_queue(NULL, work);
 }
 
-void k_delayed_work_init(struct k_delayed_work *work, k_work_handler_t handler)
+void k_work_init_delayable(struct k_work_delayable *dwork,
+			   k_work_handler_t handler)
 {
-	k_work_init(&work->work, handler);
+	k_work_init(&dwork->work, handler);
 }
 
-int k_delayed_work_cancel(struct k_delayed_work *work)
+int k_work_delayable_busy_get(const struct k_work_delayable *dwork)
 {
-	return work_cancel(LPWORK, &work->work.nwork);
+	return !work_available(&dwork->work.nwork);
 }
 
-int k_delayed_work_submit_to_queue(struct k_work_q *work_q,
-		struct k_delayed_work *work,
-		k_timeout_t delay)
+k_ticks_t z_timeout_remaining(const struct _timeout *timeout)
 {
-	struct work_s *nwork = &work->work.nwork;
+	clock_t qtime, curr, elapsed;
+	struct k_work_delayable *dwork;
 
-	if (work->work.handler && work_available(nwork))
-		return work_queue(LPWORK, nwork, k_delayed_work_callback, work, MSEC2TICK(delay));
+	dwork = CONTAINER_OF(timeout, struct k_work_delayable, timeout);
 
-	return 0;
-}
-
-int32_t k_delayed_work_remaining_get(struct k_delayed_work *work)
-{
-	struct work_s *nwork;
-
-	nwork = &work->work.nwork;
-	if (work_available(nwork))
+	if (work_available(&dwork->work.nwork)) {
 		return 0;
+	}
 
-	return TICK2MSEC(wd_gettime(&nwork->u.timer));
+	curr  = clock_systime_ticks();
+	qtime = dwork->work.nwork.qtime;
+
+	if (curr > qtime + dwork->work.nwork.delay) {
+		return 0;
+	}
+
+	elapsed = curr - qtime;
+
+	return (dwork->work.nwork.delay - elapsed);
 }

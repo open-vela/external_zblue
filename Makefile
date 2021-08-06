@@ -288,7 +288,6 @@ ifeq ($(CONFIG_ARCH_SIM),y)
 endif
 
 ifneq ($(CONFIG_BT_SAMPLE),)
-
   ifneq ($(CONFIG_BT_SAMPLE_PERIPHERAL),)
     PROGNAME += peripheral
     CSRCS += samples/bluetooth/peripheral/src/cts.c

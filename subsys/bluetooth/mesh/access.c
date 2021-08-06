@@ -1020,10 +1020,6 @@ static void mod_init(const struct bt_mesh_model *mod, const struct bt_mesh_elem 
 	int i;
 	int *err = user_data;
 
-	if (!dev_comp) {
-		return;
-	}
-
 	if (*err) {
 		return;
 	}
@@ -1356,10 +1352,6 @@ int bt_mesh_access_send(struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf,
 
 uint8_t bt_mesh_elem_count(void)
 {
-	if (!dev_comp) {
-		return 0;
-	}
-
 	return dev_comp->elem_count;
 }
 
