@@ -1,5 +1,4 @@
 /****************************************************************************
- * apps/external/zblue/port/kernel/sem.c
  *
  *   Copyright (C) 2020 Xiaomi InC. All rights reserved.
  *
@@ -32,49 +31,40 @@
  *
  ****************************************************************************/
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <kernel.h>
-#include <kernel_structs.h>
-#include <toolchain.h>
+#include <logging/log.h>
 
-int k_mutex_init(struct k_mutex *mutex)
+int main(int argc, char *argv[])
 {
-	pthread_mutexattr_t attr;
-	int ret;
+	int count = 1;
 
-	pthread_mutexattr_init(&attr);
-	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-
-	ret = pthread_mutex_init(&mutex->mutex, &attr);
-	pthread_mutexattr_destroy(&attr);
-
-	return ret;
-}
-
-int k_mutex_lock(struct k_mutex *mutex, k_timeout_t timeout)
-{
-	uint32_t ms;
-	struct timespec abstime;
-
-	if (K_TIMEOUT_EQ(timeout, K_FOREVER))
-		return pthread_mutex_lock(&mutex->mutex);
-	else if (K_TIMEOUT_EQ(timeout, K_NO_WAIT))
-		return pthread_mutex_trylock(&mutex->mutex);
-
-	clock_gettime(CLOCK_REALTIME, &abstime);
-
-	ms = k_ticks_to_ms_ceil32(timeout.ticks);
-
-	abstime.tv_sec += ms / MSEC_PER_SEC;
-	abstime.tv_nsec += (ms % MSEC_PER_SEC) * NSEC_PER_MSEC;
-	if (abstime.tv_nsec >= NSEC_PER_SEC) {
-		abstime.tv_sec += 1;
-		abstime.tv_nsec -= NSEC_PER_SEC;
+	if (argc == 2) {
+		count = atoi(argv[1]);
 	}
 
-	return pthread_mutex_timedlock(&mutex->mutex, &abstime);
-}
+	printk("************TOTAL CYCLES %d*************\n", count);
 
-int k_mutex_unlock(struct k_mutex *mutex)
-{
-	return pthread_mutex_unlock(&mutex->mutex);
+	for (int i = 1; i <= count; i++) {
+		uint32_t delay = 100 + i + 1;
+		uint32_t start_timestamps = k_uptime_get_32(), end_timestamps;
+
+		printk("#%d START TEST time:%lums ticks:%lld delta:%lld\n", i, start_timestamps,
+		       k_uptime_ticks(), sys_clock_timeout_end_calc(K_MSEC(i)));
+
+		k_sleep(K_MSEC(delay));
+
+		end_timestamps = k_uptime_get_32();
+
+		printk("#%d END TEST time:%lums ticks:%lld\n", i, end_timestamps, k_uptime_ticks());
+
+		end_timestamps -= start_timestamps;
+		end_timestamps -= i;
+		__ASSERT_NO_MSG(end_timestamps >= 100);
+	}
+
+	printk("PASSED\n");
+
+	return 0;
 }

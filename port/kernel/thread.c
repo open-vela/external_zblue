@@ -44,15 +44,41 @@ typedef struct
 	void *argv[4];
 } k_thread_main_t;
 
+static int nxthread_create(FAR const char *name, uint8_t ttype, int priority,
+		FAR void *stack, int stack_size, main_t entry, FAR char * const argv[])
+{
+	FAR struct task_tcb_s *ttcb;
+	pid_t pid;
+	int ret;
+
+	ttcb = (FAR struct task_tcb_s *)kmm_zalloc(sizeof(struct task_tcb_s));
+	if (!ttcb)
+		return -ENOMEM;
+
+	ttcb->cmn.flags = ttype;
+
+	ret = nxtask_init(ttcb, name, priority, stack, stack_size, entry, argv);
+	if (ret < OK) {
+		kmm_free(ttcb);
+		return ret;
+	}
+
+	pid = ttcb->cmn.pid;
+
+	nxtask_activate(&ttcb->cmn);
+
+	return (int)pid;
+}
+
+extern struct k_work_q k_sys_work_q;
+
 k_tid_t k_current_get(void)
 {
-	extern struct k_work_q k_sys_work_q;
-	extern bool k_work_in_critical(void);
-
-	if (k_work_in_critical())
+	if (getpid() == k_sys_work_q.thread.pid) {
 		return &k_sys_work_q.thread;
+	}
 
-	return (k_tid_t)(intptr_t)getpid();
+	return NULL;
 }
 
 int k_thread_name_set(struct k_thread *thread, const char *value)
@@ -67,6 +93,7 @@ static int k_thread_main(int argc, FAR char *argv[])
 	void *_argv[4];
 
 	_main = (k_thread_main_t *)((uintptr_t)strtoul(argv[2], NULL, 0));
+
 	if (_main == NULL)
 		return -EINVAL;
 
@@ -107,17 +134,24 @@ k_tid_t k_thread_create(struct k_thread *new_thread,
 	argv[1] = arg1;
 	argv[2] = NULL;
 
-	ret = kthread_create_with_stack("zephyr", prio,
-			stack, stack_size, k_thread_main, (FAR char * const *)argv);
-	if (ret < 0)
+	ret = nxthread_create("zephyr", TCB_FLAG_TTYPE_KERNEL, prio,
+			      stack, stack_size, k_thread_main, (FAR char * const *)argv);
+	if (ret < 0) {
+		kmm_free(_main);
 		return (k_tid_t)-1;
+	}
 
 	new_thread->pid = ret;
 
 	return (k_tid_t)ret;
 }
 
-int k_is_in_isr(void)
+void k_thread_start(k_tid_t thread)
+{
+	(void)thread;
+}
+
+bool k_is_in_isr(void)
 {
 	return false;
 }

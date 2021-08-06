@@ -1,0 +1,88 @@
+#
+# For a description of the syntax of this configuration file,
+# see kconfig-language at https://www.kernel.org/doc/Documentation/kbuild/kconfig-language.txt
+#
+
+config ASSERT
+	bool "Enable zblue assert"
+	default y
+
+if ASSERT
+
+config ASSERT_LEVEL
+	int
+  	default 1
+
+config ASSERT_VERBOSE
+	bool
+	default y
+
+endif
+
+config PM_DEVICE
+	int
+	default 0
+
+config NET_BUF_WARN_ALLOC_INTERVAL
+	int
+	default 0
+
+config ATOMIC_OPERATIONS_C
+	bool
+	default y
+
+config SRAM_BASE_ADDRESS
+	int
+	default 0
+
+config SRAM_SIZE
+	int
+	default 0
+
+config NUM_METAIRQ_PRIORITIES
+	int
+	default 0
+
+config NUM_PREEMPT_PRIORITIES
+	int
+	default 0
+
+config HEAP_MEM_POOL_SIZE
+	int
+	default 0
+
+config NUM_MBOX_ASYNC_MSGS
+	int
+	default 0
+
+config MP_NUM_CPUS
+	int
+	default 0
+
+config LOG_SPEED
+	int
+	default 0
+
+config LOG2_MODE_IMMEDIATE
+	int
+	default 0
+
+config LOG2_ALWAYS_RUNTIME
+	int
+	default 0
+
+config LOG2_USE_VLA
+	int
+	default 0
+
+config LOG_TRACE_SHORT_TIMESTAMP
+	int
+	default 0
+
+config LOG_TIMESTAMP_64BIT
+	int
+	default 0
+
+config SYS_CLOCK_HW_CYCLES_PER_SEC
+	int
+	default 0

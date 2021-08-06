@@ -56,9 +56,9 @@ static K_THREAD_STACK_DEFINE(rx_thread_stack, CONFIG_BT_RX_STACK_SIZE);
 static struct k_thread        rx_thread_data;
 static struct file            g_filep;
 
+#ifdef CONFIG_BT_H4_DEBUG
 static void h4_data_dump(const char *tag, uint8_t type, uint8_t *data, uint32_t len)
 {
-#ifdef HCI_DEBUG
 	struct iovec bufs[2];
 
 	bufs[0].iov_base = &type;
@@ -67,8 +67,8 @@ static void h4_data_dump(const char *tag, uint8_t type, uint8_t *data, uint32_t 
 	bufs[1].iov_len = len;
 
 	lib_dumpvbuffer(tag, bufs, 2);
-#endif
 }
+#endif
 
 static int h4_recv_data(uint8_t *buf, size_t count)
 {
@@ -77,11 +77,7 @@ static int h4_recv_data(uint8_t *buf, size_t count)
 	while (count != nread) {
 		ret = file_read(&g_filep, buf + nread, count - nread);
 		if (ret < 0) {
-			if (ret == -EAGAIN) {
-				usleep(500);
-				continue;
-			} else
-				return ret;
+			return ret;
 		}
 
 		nread += ret;
@@ -97,11 +93,7 @@ static int h4_send_data(uint8_t *buf, size_t count)
 	while (nwritten != count) {
 		ret = file_write(&g_filep, buf + nwritten, count - nwritten);
 		if (ret < 0) {
-			if (ret == -EAGAIN) {
-				usleep(500);
-				continue;
-			} else
-				return ret;
+			return ret;
 		}
 
 		nwritten += ret;
@@ -112,7 +104,7 @@ static int h4_send_data(uint8_t *buf, size_t count)
 
 static void h4_rx_thread(void *p1, void *p2, void *p3)
 {
-	unsigned char buffer[CONFIG_BT_RX_BUF_LEN];
+	unsigned char buffer[1];
 	int hdr_len, data_len, ret;
 	struct net_buf *buf;
 	bool discardable;
@@ -162,8 +154,11 @@ static void h4_rx_thread(void *p1, void *p2, void *p3)
 			buf = bt_buf_get_evt(hdr.evt.evt, discardable,
 					discardable ? K_NO_WAIT : K_FOREVER);
 			if (buf == NULL) {
-				if (discardable) {
-					h4_recv_data(buffer, data_len - 1);
+				if (discardable && data_len) {
+					while(--data_len) {
+						h4_recv_data(buffer, 1);
+					}
+
 					continue;
 				} else
 					break;
@@ -209,8 +204,9 @@ static void h4_rx_thread(void *p1, void *p2, void *p3)
 
 		net_buf_add(buf, hdr_len + data_len);
 
+#ifdef CONFIG_BT_H4_DEBUG
 		h4_data_dump("BT RX", type, buf->data, hdr_len + data_len);
-
+#endif
 		bt_recv(buf);
 	}
 
@@ -247,31 +243,37 @@ bail:
 
 static int h4_send(struct net_buf *buf)
 {
-	uint8_t *type;
+	uint8_t type;
 	int ret;
-
-	type = net_buf_push(buf, 1);
 
 	switch (bt_buf_get_type(buf)) {
 		case BT_BUF_ACL_OUT:
-			*type = H4_ACL;
+			type = H4_ACL;
 			break;
 		case BT_BUF_CMD:
-			*type = H4_CMD;
+			type = H4_CMD;
 			break;
 		case BT_BUF_ISO_OUT:
-			*type = H4_ISO;
+			type = H4_ISO;
 			break;
 		default:
 			ret = -EINVAL;
 			goto bail;
 	}
 
-	h4_data_dump("BT TX", *type, buf->data + 1, buf->len - 1);
+#ifdef CONFIG_BT_H4_DEBUG
+	h4_data_dump("BT TX", type, buf->data, buf->len);
+#endif
+
+	ret = h4_send_data(&type, 1);
+	if (ret != 1) {
+		ret = -EINVAL;
+	}
 
 	ret = h4_send_data(buf->data, buf->len);
-	if (ret != buf->len)
+	if (ret != buf->len) {
 		ret = -EINVAL;
+	}
 
 bail:
 	net_buf_unref(buf);

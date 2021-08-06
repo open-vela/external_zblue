@@ -45,21 +45,17 @@ int64_t k_uptime_ticks(void)
 	return z_tick_get();
 }
 
-uint64_t z_timeout_end_calc(k_timeout_t timeout)
+uint32_t arch_k_cycle_get_32(void)
 {
-	k_ticks_t dt;
+	return (uint32_t)z_tick_get();
+}
 
+uint64_t sys_clock_timeout_end_calc(k_timeout_t timeout)
+{
 	if (K_TIMEOUT_EQ(timeout, K_FOREVER))
 		return UINT64_MAX;
 	else if (K_TIMEOUT_EQ(timeout, K_NO_WAIT))
 		return z_tick_get();
 
-	dt = k_ms_to_ticks_ceil32(timeout);
-
-	return z_tick_get() + MAX(1, dt);
-}
-
-uint64_t k_ticks_to_ms_floor64(uint64_t t)
-{
-	return TICK2MSEC(t);
+	return z_tick_get() + timeout.ticks;
 }

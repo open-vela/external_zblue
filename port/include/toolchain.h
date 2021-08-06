@@ -21,6 +21,10 @@
 	#define HAS_BUILTIN(x) HAS_BUILTIN_##x
 #endif
 
+#ifndef __clang__
+#define __clang__ 0
+#endif
+
 #include <toolchain/gcc.h>
 
 #endif /* ZEPHYR_INCLUDE_TOOLCHAIN_H_ */

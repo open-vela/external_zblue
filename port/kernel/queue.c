@@ -39,24 +39,27 @@
 
 static void handle_poll_events(struct k_queue *queue, uint32_t state)
 {
-	_handle_obj_poll_events(&queue->poll_events, state);
+	z_handle_obj_poll_events(&queue->poll_events, state);
 }
 
 void k_queue_cancel_wait(struct k_queue *queue)
 {
+	handle_poll_events(queue, K_POLL_STATE_CANCELLED);
 }
 
 void k_queue_init(struct k_queue *queue)
 {
 	k_spinlock_key_t key = k_spin_lock(&queue->lock);
-	sq_init(&queue->data_q);
+	sys_sflist_init(&queue->data_q);
+	sys_dlist_init(&queue->wait_q.waitq);
+	sys_dlist_init(&queue->poll_events);
 	k_spin_unlock(&queue->lock, key);
 }
 
 void k_queue_insert(struct k_queue *queue, void *prev, void *data)
 {
 	k_spinlock_key_t key = k_spin_lock(&queue->lock);
-	sq_addafter(prev, data, &queue->data_q);
+	sys_sflist_insert(&queue->data_q, prev, data);
 	k_spin_unlock(&queue->lock, key);
 
 	handle_poll_events(queue, K_POLL_STATE_DATA_AVAILABLE);
@@ -67,7 +70,7 @@ void k_queue_append(struct k_queue *queue, void *data)
 	k_spinlock_key_t key;
 
 	key = k_spin_lock(&queue->lock);
-	sq_addlast(data, &queue->data_q);
+	sys_sflist_append(&queue->data_q, data);
 	k_spin_unlock(&queue->lock, key);
 
 	handle_poll_events(queue, K_POLL_STATE_DATA_AVAILABLE);
@@ -78,7 +81,7 @@ void k_queue_prepend(struct k_queue *queue, void *data)
 	k_spinlock_key_t key;
 
 	key = k_spin_lock(&queue->lock);
-	sq_addfirst(data, &queue->data_q);
+	sys_sflist_prepend(&queue->data_q, data);
 	k_spin_unlock(&queue->lock, key);
 
 	handle_poll_events(queue, K_POLL_STATE_DATA_AVAILABLE);
@@ -88,20 +91,19 @@ static void *k_queue_poll(struct k_queue *queue, k_timeout_t timeout)
 {
 	struct k_poll_event event;
 	k_spinlock_key_t key;
-	void *data;
+	void *data = NULL;
 	int err;
 
-	k_poll_event_init(&event, K_POLL_TYPE_FIFO_DATA_AVAILABLE,
-			K_POLL_MODE_NOTIFY_ONLY, queue);
+	k_poll_event_init(&event, K_POLL_TYPE_DATA_AVAILABLE,
+			  K_POLL_MODE_NOTIFY_ONLY, queue);
 
 	event.state = K_POLL_STATE_NOT_READY;
 	err = k_poll(&event, 1, timeout);
-
-	if (err && err != -EAGAIN)
+	if (err)
 		return NULL;
 
 	key = k_spin_lock(&queue->lock);
-	data = sq_remfirst(&queue->data_q);
+	data = sys_sflist_get(&queue->data_q);
 	k_spin_unlock(&queue->lock, key);
 
 	return data;
@@ -112,12 +114,12 @@ void *k_queue_get(struct k_queue *queue, k_timeout_t timeout)
 	k_spinlock_key_t key;
 	void *data;
 
-	if (sq_empty(&queue->data_q)) {
-		if (timeout == K_NO_WAIT)
+	if (sys_sflist_is_empty(&queue->data_q)) {
+		if (K_TIMEOUT_EQ(timeout, K_NO_WAIT))
 			return NULL;
 	} else {
 		key = k_spin_lock(&queue->lock);
-		data = sq_remfirst(&queue->data_q);
+		data = sys_sflist_get(&queue->data_q);
 		k_spin_unlock(&queue->lock, key);
 		return data;
 	}
@@ -127,12 +129,17 @@ void *k_queue_get(struct k_queue *queue, k_timeout_t timeout)
 
 int k_queue_append_list(struct k_queue *queue, void *head, void *tail)
 {
-	sys_slist_append_list(&queue->data_q, head, tail);
+	k_spinlock_key_t key;
+
+	key = k_spin_lock(&queue->lock);
+	sys_sflist_append_list(&queue->data_q, head, tail);
+	k_spin_unlock(&queue->lock, key);
+
 	handle_poll_events(queue, K_POLL_STATE_DATA_AVAILABLE);
 	return 0;
 }
 
 int k_queue_is_empty(struct k_queue *queue)
 {
-	return sys_slist_is_empty(&queue->data_q);
+	return sys_sflist_is_empty(&queue->data_q);
 }

@@ -35,21 +35,139 @@
 #include <stdlib.h>
 
 #include <kernel.h>
+#include <sys/check.h>
 #include <kernel_structs.h>
 
-int k_mem_slab_alloc(struct k_mem_slab *slab,
-		void **mem, k_timeout_t timeout)
-{
-	void *buffer = calloc(1, slab->block_size);
-	if (!buffer)
-		return -EINVAL;
+static struct k_spinlock lock;
 
-	*mem = buffer;
+#ifdef CONFIG_OBJECT_TRACING
+struct k_mem_slab *_trace_list_k_mem_slab;
+#endif	/* CONFIG_OBJECT_TRACING */
+
+/**
+ * @brief Initialize kernel memory slab subsystem.
+ *
+ * Perform any initialization of memory slabs that wasn't done at build time.
+ * Currently this just involves creating the list of free blocks for each slab.
+ *
+ * @return N/A
+ */
+static int create_free_list(struct k_mem_slab *slab)
+{
+	uint32_t j;
+	char *p;
+
+	/* blocks must be word aligned */
+	CHECKIF(((slab->block_size | (uintptr_t)slab->buffer) &
+				(sizeof(void *) - 1)) != 0) {
+		return -EINVAL;
+	}
+
+	slab->free_list = NULL;
+	p = slab->buffer;
+
+	for (j = 0U; j < slab->num_blocks; j++) {
+		*(char **)p = slab->free_list;
+		slab->free_list = p;
+		p += slab->block_size;
+	}
+
 	return 0;
+}
+
+/**
+ * @brief Complete initialization of statically defined memory slabs.
+ *
+ * Perform any initialization that wasn't done at build time.
+ *
+ * @return N/A
+ */
+int k_mem_slab_pre_init(void)
+{
+	int rc = 0;
+
+	Z_STRUCT_SECTION_FOREACH(k_mem_slab, slab) {
+		rc = create_free_list(slab);
+		if (rc < 0) {
+			goto out;
+		}
+
+		z_object_init(slab);
+	}
+
+out:
+	return rc;
+}
+
+static int k_mem_slab_poll(struct k_mem_slab *slab,
+			     void **mem, k_timeout_t timeout)
+{
+	struct k_poll_event event;
+	k_spinlock_key_t key;
+	int err;
+
+	k_poll_event_init(&event, K_POLL_TYPE_MEM_SLAB_AVAILABLE,
+			  K_POLL_MODE_NOTIFY_ONLY, slab);
+
+	event.state = K_POLL_STATE_NOT_READY;
+	err = k_poll(&event, 1, timeout);
+	if (err) {
+		return err;
+	}
+
+	if (event.state != K_POLL_STATE_MEM_SLAB_AVAILABLE) {
+		return -ENOSR;
+	}
+
+	__ASSERT_NO_MSG(slab->free_list != NULL);
+
+	key = k_spin_lock(&lock);
+
+	*mem = slab->free_list;
+	slab->free_list = *(char **)(slab->free_list);
+	slab->num_used++;
+
+	k_spin_unlock(&lock, key);
+
+	return 0;
+}
+
+int k_mem_slab_alloc(struct k_mem_slab *slab,
+		     void **mem, k_timeout_t timeout)
+{
+	k_spinlock_key_t key = k_spin_lock(&lock);
+	int result;
+
+	if (slab->free_list != NULL) {
+		/* take a free block */
+		*mem = slab->free_list;
+		slab->free_list = *(char **)(slab->free_list);
+		slab->num_used++;
+		result = 0;
+	} else if (K_TIMEOUT_EQ(timeout, K_NO_WAIT)) {
+		/* don't wait for a free block to become available */
+		*mem = NULL;
+		result = -ENOMEM;
+	} else {
+		k_spin_unlock(&lock, key);
+		/* wait for a free block or timeout */
+		return k_mem_slab_poll(slab, mem, timeout);
+	}
+
+	k_spin_unlock(&lock, key);
+
+	return result;
 }
 
 void k_mem_slab_free(struct k_mem_slab *slab, void **mem)
 {
-	free(*mem);
-	*mem = NULL;
+	k_spinlock_key_t key = k_spin_lock(&lock);
+
+	**(char ***)mem = slab->free_list;
+	slab->free_list = *(char **)mem;
+	slab->num_used--;
+
+	k_spin_unlock(&lock, key);
+
+	z_handle_obj_poll_events(&slab->poll_events, K_POLL_STATE_MEM_SLAB_AVAILABLE);
 }

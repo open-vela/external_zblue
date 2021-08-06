@@ -3,7 +3,7 @@
 # see kconfig-language at https://www.kernel.org/doc/Documentation/kbuild/kconfig-language.txt
 #
 
-if BT
+source "$APPSDIR/external/zblue/port/Kconfig.zephyr"
 
 config NET_BUF
 	bool "Network buffer support"
@@ -20,7 +20,7 @@ config POLL
 	  the availability of some kernel objects (semaphores and fifos).
 
 config NET_L2_BT
-  bool "Enable Bluetooth support"
+  bool "Enable Bluetooth 6Lowpan support"
   help
     Enable Bluetooth driver that send and receives IPv6 packets,
     does header compression on it and writes it to the
@@ -84,6 +84,16 @@ config BT_H4
   help
     Bluetooth H:4 UART driver. Requires hardware flow control
     lines to be available.
+
+if BT_H4
+
+config BT_H4_DEBUG
+  bool "H:4 Debug"
+  default n
+  help
+    Debug HCI ACL Command information.
+
+endif
 
 config BT_QUIRK_NO_RESET
   bool "The host should never send HCI_Reset"
@@ -182,5 +192,47 @@ config FILE_SYSTEM_MAX_FILE_NAME
     supported by a file system may result in memory access
     violations.
 endif
+
+config ZTEST
+  bool "Test zblue subsystem"
+  help
+    Enables to test zblue subsystem
+
+if ZTEST
+
+config ZTEST_TIMEOUT
+  bool "Test zblue kernel timeout"
+  help
+    Enables to zblue kernel timeout
+
+config ZTEST_WORK_Q
+  bool "Test zblue kernel work queue"
+  help
+    Enables to zblue kernel work queue
+
+config ZTEST_THREAD
+  bool "Test zblue kernel thread"
+  help
+    Enables to zblue kernel thread
+
+config ZTEST_POLL
+  bool "Test zblue kernel poll"
+  help
+    Enables to zblue kernel poll
+
+config ZTEST_QUEUE
+  bool "Test zblue kernel queue"
+  help
+    Enables to zblue kernel queue
+
+config ZTEST_MEMSLAB
+  bool "Test zblue kernel mem slab"
+  help
+    Enables to zblue kernel mem slab
+
+config ZTEST_ATOMIC
+  bool "Test zblue kernel atomic"
+  help
+    Enables to zblue kernel atomic
 
 endif

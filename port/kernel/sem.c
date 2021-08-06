@@ -57,23 +57,38 @@ void k_sem_give(struct k_sem *sem)
 
 int k_sem_take(struct k_sem *sem, k_timeout_t timeout)
 {
+	int ret;
+	uint32_t ms;
 	struct timespec abstime;
 
-	if (timeout == K_FOREVER)
+	if (K_TIMEOUT_EQ(timeout, K_FOREVER))
 		return sem_wait(&sem->sem);
-	else if (timeout == K_NO_WAIT)
-		return sem_trywait(&sem->sem);
+	else if (K_TIMEOUT_EQ(timeout, K_NO_WAIT)) {
+		ret = sem_trywait(&sem->sem);
+		if (ret) {
+			return -EBUSY;
+		}
+
+		return 0;
+	}
 
 	clock_gettime(CLOCK_REALTIME, &abstime);
 
-	abstime.tv_sec += timeout / 1000;
-	abstime.tv_nsec += (timeout % 1000) * 1000 * 1000;
-	if (abstime.tv_nsec >= (1000 * 1000000)) {
+	ms = k_ticks_to_ms_ceil32(timeout.ticks);
+
+	abstime.tv_sec += ms / MSEC_PER_SEC;
+	abstime.tv_nsec += (ms % MSEC_PER_SEC) * NSEC_PER_MSEC;
+	if (abstime.tv_nsec >= NSEC_PER_SEC) {
 		abstime.tv_sec += 1;
-		abstime.tv_nsec -= (1000 * 1000000);
+		abstime.tv_nsec -= NSEC_PER_SEC;
 	}
 
-	return sem_timedwait(&sem->sem, &abstime);
+	ret = sem_timedwait(&sem->sem, &abstime);
+	if (ret) {
+		return -EAGAIN;
+	}
+
+	return 0;
 }
 
 unsigned int k_sem_count_get(struct k_sem *sem)
@@ -86,13 +101,6 @@ unsigned int k_sem_count_get(struct k_sem *sem)
 		val = ret;
 
 	return val;
-}
-
-int k_sem_delete(struct k_sem *sem)
-{
-	sem_destroy(&sem->sem);
-
-	return 0;
 }
 
 void k_sem_reset(struct k_sem *sem)

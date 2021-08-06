@@ -39,6 +39,21 @@
 #include <syslog.h>
 #include <nuttx/syslog/syslog.h>
 
+extern const struct shell_cmd_entry __shell_root_cmds_start[];
+extern const struct shell_cmd_entry __shell_root_cmds_end[];
+
+static inline const struct shell_cmd_entry *shell_root_cmd_get(uint32_t id)
+{
+	return &__shell_root_cmds_start[id];
+}
+
+static inline uint32_t shell_root_cmd_count(void)
+{
+	return ((uint8_t *)__shell_root_cmds_end -
+			(uint8_t *)__shell_root_cmds_start)/
+				sizeof(struct shell_cmd_entry);
+}
+
 void shell_hexdump_line(const struct shell *shell, unsigned int offset,
 		const uint8_t *data, size_t len)
 {
@@ -96,15 +111,24 @@ void shell_hexdump(const struct shell *shell, const uint8_t *data, size_t len)
 
 void shell_help(const struct shell *shell)
 {
-	const struct shell_static_entry *pcmds = shell->cmd->u.entry;
-	const struct shell_static_entry *cmds = pcmds->subcmd->u.entry;
-	int i;
+	const struct shell_static_entry *pcmds = &shell->ctx->active_cmd;
 
-	syslog(LOG_INFO, "%s :\n", pcmds->help);
+	syslog(LOG_INFO, "\t%s mands:%d opts:%d help:%s\n",
+		   pcmds->syntax,
+		   pcmds->args.mandatory, pcmds->args.optional,
+		   pcmds->help);
 
-	for (i = 0; cmds[i].syntax; i++)
-		syslog(LOG_INFO, "[%02d]: %s %s : %s\n", i,
-				pcmds->syntax, cmds[i].syntax, cmds[i].help);
+	if (!pcmds->subcmd) {
+		return;
+	}
+
+	pcmds = pcmds->subcmd->u.entry;
+	for (; pcmds && pcmds->syntax; pcmds++) {
+		syslog(LOG_INFO, "\t%s mands:%d opts:%d help:%s\n",
+		       pcmds->syntax,
+		       pcmds->args.mandatory, pcmds->args.optional,
+		       pcmds->help);
+	}
 }
 
 void shell_fprintf(const struct shell *shell, enum shell_vt100_color color,
@@ -112,7 +136,85 @@ void shell_fprintf(const struct shell *shell, enum shell_vt100_color color,
 {
 	va_list args;
 
+	(void)shell;
+
 	va_start(args, fmt);
 	nx_vsyslog(LOG_INFO, fmt, &args);
 	va_end(args);
+}
+
+/* Function returning pointer to parent command matching requested syntax. */
+static const struct shell_static_entry *root_cmd_find(const char *syntax)
+{
+	const size_t cmd_count = shell_root_cmd_count();
+	const struct shell_cmd_entry *cmd;
+
+	for (size_t cmd_idx = 0; cmd_idx < cmd_count; ++cmd_idx) {
+		cmd = shell_root_cmd_get(cmd_idx);
+		if (strcmp(syntax, cmd->u.entry->syntax) == 0) {
+			return cmd->u.entry;
+		}
+	}
+
+	return NULL;
+}
+
+static void cmds_show(void)
+{
+	const size_t cmd_count = shell_root_cmd_count();
+	const struct shell_cmd_entry *cmd;
+
+	for (size_t cmd_idx = 0; cmd_idx < cmd_count; ++cmd_idx) {
+		cmd = shell_root_cmd_get(cmd_idx);
+
+		syslog(LOG_INFO, "%s\t%s\n",
+			   cmd->u.entry->syntax, cmd->u.entry->help);
+	}
+}
+
+int main(int argc, char *argv[])
+{
+	struct shell_ctx ctx;
+	struct shell sh = { .ctx = &ctx };
+	static const struct shell_static_entry *cmd;
+
+	if (argc < 2) {
+		goto end;
+	}
+
+	cmd = root_cmd_find(argv[1]);
+	if (!cmd) {
+		goto end;
+	}
+
+	if (argc == 2) {
+		memcpy(&ctx.active_cmd, cmd,
+		       sizeof(struct shell_static_entry));
+		return cmd->handler(&sh, argc - 1, &argv[1]);
+	}
+
+	cmd = cmd->subcmd->u.entry;
+	for (; cmd && cmd->syntax; cmd++) {
+		if (strcmp(argv[2], cmd->syntax)) {
+			continue;
+		}
+
+		if (cmd->args.mandatory > argc - 2) {
+			syslog(LOG_INFO, "cmd:%s Mands:%d opts:%d help:%s\n",
+			   	   cmd->syntax,
+			   	   cmd->args.mandatory, cmd->args.optional,
+			   	   cmd->help);
+			return 0;
+		}
+
+		memcpy(&ctx.active_cmd, cmd,
+		       sizeof(struct shell_static_entry));
+		return cmd->handler(&sh, argc - 2, &argv[2]);
+	}
+
+	return 0;	
+
+end:
+	cmds_show();
+	return 0;
 }
