@@ -1,5 +1,4 @@
 /****************************************************************************
- * apps/external/zblue/port/kernel/sem.c
  *
  *   Copyright (C) 2020 Xiaomi InC. All rights reserved.
  *
@@ -32,49 +31,30 @@
  *
  ****************************************************************************/
 
-#include <kernel.h>
-#include <kernel_structs.h>
-#include <toolchain.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <common/log.h>
 
-int k_mutex_init(struct k_mutex *mutex)
+#include "bluetooth/bluetooth.h"
+#include "drivers/bluetooth/hci_driver.h"
+
+extern int bt_uart_init(void);
+extern int k_mem_slab_pre_init(void);
+
+int main(int argc, char *argv[])
 {
-	pthread_mutexattr_t attr;
 	int ret;
 
-	pthread_mutexattr_init(&attr);
-	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-
-	ret = pthread_mutex_init(&mutex->mutex, &attr);
-	pthread_mutexattr_destroy(&attr);
-
-	return ret;
-}
-
-int k_mutex_lock(struct k_mutex *mutex, k_timeout_t timeout)
-{
-	uint32_t ms;
-	struct timespec abstime;
-
-	if (K_TIMEOUT_EQ(timeout, K_FOREVER))
-		return pthread_mutex_lock(&mutex->mutex);
-	else if (K_TIMEOUT_EQ(timeout, K_NO_WAIT))
-		return pthread_mutex_trylock(&mutex->mutex);
-
-	clock_gettime(CLOCK_REALTIME, &abstime);
-
-	ms = k_ticks_to_ms_ceil32(timeout.ticks);
-
-	abstime.tv_sec += ms / MSEC_PER_SEC;
-	abstime.tv_nsec += (ms % MSEC_PER_SEC) * NSEC_PER_MSEC;
-	if (abstime.tv_nsec >= NSEC_PER_SEC) {
-		abstime.tv_sec += 1;
-		abstime.tv_nsec -= NSEC_PER_SEC;
+	ret = k_mem_slab_pre_init();
+	if (ret) {
+		return ret;
 	}
 
-	return pthread_mutex_timedlock(&mutex->mutex, &abstime);
-}
+	ret = bt_uart_init();
+	if (ret < 0) {
+		return ret;
+	}
 
-int k_mutex_unlock(struct k_mutex *mutex)
-{
-	return pthread_mutex_unlock(&mutex->mutex);
+	return ret;
 }

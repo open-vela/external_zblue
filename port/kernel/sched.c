@@ -31,8 +31,45 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  ****************************************************************************/
-
+#include <assert.h>
 #include <kernel.h>
+
+void k_sched_lock(void)
+{
+	sched_lock();
+}
+
+void k_sched_unlock(void)
+{
+	sched_unlock();
+}
+
+unsigned int arch_irq_lock(void)
+{
+	sched_lock();
+
+	return 0;
+}
+
+void arch_irq_unlock(unsigned int key)
+{
+	sched_unlock();
+}
+
+bool arch_irq_unlocked(unsigned int key)
+{
+	return false;
+}
+
+void z_fatal_error(unsigned int reason, const z_arch_esf_t *esf)
+{
+	assert(false);
+}
+
+void assert_post_action(const char *file, unsigned int line)
+{
+	assert(false);
+}
 
 void k_yield(void)
 {
@@ -41,6 +78,6 @@ void k_yield(void)
 
 int32_t k_sleep(k_timeout_t timeout)
 {
-	usleep(timeout * 1000);
-	return timeout;
+	usleep(k_ticks_to_us_ceil32(timeout.ticks));
+	return 0;
 }
