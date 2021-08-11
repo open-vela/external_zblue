@@ -151,10 +151,7 @@ do {                                                                    \
 	__attribute__((section("." STRINGIFY(segment))))
 #define Z_GENERIC_DOT_SECTION(segment) __GENERIC_DOT_SECTION(segment)
 
-#define ___in_section(a, b, c) \
-	__attribute__((section("." Z_STRINGIFY(a)			\
-				"." Z_STRINGIFY(b)			\
-				"." Z_STRINGIFY(c))))
+#define ___in_section(a, b, c)
 #define __in_section(a, b, c) ___in_section(a, b, c)
 
 #define __in_section_unique(seg) ___in_section(seg, __FILE__, __COUNTER__)

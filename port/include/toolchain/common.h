@@ -210,13 +210,9 @@
  * list of struct objects to iterate over.
  */
 #define Z_STRUCT_SECTION_FOREACH(struct_type, iterator) \
-	extern struct struct_type _CONCAT(_##struct_type, _list_start)[]; \
-	extern struct struct_type _CONCAT(_##struct_type, _list_end)[]; \
-	for (struct struct_type *iterator = \
-			_CONCAT(_##struct_type, _list_start); \
-	     ({ __ASSERT(iterator <= _CONCAT(_##struct_type, _list_end), \
-			 "unexpected list end location"); \
-		iterator < _CONCAT(_##struct_type, _list_end); }); \
-	     iterator++)
+	extern struct struct_type * const _CONCAT(_##struct_type, _list)[]; \
+	struct struct_type * const *_iterator = _CONCAT(_##struct_type, _list); \
+	for (struct struct_type *iterator = (struct struct_type *) *_iterator; \
+		*_iterator; iterator = (struct struct_type *) *(++_iterator))
 
 #endif /* ZEPHYR_INCLUDE_TOOLCHAIN_COMMON_H_ */

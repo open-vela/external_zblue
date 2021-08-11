@@ -124,23 +124,14 @@ int k_work_delayable_busy_get(const struct k_work_delayable *dwork)
 
 k_ticks_t z_timeout_remaining(const struct _timeout *timeout)
 {
-	clock_t qtime, curr, elapsed;
+	struct work_s *nwork;
 	struct k_work_delayable *dwork;
 
 	dwork = CONTAINER_OF(timeout, struct k_work_delayable, timeout);
 
-	if (work_available(&dwork->work.nwork)) {
+	nwork = &dwork->work.nwork;
+	if (work_available(nwork))
 		return 0;
-	}
 
-	curr  = clock_systime_ticks();
-	qtime = dwork->work.nwork.qtime;
-
-	if (curr > qtime + dwork->work.nwork.delay) {
-		return 0;
-	}
-
-	elapsed = curr - qtime;
-
-	return (dwork->work.nwork.delay - elapsed);
+	return wd_gettime(&nwork->u.timer);
 }
