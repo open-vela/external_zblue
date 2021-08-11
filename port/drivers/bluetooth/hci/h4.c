@@ -38,6 +38,7 @@
 #include <termios.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
+#include <sys/uio.h>
 #include <common/log.h>
 
 #include "bluetooth/bluetooth.h"
