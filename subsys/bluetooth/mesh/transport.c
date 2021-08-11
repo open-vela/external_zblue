@@ -569,8 +569,6 @@ static int send_seg(struct bt_mesh_net_tx *net_tx, struct net_buf_simple *sdu,
 
 		tx->seg[seg_o] = buf;
 
-		tx->seg[seg_o] = buf;
-
 		if (IS_ENABLED(CONFIG_BT_MESH_FRIEND)) {
 			enum bt_mesh_friend_pdu_type type;
 

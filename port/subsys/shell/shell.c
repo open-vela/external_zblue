@@ -39,21 +39,6 @@
 #include <syslog.h>
 #include <nuttx/syslog/syslog.h>
 
-extern const struct shell_cmd_entry __shell_root_cmds_start[];
-extern const struct shell_cmd_entry __shell_root_cmds_end[];
-
-static inline const struct shell_cmd_entry *shell_root_cmd_get(uint32_t id)
-{
-	return &__shell_root_cmds_start[id];
-}
-
-static inline uint32_t shell_root_cmd_count(void)
-{
-	return ((uint8_t *)__shell_root_cmds_end -
-			(uint8_t *)__shell_root_cmds_start)/
-				sizeof(struct shell_cmd_entry);
-}
-
 void shell_hexdump_line(const struct shell *shell, unsigned int offset,
 		const uint8_t *data, size_t len)
 {
@@ -146,11 +131,7 @@ void shell_fprintf(const struct shell *shell, enum shell_vt100_color color,
 /* Function returning pointer to parent command matching requested syntax. */
 static const struct shell_static_entry *root_cmd_find(const char *syntax)
 {
-	const size_t cmd_count = shell_root_cmd_count();
-	const struct shell_cmd_entry *cmd;
-
-	for (size_t cmd_idx = 0; cmd_idx < cmd_count; ++cmd_idx) {
-		cmd = shell_root_cmd_get(cmd_idx);
+	Z_STRUCT_SECTION_FOREACH(shell_cmd_entry, cmd) {
 		if (strcmp(syntax, cmd->u.entry->syntax) == 0) {
 			return cmd->u.entry;
 		}
@@ -161,12 +142,7 @@ static const struct shell_static_entry *root_cmd_find(const char *syntax)
 
 static void cmds_show(void)
 {
-	const size_t cmd_count = shell_root_cmd_count();
-	const struct shell_cmd_entry *cmd;
-
-	for (size_t cmd_idx = 0; cmd_idx < cmd_count; ++cmd_idx) {
-		cmd = shell_root_cmd_get(cmd_idx);
-
+	Z_STRUCT_SECTION_FOREACH(shell_cmd_entry, cmd) {
 		syslog(LOG_INFO, "%s\t%s\n",
 			   cmd->u.entry->syntax, cmd->u.entry->help);
 	}
@@ -190,6 +166,11 @@ int main(int argc, char *argv[])
 	if (argc == 2) {
 		memcpy(&ctx.active_cmd, cmd,
 		       sizeof(struct shell_static_entry));
+
+		if (!cmd->handler) {
+			return 0;
+		}
+
 		return cmd->handler(&sh, argc - 1, &argv[1]);
 	}
 
