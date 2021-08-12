@@ -20,6 +20,7 @@
 #include <nuttx/spinlock.h>
 #include <nuttx/wqueue.h>
 #include <nuttx/semaphore.h>
+#include <pthread.h>
 
 #if !defined(_ASMLANGUAGE)
 #include <kernel_includes.h>
@@ -2536,7 +2537,7 @@ struct k_mutex {
  */
 #define Z_MUTEX_INITIALIZER(obj) \
 	{ \
-	.mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP, \
+	.mutex = PTHREAD_MUTEX_INITIALIZER, \
 	.wait_q = Z_WAIT_Q_INIT(&obj.wait_q), \
 	.owner = NULL, \
 	.lock_count = 0, \

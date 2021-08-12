@@ -292,6 +292,7 @@ extern const struct shell_cmd_entry shell_cmd_l2cap;
 extern const struct shell_cmd_entry shell_cmd_rfcomm;
 extern const struct shell_cmd_entry shell_cmd_vcs_client;
 extern const struct shell_cmd_entry shell_cmd_vcs;
+extern const struct shell_cmd_entry shell_cmd_fs;
 const struct shell_cmd_entry * const _shell_cmd_entry_list[] =
 {
 #if defined(CONFIG_BT_SHELL)
@@ -319,6 +320,9 @@ const struct shell_cmd_entry * const _shell_cmd_entry_list[] =
 	&shell_cmd_mesh,
 #endif /* CONFIG_BT_MESH */
 #endif /* CONFIG_BT_MESH_SHELL */
+#if defined(CONFIG_SETTINGS_FS)
+	&shell_cmd_fs,
+#endif /* CONFIG_SETTINGS_FS */
 #endif /* CONFIG_BT_SHELL */
 	NULL,
 };
