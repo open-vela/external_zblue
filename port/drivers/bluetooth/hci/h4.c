@@ -292,7 +292,9 @@ static struct bt_hci_driver driver = {
 #endif
 };
 
-int bt_uart_init(void)
+static int bt_uart_init(const struct device *dev)
 {
 	return bt_hci_driver_register(&driver);
 }
+
+SYS_INIT(bt_uart_init, PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_OBJECTS);

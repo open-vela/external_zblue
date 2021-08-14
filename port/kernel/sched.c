@@ -81,3 +81,52 @@ int32_t k_sleep(k_timeout_t timeout)
 	usleep(k_ticks_to_us_ceil32(timeout.ticks));
 	return 0;
 }
+
+struct wait_sync{
+	sys_dlist_t node;
+	struct k_sem wait;
+};
+
+int z_sched_wait(struct k_spinlock *lock, k_spinlock_key_t key,
+		 _wait_q_t *wait_q, k_timeout_t timeout, void **data)
+{
+	struct wait_sync sync = {
+		.node = SYS_DLIST_STATIC_INIT(NULL),
+		.wait = Z_SEM_INITIALIZER(sync.wait, 0, 1),
+	};
+
+	sys_dlist_append(&wait_q->waitq, &sync.node);
+
+	k_spin_unlock(lock, key);
+	return k_sem_take(&sync.wait, timeout);
+}
+
+bool z_sched_wake(_wait_q_t *wait_q, int swap_retval, void *swap_data)
+{
+	sys_dlist_t *nd;
+	struct wait_sync *sync;
+
+	nd = sys_dlist_get(&wait_q->waitq);
+	if (!nd) {
+		return false;
+	}
+
+	sync = CONTAINER_OF(nd, struct wait_sync, node);
+
+	k_sem_give(&sync->wait);
+
+	return true;
+}
+
+bool z_sched_wake_all(_wait_q_t *wait_q, int swap_retval,
+				      void *swap_data)
+{
+	bool woken = false;
+
+	while (z_sched_wake(wait_q, swap_retval, swap_data)) {
+		woken = true;
+	}
+
+	/* True if we woke at least one thread up */
+	return woken;
+}

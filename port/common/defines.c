@@ -442,3 +442,20 @@ const struct bt_mesh_lpn_cb * const _bt_mesh_lpn_cb_list[] =
 	NULL,
 };
 /* bt_mesh_lpn_cb END */
+
+/* kernel START */
+extern const struct init_entry __init_sys_init_init_mem_slab_module;
+extern const struct init_entry __init_sys_init_bt_uart_init;
+extern const struct init_entry __init_sys_init_k_sys_work_q_init;
+const struct init_entry * const _init_entry_list[] =
+{
+	&__init_sys_init_init_mem_slab_module,
+#if defined(CONFIG_BT_HCI)
+	&__init_sys_init_bt_uart_init,
+#endif /* CONFIG_BT_HCI */
+#if defined(CONFIG_ZEPHYR_WORK_QUEUE)
+	&__init_sys_init_k_sys_work_q_init,
+#endif /* CONFIG_ZEPHYR_WORK_QUEUE */
+	NULL,
+};
+/* kernel END */

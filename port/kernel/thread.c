@@ -44,6 +44,8 @@ typedef struct
 	void *argv[4];
 } k_thread_main_t;
 
+static sys_dlist_t task_list = SYS_DLIST_STATIC_INIT(&task_list);
+
 static int nxthread_create(FAR const char *name, uint8_t ttype, int priority,
 		FAR void *stack, int stack_size, main_t entry, FAR char * const argv[])
 {
@@ -74,8 +76,19 @@ extern struct k_work_q k_sys_work_q;
 
 k_tid_t k_current_get(void)
 {
-	if (getpid() == k_sys_work_q.thread.pid) {
+	struct k_thread *thread;
+	void *pid = (void *)getpid();
+
+#if !defined(CONFIG_ZEPHYR_WORK_QUEUE)
+	if (pid == k_sys_work_q.thread.init_data) {
 		return &k_sys_work_q.thread;
+
+#endif /* !CONFIG_ZEPHYR_WORK_QUEUE */
+
+	SYS_DLIST_FOR_EACH_CONTAINER(&task_list, thread, base.qnode_dlist) {
+		if (thread->init_data == pid) {
+			return thread;
+		}
 	}
 
 	return NULL;
@@ -83,7 +96,15 @@ k_tid_t k_current_get(void)
 
 int k_thread_name_set(struct k_thread *thread, const char *value)
 {
-	return prctl(PR_SET_NAME_EXT, value, thread->pid);
+	return prctl(PR_SET_NAME_EXT, value, (int)thread->init_data);
+}
+
+int k_is_preempt_thread(void)
+{
+	int sched;
+
+	sched = sched_getscheduler(0);
+	return (sched == SCHED_RR);
 }
 
 static int k_thread_main(int argc, FAR char *argv[])
@@ -141,7 +162,9 @@ k_tid_t k_thread_create(struct k_thread *new_thread,
 		return (k_tid_t)-1;
 	}
 
-	new_thread->pid = ret;
+	new_thread->init_data = (void *)ret;
+
+	sys_dlist_append(&task_list, &new_thread->base.qnode_dlist);
 
 	return (k_tid_t)ret;
 }
