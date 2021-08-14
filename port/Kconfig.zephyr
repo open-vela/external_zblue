@@ -85,4 +85,8 @@ config LOG_TIMESTAMP_64BIT
 
 config SYS_CLOCK_HW_CYCLES_PER_SEC
 	int
-	default 0
+	default -1
+
+config SYS_CLOCK_EXISTS
+	bool
+	default y

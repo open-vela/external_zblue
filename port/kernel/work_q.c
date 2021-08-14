@@ -45,7 +45,7 @@ static void work_cb(void *arg)
 {
 	struct k_work *work = arg;
 
-	k_sys_work_q.thread.pid = getpid();
+	k_sys_work_q.thread.init_data = (void *)getpid();
 
 	if (work->handler) {
 		work->handler(work);
@@ -120,18 +120,4 @@ void k_work_init_delayable(struct k_work_delayable *dwork,
 int k_work_delayable_busy_get(const struct k_work_delayable *dwork)
 {
 	return !work_available(&dwork->work.nwork);
-}
-
-k_ticks_t z_timeout_remaining(const struct _timeout *timeout)
-{
-	struct work_s *nwork;
-	struct k_work_delayable *dwork;
-
-	dwork = CONTAINER_OF(timeout, struct k_work_delayable, timeout);
-
-	nwork = &dwork->work.nwork;
-	if (work_available(nwork))
-		return 0;
-
-	return wd_gettime(&nwork->u.timer);
 }
