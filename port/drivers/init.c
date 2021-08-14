@@ -39,22 +39,16 @@
 #include "bluetooth/bluetooth.h"
 #include "drivers/bluetooth/hci_driver.h"
 
-extern int bt_uart_init(void);
-extern int k_mem_slab_pre_init(void);
-
 int main(int argc, char *argv[])
 {
 	int ret;
 
-	ret = k_mem_slab_pre_init();
-	if (ret) {
-		return ret;
+	Z_STRUCT_SECTION_FOREACH(init_entry, init) {
+		ret = init->init(init->dev);
+		if (ret) {
+			return ret;
+		}
 	}
 
-	ret = bt_uart_init();
-	if (ret < 0) {
-		return ret;
-	}
-
-	return ret;
+	return 0;
 }

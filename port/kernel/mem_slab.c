@@ -34,6 +34,7 @@
 
 #include <stdlib.h>
 
+#include <device.h>
 #include <kernel.h>
 #include <sys/check.h>
 #include <kernel_structs.h>
@@ -82,7 +83,7 @@ static int create_free_list(struct k_mem_slab *slab)
  *
  * @return N/A
  */
-int k_mem_slab_pre_init(void)
+static int init_mem_slab_module(const struct device *dev)
 {
 	int rc = 0;
 
@@ -98,6 +99,9 @@ int k_mem_slab_pre_init(void)
 out:
 	return rc;
 }
+
+SYS_INIT(init_mem_slab_module, PRE_KERNEL_1,
+		 CONFIG_KERNEL_INIT_PRIORITY_OBJECTS);
 
 static int k_mem_slab_poll(struct k_mem_slab *slab,
 			     void **mem, k_timeout_t timeout)
