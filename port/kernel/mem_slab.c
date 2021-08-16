@@ -103,39 +103,6 @@ out:
 SYS_INIT(init_mem_slab_module, PRE_KERNEL_1,
 		 CONFIG_KERNEL_INIT_PRIORITY_OBJECTS);
 
-static int k_mem_slab_poll(struct k_mem_slab *slab,
-			     void **mem, k_timeout_t timeout)
-{
-	struct k_poll_event event;
-	k_spinlock_key_t key;
-	int err;
-
-	k_poll_event_init(&event, K_POLL_TYPE_MEM_SLAB_AVAILABLE,
-			  K_POLL_MODE_NOTIFY_ONLY, slab);
-
-	event.state = K_POLL_STATE_NOT_READY;
-	err = k_poll(&event, 1, timeout);
-	if (err) {
-		return err;
-	}
-
-	if (event.state != K_POLL_STATE_MEM_SLAB_AVAILABLE) {
-		return -ENOSR;
-	}
-
-	__ASSERT_NO_MSG(slab->free_list != NULL);
-
-	key = k_spin_lock(&lock);
-
-	*mem = slab->free_list;
-	slab->free_list = *(char **)(slab->free_list);
-	slab->num_used++;
-
-	k_spin_unlock(&lock, key);
-
-	return 0;
-}
-
 int k_mem_slab_alloc(struct k_mem_slab *slab,
 		     void **mem, k_timeout_t timeout)
 {
@@ -153,9 +120,20 @@ int k_mem_slab_alloc(struct k_mem_slab *slab,
 		*mem = NULL;
 		result = -ENOMEM;
 	} else {
+		result = z_sched_wait(&lock, key, &slab->wait_q, timeout, NULL);
+		if (result) {
+			return result;
+		}
+
+		__ASSERT_NO_MSG(slab->free_list != NULL);
+
+		key = k_spin_lock(&lock);
+
+		*mem = slab->free_list;
+		slab->free_list = *(char **)(slab->free_list);
+		slab->num_used++;
+
 		k_spin_unlock(&lock, key);
-		/* wait for a free block or timeout */
-		return k_mem_slab_poll(slab, mem, timeout);
 	}
 
 	k_spin_unlock(&lock, key);
@@ -171,7 +149,7 @@ void k_mem_slab_free(struct k_mem_slab *slab, void **mem)
 	slab->free_list = *(char **)mem;
 	slab->num_used--;
 
-	k_spin_unlock(&lock, key);
+	(void)z_sched_wake(&slab->wait_q, 0, NULL);
 
-	z_handle_obj_poll_events(&slab->poll_events, K_POLL_STATE_MEM_SLAB_AVAILABLE);
+	k_spin_unlock(&lock, key);
 }
