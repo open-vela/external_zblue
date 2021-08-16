@@ -4743,7 +4743,6 @@ struct k_mem_slab {
 #ifdef CONFIG_MEM_SLAB_TRACE_MAX_UTILIZATION
 	uint32_t max_used;
 #endif
-	_POLL_EVENT;
 };
 
 #define Z_MEM_SLAB_INITIALIZER(obj, slab_buffer, slab_block_size, \
@@ -4756,7 +4755,6 @@ struct k_mem_slab {
 	.buffer = slab_buffer, \
 	.free_list = NULL, \
 	.num_used = 0, \
-	_POLL_EVENT_OBJ_INIT(obj) \
 	}
 
 
@@ -5149,9 +5147,6 @@ enum _poll_states_bits {
 	/* data is available to read on a message queue */
 	_POLL_STATE_MSGQ_DATA_AVAILABLE,
 
-	/* data is available to read on a memory slab */
-	_POLL_STATE_MEM_SLAB_DATA_AVAILABLE,
-
 	_POLL_NUM_STATES
 };
 
@@ -5183,8 +5178,6 @@ enum _poll_states_bits {
 #define K_POLL_TYPE_DATA_AVAILABLE Z_POLL_TYPE_BIT(_POLL_TYPE_DATA_AVAILABLE)
 #define K_POLL_TYPE_FIFO_DATA_AVAILABLE K_POLL_TYPE_DATA_AVAILABLE
 #define K_POLL_TYPE_MSGQ_DATA_AVAILABLE Z_POLL_TYPE_BIT(_POLL_TYPE_MSGQ_DATA_AVAILABLE)
-#define K_POLL_TYPE_MEM_SLAB_AVAILABLE Z_POLL_TYPE_BIT(_POLL_TYPE_MEM_SLAB_AVAILABLE)
-
 
 /* public - polling modes */
 enum k_poll_modes {
@@ -5202,7 +5195,6 @@ enum k_poll_modes {
 #define K_POLL_STATE_FIFO_DATA_AVAILABLE K_POLL_STATE_DATA_AVAILABLE
 #define K_POLL_STATE_MSGQ_DATA_AVAILABLE Z_POLL_STATE_BIT(_POLL_STATE_MSGQ_DATA_AVAILABLE)
 #define K_POLL_STATE_CANCELLED Z_POLL_STATE_BIT(_POLL_STATE_CANCELLED)
-#define K_POLL_STATE_MEM_SLAB_AVAILABLE Z_POLL_STATE_BIT(_POLL_STATE_MEM_SLAB_DATA_AVAILABLE)
 
 /* public - poll signal object */
 struct k_poll_signal {
