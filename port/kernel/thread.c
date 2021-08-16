@@ -80,7 +80,7 @@ k_tid_t k_current_get(void)
 	void *pid = (void *)getpid();
 
 #if !defined(CONFIG_ZEPHYR_WORK_QUEUE)
-	if (pid == k_sys_work_q.thread.init_data) {
+	if (pid == k_sys_work_q.thread.init_data)
 		return &k_sys_work_q.thread;
 
 #endif /* !CONFIG_ZEPHYR_WORK_QUEUE */
