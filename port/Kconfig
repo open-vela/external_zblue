@@ -7,11 +7,17 @@ source "$APPSDIR/external/zblue/port/Kconfig.zephyr"
 
 config ZEPHYR_WORK_QUEUE
 	bool "Use zephyr system work queue"
+	default y
+	depends on SCHED_HPWORK || SCHED_LPWORK
 	help
 	  This option enables support for generic system work
 	  queue.
 
 if ZEPHYR_WORK_QUEUE
+
+config ZEPHYR_USE_NUTTX_WORK
+	bool "Select to use hpwork, otherwise use lpwork"
+	default y if SCHED_HPWORK
 
 config SYSTEM_WORKQUEUE_STACK_SIZE
 	int "System workqueue stack size"

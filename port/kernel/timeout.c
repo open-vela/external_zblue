@@ -35,6 +35,12 @@
 #include <kernel.h>
 #include <sys_clock.h>
 
+#if defined(CONFIG_ZEPHYR_USE_NUTTX_WORK)
+#define _Z_WORK HPWORK
+#else /* !CONFIG_ZEPHYR_USE_NUTTX_WORK */
+#define _Z_WORK LPWORK
+#endif /* CONFIG_ZEPHYR_USE_NUTTX_WORK */
+
 int64_t z_tick_get(void)
 {
 	return clock_systime_ticks();
@@ -95,7 +101,7 @@ void z_add_timeout(struct _timeout *to, _timeout_func_t fn,
 		return;
 	}
 
-	(void)work_queue(LPWORK, &dwork->work.nwork, (worker_t)fn, to, timeout.ticks);
+	(void)work_queue(_Z_WORK, &dwork->work.nwork, (worker_t)fn, to, timeout.ticks);
 }
 
 int z_abort_timeout(struct _timeout *to)
@@ -108,5 +114,5 @@ int z_abort_timeout(struct _timeout *to)
 		return 0;
 	}
 
-	return work_cancel(LPWORK, &dwork->work.nwork);
+	return work_cancel(_Z_WORK, &dwork->work.nwork);
 }
