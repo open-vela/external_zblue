@@ -62,9 +62,6 @@ static bool event_match(struct k_poll_event *event, uint32_t state)
 	} else if (state == K_POLL_STATE_MSGQ_DATA_AVAILABLE &&
 		   event->type == K_POLL_TYPE_MSGQ_DATA_AVAILABLE) {
 		return true;
-	} else if (state == K_POLL_STATE_MEM_SLAB_AVAILABLE &&
-		   event->type == K_POLL_TYPE_MEM_SLAB_AVAILABLE) {
-		return true;
 	} else {
 		return false;
 	}
@@ -123,8 +120,6 @@ static void poll_event_add(struct k_poll_event *event)
 		events = &(event->signal->poll_events);
 	else if (event->type == K_POLL_TYPE_SEM_AVAILABLE)
 		events = &(event->sem->poll_events);
-	else if (event->type == K_POLL_TYPE_MEM_SLAB_AVAILABLE)
-		events = &(event->slab->poll_events);
 	else
 		return;
 
@@ -158,12 +153,6 @@ static int k_poll_event_ready(struct k_poll_event *event)
 			if (event->signal->signaled != 0) {
 				event->signal->signaled = 0;
 				event->state = K_POLL_STATE_SIGNALED;
-				return true;
-			}
-			break;
-		case K_POLL_TYPE_MEM_SLAB_AVAILABLE:
-			if (event->slab->free_list != NULL) {
-				event->state = K_POLL_STATE_MEM_SLAB_AVAILABLE;
 				return true;
 			}
 			break;
