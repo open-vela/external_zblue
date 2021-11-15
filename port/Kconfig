@@ -169,6 +169,13 @@ menuconfig BT_SAMPLE
 
 if BT_SAMPLE
 
+config BT_MIBLE_TEST
+  bool "mible shell commands"
+  default n
+  depends on BT_SHELL
+  help
+    Select to use mible shell commands.
+
 config BT_SAMPLE_STACKSIZE
   int "BT sample stack size"
   default 40960 if ARCH_SIM
