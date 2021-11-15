@@ -3454,10 +3454,11 @@ enum {
 
 /** @brief A structure used to submit work. */
 struct k_work {
-	union {
+#if defined(CONFIG_ZEPHYR_WORK_QUEUE)
 		struct wdog_s wdog;
+#else
 		struct work_s nwork;
-	};
+#endif
 
 	/* All fields are protected by the work module spinlock.  No fields
 	 * are to be accessed except through kernel API.
