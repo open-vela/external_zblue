@@ -35,12 +35,6 @@
 #include <kernel.h>
 #include <sys_clock.h>
 
-#if defined(CONFIG_ZEPHYR_USE_NUTTX_WORK)
-#define _Z_WORK HPWORK
-#else /* !CONFIG_ZEPHYR_USE_NUTTX_WORK */
-#define _Z_WORK LPWORK
-#endif /* CONFIG_ZEPHYR_USE_NUTTX_WORK */
-
 int64_t z_tick_get(void)
 {
 	return clock_systime_ticks();
@@ -73,17 +67,12 @@ uint64_t sys_clock_timeout_end_calc(k_timeout_t timeout)
 
 k_ticks_t z_timeout_remaining(const struct _timeout *timeout)
 {
-	struct work_s *nwork;
+	clock_t qtime, curr, elapsed;
 	struct k_work_delayable *dwork;
 
 	dwork = CONTAINER_OF(timeout, struct k_work_delayable, timeout);
 
-	nwork = &dwork->work.nwork;
-	if (work_available(nwork)) {
-		return 0;
-	}
-
-	return wd_gettime(&nwork->u.timer);
+	return wd_gettime(&dwork->work.wdog);
 }
 
 void z_add_timeout(struct _timeout *to, _timeout_func_t fn,
@@ -97,11 +86,7 @@ void z_add_timeout(struct _timeout *to, _timeout_func_t fn,
 
 	dwork = CONTAINER_OF(to, struct k_work_delayable, timeout);
 
-	if (!work_available(&dwork->work.nwork)) {
-		return;
-	}
-
-	(void)work_queue(_Z_WORK, &dwork->work.nwork, (worker_t)fn, to, timeout.ticks);
+	(void)wd_start(&dwork->work.wdog, timeout.ticks, (wdentry_t)fn, (wdparm_t)to);
 }
 
 int z_abort_timeout(struct _timeout *to)
@@ -110,9 +95,5 @@ int z_abort_timeout(struct _timeout *to)
 
 	dwork = CONTAINER_OF(to, struct k_work_delayable, timeout);
 
-	if (work_available(&dwork->work.nwork)) {
-		return 0;
-	}
-
-	return work_cancel(_Z_WORK, &dwork->work.nwork);
+	return wd_cancel(&dwork->work.wdog);
 }

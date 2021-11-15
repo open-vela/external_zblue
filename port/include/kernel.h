@@ -19,6 +19,7 @@
 #include <nuttx/pthread.h>
 #include <nuttx/spinlock.h>
 #include <nuttx/wqueue.h>
+#include <nuttx/wdog.h>
 #include <nuttx/semaphore.h>
 #include <pthread.h>
 
@@ -3453,7 +3454,10 @@ enum {
 
 /** @brief A structure used to submit work. */
 struct k_work {
-	struct work_s nwork;
+	union {
+		struct wdog_s wdog;
+		struct work_s nwork;
+	};
 
 	/* All fields are protected by the work module spinlock.  No fields
 	 * are to be accessed except through kernel API.
