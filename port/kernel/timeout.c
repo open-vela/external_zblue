@@ -65,6 +65,7 @@ uint64_t sys_clock_timeout_end_calc(k_timeout_t timeout)
 	return z_tick_get() + timeout.ticks;
 }
 
+#if defined(CONFIG_ZEPHYR_WORK_QUEUE)
 k_ticks_t z_timeout_remaining(const struct _timeout *timeout)
 {
 	clock_t qtime, curr, elapsed;
@@ -97,3 +98,50 @@ int z_abort_timeout(struct _timeout *to)
 
 	return wd_cancel(&dwork->work.wdog);
 }
+#else /* !CONFIG_ZEPHYR_WORK_QUEUE */
+k_ticks_t z_timeout_remaining(const struct _timeout *timeout)
+{
+	struct work_s *nwork;
+	struct k_work_delayable *dwork;
+
+	dwork = CONTAINER_OF(timeout, struct k_work_delayable, timeout);
+
+	nwork = &dwork->work.nwork;
+	if (work_available(nwork)) {
+		return 0;
+	}
+
+	return wd_gettime(&nwork->u.timer);
+}
+
+void z_add_timeout(struct _timeout *to, _timeout_func_t fn,
+		   k_timeout_t timeout)
+{
+	struct k_work_delayable *dwork;
+
+	if (K_TIMEOUT_EQ(timeout, K_FOREVER)) {
+		return;
+	}
+
+	dwork = CONTAINER_OF(to, struct k_work_delayable, timeout);
+
+	if (!work_available(&dwork->work.nwork)) {
+		return;
+	}
+
+	(void)work_queue(LPWORK, &dwork->work.nwork, (worker_t)fn, to, timeout.ticks);
+}
+
+int z_abort_timeout(struct _timeout *to)
+{
+	struct k_work_delayable *dwork;
+
+	dwork = CONTAINER_OF(to, struct k_work_delayable, timeout);
+
+	if (work_available(&dwork->work.nwork)) {
+		return 0;
+	}
+
+	return work_cancel(LPWORK, &dwork->work.nwork);
+}
+#endif /* CONFIG_ZEPHYR_WORK_QUEUE */
