@@ -67,6 +67,7 @@ extern const struct bt_gatt_service_static hrs_svc;
 extern const struct bt_gatt_service_static tps_svc;
 extern const struct bt_gatt_service_static cts_cvs;
 extern const struct bt_gatt_service_static vnd_svc;
+extern const struct bt_gatt_service_static mible_svc;
 const struct bt_gatt_service_static * const _bt_gatt_service_static_list[] =
 {
 #if defined(CONFIG_BT_HCI_HOST)
@@ -92,6 +93,9 @@ const struct bt_gatt_service_static * const _bt_gatt_service_static_list[] =
 	&cts_cvs,
 	&vnd_svc,
 #endif /* CONFIG_BT_SAMPLE_PERIPHERAL */
+#if defined(CONFIG_BT_MIBLE_TEST)
+	&mible_svc,
+#endif /*CONFIG_BT_MIBLE_TEST*/
 #endif /* CONFIG_BT_SAMPLE */
 	NULL
 };
@@ -287,6 +291,7 @@ const struct settings_handler_static * const _settings_handler_static_list[] =
 extern const struct shell_cmd_entry shell_cmd_mesh;
 extern const struct shell_cmd_entry shell_cmd_br;
 extern const struct shell_cmd_entry shell_cmd_gatt;
+extern const struct shell_cmd_entry shell_cmd_mible;
 extern const struct shell_cmd_entry shell_cmd_iso;
 extern const struct shell_cmd_entry shell_cmd_l2cap;
 extern const struct shell_cmd_entry shell_cmd_rfcomm;
@@ -323,6 +328,9 @@ const struct shell_cmd_entry * const _shell_cmd_entry_list[] =
 #if defined(CONFIG_SETTINGS_FS)
 	&shell_cmd_fs,
 #endif /* CONFIG_SETTINGS_FS */
+#if defined(CONFIG_BT_MIBLE_TEST)
+	&shell_cmd_mible,
+#endif /* CONFIG_BT_MIBLE_TEST */
 #endif /* CONFIG_BT_SHELL */
 	NULL,
 };

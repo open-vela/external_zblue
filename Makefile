@@ -172,6 +172,10 @@ ifeq ($(CONFIG_BT_SHELL),y)
   port/$(SUBDIR)/shell/bt.c_CFLAGS    += -DCONFIG_BT_BT_SHELL
   port/$(SUBDIR)/shell/bt.c_CELFFLAGS += -DCONFIG_BT_BT_SHELL
 
+  ifeq ($(CONFIG_BT_MIBLE_TEST),y)
+    CSRCS += $(SUBDIR)/shell/mible_test.c
+  endif
+
   ifeq ($(CONFIG_BT_CONN),y)
     CSRCS    += $(SUBDIR)/shell/gatt.c
     MAINSRC  += port/$(SUBDIR)/shell/gatt.c
