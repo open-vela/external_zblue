@@ -345,7 +345,6 @@ extern FUNC_NORETURN void k_thread_user_mode_enter(k_thread_entry_t entry,
 static inline void k_thread_heap_assign(struct k_thread *thread,
 					struct k_heap *heap)
 {
-	thread->resource_pool = heap;
 }
 
 #if defined(CONFIG_INIT_STACKS) && defined(CONFIG_THREAD_STACK_INFO)
@@ -561,7 +560,7 @@ __syscall k_ticks_t k_thread_timeout_expires_ticks(const struct k_thread *t);
 static inline k_ticks_t z_impl_k_thread_timeout_expires_ticks(
 						const struct k_thread *t)
 {
-	return z_timeout_expires(&t->base.timeout);
+	return -1;
 }
 
 /**
@@ -576,7 +575,7 @@ __syscall k_ticks_t k_thread_timeout_remaining_ticks(const struct k_thread *t);
 static inline k_ticks_t z_impl_k_thread_timeout_remaining_ticks(
 						const struct k_thread *t)
 {
-	return z_timeout_remaining(&t->base.timeout);
+	return -1;
 }
 
 #endif /* CONFIG_SYS_CLOCK_EXISTS */
@@ -1627,7 +1626,6 @@ static inline uint32_t k_cycle_get_32(void)
 struct k_queue {
 	sys_sflist_t data_q;
 	struct k_spinlock lock;
-	_wait_q_t wait_q;
 
 	_POLL_EVENT;
 };
@@ -1636,7 +1634,6 @@ struct k_queue {
 	{ \
 	.data_q = SYS_SFLIST_STATIC_INIT(&obj.data_q), \
 	.lock = { }, \
-	.wait_q = Z_WAIT_Q_INIT(&obj.wait_q),	\
 	_POLL_EVENT_OBJ_INIT(obj)		\
 	}
 
@@ -2710,7 +2707,6 @@ __syscall int k_condvar_wait(struct k_condvar *condvar, struct k_mutex *mutex,
 
 struct k_sem {
 	sem_t sem;
-	_wait_q_t wait_q;
 	unsigned int count;
 	unsigned int limit;
 
@@ -2721,7 +2717,6 @@ struct k_sem {
 #define Z_SEM_INITIALIZER(obj, initial_count, count_limit) 	\
 	{ 							\
 	.sem = SEM_INITIALIZER(initial_count), 			\
-	.wait_q = Z_WAIT_Q_INIT(&obj.wait_q), 			\
 	.count = initial_count, 				\
 	.limit = count_limit, 					\
 	_POLL_EVENT_OBJ_INIT(obj) 				\
