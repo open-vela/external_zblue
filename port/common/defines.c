@@ -376,9 +376,9 @@ const struct bt_mesh_subnet_cb * const _bt_mesh_subnet_cb_list[] =
 #if defined(CONFIG_BT_MESH_LPN)
 	&bt_mesh_subnet_cb_subnet_evt_lpn,
 #endif /* CONFIG_BT_MESH_LPN */
-#if defined(CONFIG_BT_MESH_PROXY)
+#if defined(CONFIG_BT_MESH_GATT_PROXY)
 	&bt_mesh_subnet_cb_subnet_evt_proxy,
-#endif /* CONFIG_BT_MESH_PROXY */
+#endif /* CONFIG_BT_MESH_GATT_PROXY */
 #endif /* CONFIG_BT_MESH */
 	NULL,
 };

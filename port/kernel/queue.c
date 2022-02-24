@@ -51,7 +51,6 @@ void k_queue_init(struct k_queue *queue)
 {
 	k_spinlock_key_t key = k_spin_lock(&queue->lock);
 	sys_sflist_init(&queue->data_q);
-	sys_dlist_init(&queue->wait_q.waitq);
 	sys_dlist_init(&queue->poll_events);
 	k_spin_unlock(&queue->lock, key);
 }
