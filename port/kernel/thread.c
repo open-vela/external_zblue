@@ -44,7 +44,7 @@ typedef struct
 	void *argv[4];
 } k_thread_main_t;
 
-static sys_dlist_t task_list = SYS_DLIST_STATIC_INIT(&task_list);
+static sys_slist_t task_list = SYS_SLIST_STATIC_INIT(&task_list);
 
 static int nxthread_create(FAR const char *name, uint8_t ttype, int priority,
 		FAR void *stack, int stack_size, main_t entry, FAR char * const argv[])
@@ -85,7 +85,7 @@ k_tid_t k_current_get(void)
 
 #endif /* !CONFIG_ZEPHYR_WORK_QUEUE */
 
-	SYS_DLIST_FOR_EACH_CONTAINER(&task_list, thread, base.qnode_dlist) {
+	SYS_SLIST_FOR_EACH_CONTAINER(&task_list, thread, node) {
 		if (thread->init_data == pid) {
 			return thread;
 		}
@@ -107,6 +107,7 @@ int k_is_preempt_thread(void)
 	return (sched == SCHED_RR);
 }
 
+#ifdef CONFIG_SCHED_WAITPID
 static int k_thread_main(int argc, FAR char *argv[])
 {
 	struct sched_param param;
@@ -136,8 +137,8 @@ k_tid_t k_thread_create(struct k_thread *new_thread,
 		int prio, uint32_t options, k_timeout_t delay)
 {
 	k_thread_main_t *_main;
-	void *argv[3];
 	char arg1[16];
+	void *argv[3];
 	int ret;
 
 	_main = kmm_malloc(sizeof(*_main));
@@ -164,10 +165,70 @@ k_tid_t k_thread_create(struct k_thread *new_thread,
 
 	new_thread->init_data = (void *)ret;
 
-	sys_dlist_append(&task_list, &new_thread->base.qnode_dlist);
+	sys_slist_append(&task_list, &new_thread->node);
 
 	return (k_tid_t)ret;
 }
+
+#else /* !CONFIG_SCHED_WAITPID */
+static void *k_thread_main(void * args)
+{
+	struct sched_param param;
+	k_thread_main_t *_main;
+	void *_argv[4];
+
+	_main = args;
+	if (_main == NULL)
+		return NULL;
+
+	memcpy(_argv, _main->argv, sizeof(_argv));
+
+	kmm_free(_main);
+
+	sched_getparam(0, &param);
+	sched_setscheduler(0, SCHED_FIFO, &param);
+
+	((k_thread_entry_t)_argv[0])(_argv[1], _argv[2], _argv[3]);
+	return NULL;
+}
+
+k_tid_t k_thread_create(struct k_thread *new_thread,
+		k_thread_stack_t *stack,
+		size_t stack_size, k_thread_entry_t entry,
+		void *p1, void *p2, void *p3,
+		int prio, uint32_t options, k_timeout_t delay)
+{
+	k_thread_main_t *_main;
+	pthread_attr_t pattr;
+	pthread_t pid;
+	int ret;
+
+	_main = kmm_malloc(sizeof(*_main));
+	if (_main == NULL)
+		return (k_tid_t)(intptr_t)-ENOMEM;
+
+	_main->argv[0] = entry;
+	_main->argv[1] = p1;
+	_main->argv[2] = p2;
+	_main->argv[3] = p3;
+
+	pthread_attr_init(&pattr);
+	pthread_attr_setstack(&pattr, stack, stack_size);
+
+	ret = pthread_create(&pid, &pattr, k_thread_main, _main);
+	pthread_attr_destroy(&pattr);
+	if (ret < 0) {
+		kmm_free(_main);
+		return (k_tid_t)-1;
+	}
+
+	new_thread->init_data = (void *)pid;
+
+	sys_slist_append(&task_list, &new_thread->node);
+
+	return (k_tid_t)pid;
+}
+#endif /* CONFIG_SCHED_WAITPID */
 
 void k_thread_start(k_tid_t thread)
 {
