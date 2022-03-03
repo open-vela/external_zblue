@@ -69,7 +69,7 @@ __deprecated typedef struct arch_esf z_arch_esf_t;
  * with fewer bits of precision in the timer is expected to synthesize
  * a 32 bit count.
  */
-static inline uint32_t arch_k_cycle_get_32(void);
+uint32_t arch_k_cycle_get_32(void);
 
 /**
  * As for arch_k_cycle_get_32(), but with a 64 bit return value.  Not
@@ -264,14 +264,14 @@ bool arch_cpu_active(int cpu_num);
  *
  * @see irq_lock()
  */
-static inline unsigned int arch_irq_lock(void);
+unsigned int arch_irq_lock(void);
 
 /**
  * Unlock interrupts on the current CPU
  *
  * @see irq_unlock()
  */
-static inline void arch_irq_unlock(unsigned int key);
+void arch_irq_unlock(unsigned int key);
 
 /**
  * Test if calling arch_irq_unlock() with this key would unlock irqs
@@ -280,7 +280,7 @@ static inline void arch_irq_unlock(unsigned int key);
  * @return true if interrupts were unlocked prior to the arch_irq_lock()
  * call that produced the key argument.
  */
-static inline bool arch_irq_unlocked(unsigned int key);
+bool arch_irq_unlocked(unsigned int key);
 
 /**
  * Disable the specified interrupt line
