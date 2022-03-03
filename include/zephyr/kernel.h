@@ -13,6 +13,16 @@
 #ifndef ZEPHYR_INCLUDE_KERNEL_H_
 #define ZEPHYR_INCLUDE_KERNEL_H_
 
+#include <nuttx/config.h>
+#include <nuttx/irq.h>
+#include <nuttx/clock.h>
+#include <nuttx/pthread.h>
+#include <nuttx/spinlock.h>
+#include <nuttx/wqueue.h>
+#include <nuttx/wdog.h>
+#include <nuttx/semaphore.h>
+#include <pthread.h>
+
 #if !defined(_ASMLANGUAGE)
 #include <zephyr/kernel_includes.h>
 #include <errno.h>
@@ -50,8 +60,8 @@ BUILD_ASSERT(sizeof(intptr_t) == sizeof(long));
 #error Zero available thread priorities defined!
 #endif
 
-#define K_PRIO_COOP(x) (-(CONFIG_NUM_COOP_PRIORITIES - (x)))
-#define K_PRIO_PREEMPT(x) (x)
+#define K_PRIO_COOP(x) (CONFIG_NUM_COOP_PRIORITIES + (x))
+#define K_PRIO_PREEMPT(x) (CONFIG_NUM_COOP_PRIORITIES + (x))
 
 #define K_HIGHEST_THREAD_PRIO (-CONFIG_NUM_COOP_PRIORITIES)
 #define K_LOWEST_THREAD_PRIO CONFIG_NUM_PREEMPT_PRIORITIES
@@ -471,7 +481,6 @@ FUNC_NORETURN void k_thread_user_mode_enter(k_thread_entry_t entry,
 static inline void k_thread_heap_assign(struct k_thread *thread,
 					struct k_heap *heap)
 {
-	thread->resource_pool = heap;
 }
 
 #if defined(CONFIG_INIT_STACKS) && defined(CONFIG_THREAD_STACK_INFO)
@@ -1930,7 +1939,6 @@ static inline uint64_t k_cycle_get_64(void)
 struct k_queue {
 	sys_sflist_t data_q;
 	struct k_spinlock lock;
-	_wait_q_t wait_q;
 
 	Z_DECL_POLL_EVENT
 
@@ -2992,6 +3000,8 @@ extern struct k_work_q k_sys_work_q;
  * @ingroup mutex_apis
  */
 struct k_mutex {
+	pthread_mutex_t mutex;
+
 	/** Mutex wait queue */
 	_wait_q_t wait_q;
 	/** Mutex owner */
@@ -3189,7 +3199,7 @@ __syscall int k_condvar_wait(struct k_condvar *condvar, struct k_mutex *mutex,
  */
 
 struct k_sem {
-	_wait_q_t wait_q;
+	sem_t sem;
 	unsigned int count;
 	unsigned int limit;
 
@@ -3955,6 +3965,12 @@ enum {
 
 /** @brief A structure used to submit work. */
 struct k_work {
+#if defined(CONFIG_ZEPHYR_WORK_QUEUE)
+		struct wdog_s wdog;
+#else
+		struct work_s nwork;
+#endif
+
 	/* All fields are protected by the work module spinlock.  No fields
 	 * are to be accessed except through kernel API.
 	 */
