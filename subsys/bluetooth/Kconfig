@@ -8,7 +8,7 @@ menuconfig BT
 	bool "Bluetooth"
 	# Some BT threads use co-op priorities to implement critical sections,
 	# will need some refactoring to work on SMP systems.
-	depends on !SMP
+	# depends on !SMP
 	select NET_BUF
 	help
 	  This option enables Bluetooth support.
@@ -34,6 +34,11 @@ config BT_CUSTOM
 	  this is, you probably want the HCI-based stack instead.
 
 endchoice
+
+# The Bluetooth subsystem requires the system workqueue to execute at
+# a cooperative priority.
+# config SYSTEM_WORKQUEUE_PRIORITY
+#	range -256 -1
 
 if BT_HCI
 

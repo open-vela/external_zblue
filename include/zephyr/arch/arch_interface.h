@@ -83,7 +83,7 @@ uint32_t arch_k_cycle_get_32(void);
  * fewer bits of precision in the timer is generally not expected to
  * implement this API.
  */
-static inline uint64_t arch_k_cycle_get_64(void);
+uint64_t arch_k_cycle_get_64(void);
 
 /** @} */
 

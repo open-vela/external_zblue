@@ -74,7 +74,7 @@ static int nxthread_create(FAR const char *name, uint8_t ttype, int priority,
 
 extern struct k_work_q k_sys_work_q;
 
-k_tid_t k_current_get(void)
+k_tid_t z_current_get(void)
 {
 	struct k_thread *thread;
 	void *pid = (void *)getpid();
