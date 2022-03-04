@@ -68,22 +68,17 @@ ifeq ($(CONFIG_BT_HCI_HOST),y)
   CSRCS += $(SUBDIR)/host/uuid.c
   CSRCS += $(SUBDIR)/host/hci_core.c
 
-  ifeq ($(CONFIG_BT_HOST_CRYPTO),y)
-    CSRCS += $(SUBDIR)/host/crypto.c
+  ifeq ($(CONFIG_BT_HFP_HF),y)
+    CSRCS += $(SUBDIR)/host/hfp_hf.c
+    CSRCS += $(SUBDIR)/host/at.c
   endif
 
   ifeq ($(CONFIG_BT_CONN),y)
     CSRCS += $(SUBDIR)/host/conn.c
-    CSRCS += $(SUBDIR)/host/l2cap.c
-    CSRCS += $(SUBDIR)/host/att.c
-    CSRCS += $(SUBDIR)/host/gatt.c
   endif
 
-  ifeq ($(CONFIG_BT_SMP),y)
-    CSRCS += $(SUBDIR)/host/smp.c
-    CSRCS += $(SUBDIR)/host/keys.c
-  else
-    CSRCS += $(SUBDIR)/host/smp_null.c
+  ifeq ($(CONFIG_BT_DF),y)
+    CSRCS += $(SUBDIR)/host/direction.c
   endif
 endif
 
@@ -307,8 +302,6 @@ ifneq ($(CONFIG_BT_SAMPLE),)
   ifneq ($(CONFIG_BT_SAMPLE_MESH),)
     PROGNAME += btmesh
     MAINSRC += samples/bluetooth/mesh/src/main.c
-    PROGNAME += mesh_demo
-    MAINSRC += samples/bluetooth/mesh_demo/src/main.c
     ifneq ($(CONFIG_BT_MESH_PROVISIONER),)
       PROGNAME += mesh_provisioner
       MAINSRC += samples/bluetooth/mesh_provisioner/src/main.c

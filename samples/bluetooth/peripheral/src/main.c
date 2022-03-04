@@ -269,7 +269,7 @@ static void alert_high_start(void)
 	printk("High alert started\n");
 }
 
-BT_CONN_CB_DEFINE(conn_callbacks) = {
+BT_CONN_CB_DEFINE(peripheral) = {
 	.connected = connected,
 	.disconnected = disconnected,
 };

@@ -131,7 +131,7 @@ void shell_fprintf(const struct shell *shell, enum shell_vt100_color color,
 /* Function returning pointer to parent command matching requested syntax. */
 static const struct shell_static_entry *root_cmd_find(const char *syntax)
 {
-	Z_STRUCT_SECTION_FOREACH(shell_cmd_entry, cmd) {
+	STRUCT_SECTION_FOREACH(shell_cmd_entry, cmd) {
 		if (strcmp(syntax, cmd->u.entry->syntax) == 0) {
 			return cmd->u.entry;
 		}
@@ -142,7 +142,7 @@ static const struct shell_static_entry *root_cmd_find(const char *syntax)
 
 static void cmds_show(void)
 {
-	Z_STRUCT_SECTION_FOREACH(shell_cmd_entry, cmd) {
+	STRUCT_SECTION_FOREACH(shell_cmd_entry, cmd) {
 		syslog(LOG_INFO, "%s\t%s\n",
 			   cmd->u.entry->syntax, cmd->u.entry->help);
 	}

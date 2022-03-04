@@ -135,6 +135,8 @@ static struct bt_mesh_ext_adv advs[] = {
 BUILD_ASSERT(ARRAY_SIZE(advs) <= CONFIG_BT_EXT_ADV_MAX_ADV_SET,
 	     "Insufficient adv instances");
 
+#include "adv_ext_internal.h"
+
 static inline struct bt_mesh_ext_adv *relay_adv_get(void)
 {
 	if (!!(CONFIG_BT_MESH_RELAY_ADV_SETS)) {

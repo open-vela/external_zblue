@@ -1213,7 +1213,7 @@ int bt_mesh_proxy_adv_start(void)
 	return gatt_proxy_advertise();
 }
 
-BT_CONN_CB_DEFINE(conn_callbacks) = {
+BT_CONN_CB_DEFINE(proxy_srv) = {
 	.connected = gatt_connected,
 	.disconnected = gatt_disconnected,
 };
