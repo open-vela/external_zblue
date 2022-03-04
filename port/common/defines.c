@@ -102,11 +102,15 @@ const struct bt_gatt_service_static * const _bt_gatt_service_static_list[] =
 /* bt_gatt_service_static END */
 
 /* net_buf_pool START */
+extern struct net_buf_pool ots_c_read_queue;
+extern struct net_buf_pool otc_l2cap_pool;
+extern struct net_buf_pool iso_rx_pool;
+extern struct net_buf_pool iso_tx_pool;
+extern struct net_buf_pool iso_frag_pool;
 extern struct net_buf_pool acl_in_pool;
 extern struct net_buf_pool acl_tx_pool;
 extern struct net_buf_pool dummy_pool;
 extern struct net_buf_pool adv_buf_pool;
-extern struct net_buf_pool loopback_buf_pool;
 extern struct net_buf_pool br_sig_pool;
 extern struct net_buf_pool discardable_pool;
 extern struct net_buf_pool evt_pool;
@@ -142,7 +146,19 @@ struct net_buf_pool * const _net_buf_pool_list[] =
 #if defined(CONFIG_BT_ISO)
 	&hci_iso_pool,
 #endif /* CONFIG_BT_ISO */
-#elif defined(CONFIG_BT_HCI_HOST)
+#endif /* CONFIG_BT_HCI_RAW */
+#if defined(CONFIG_BT_HCI_HOST)
+#if defined(CONFIG_BT_ISO)
+#if defined(CONFIG_BT_ISO_UNICAST) || defined(CONFIG_BT_ISO_SYNC_RECEIVER)
+	&iso_rx_pool,
+#endif /* CONFIG_BT_ISO_UNICAST || CONFIG_BT_ISO_SYNC_RECEIVER */
+#if defined(CONFIG_BT_ISO_UNICAST) || defined(CONFIG_BT_ISO_BROADCAST)
+	&iso_tx_pool,
+#if CONFIG_BT_ISO_TX_FRAG_COUNT > 0
+	&iso_frag_pool,
+#endif /* CONFIG_BT_ISO_TX_FRAG_COUNT > 0 */
+#endif /* CONFIG_BT_ISO_UNICAST || CONFIG_BT_ISO_BROADCAST */
+#endif /* CONFIG_BT_ISO */
 #if defined(CONFIG_BT_RFCOMM)
 	&dummy_pool,
 #endif /* CONFIG_BT_RFCOMM */
@@ -173,15 +189,7 @@ struct net_buf_pool * const _net_buf_pool_list[] =
 	&iso_rx_pool,
 	&iso_frag_pool,
 #endif /* CONFIG_BT_ISO */
-#endif /* CONFIG_BT_HCI_HOST */
-#if defined(CONFIG_BT_MESH)
-	&adv_buf_pool,
-	&loopback_buf_pool,
-#endif /* CONFIG_BT_MESH */
-#if defined(CONFIG_BT_MESH_FRIEND)
-	&friend_buf_pool,
-#endif /* CONFIG_BT_MESH_FRIEND */
-#endif /* CONFIG_BT_HCI_RAW */
+#endif /* CONFIG_BT_HCI */
 #if defined(CONFIG_BT_TESTER)
 	&server_pool,
 	&data_pool,
@@ -212,6 +220,19 @@ struct net_buf_pool * const _net_buf_pool_list[] =
 #if defined(CONFIG_BT_HFP_HF)
 	&hf_pool,
 #endif /* CONFIG_BT_HFP_HF */
+#endif /* CONFIG_BT_HCI */
+#if defined(CONFIG_BT_MESH)
+	&adv_buf_pool,
+#if defined(CONFIG_BT_MESH_FRIEND)
+	&friend_buf_pool,
+#endif /* CONFIG_BT_MESH_FRIEND */
+#endif /* CONFIG_BT_MESH */
+#if defined(CONFIG_BT_AUDIO)
+#if defined(CONFIG_BT_OTC)
+	&ots_c_read_queue,
+	&otc_l2cap_pool,
+#endif /* CONFIG_BT_OTC */
+#endif /* CONFIG_BT_AUDIO */
 	NULL
 };
 /* net_buf_pool END */
@@ -288,12 +309,21 @@ const struct settings_handler_static * const _settings_handler_static_list[] =
 /* settings_handler END */
 
 /* shell_cmd_entry START */
+extern const struct shell_cmd_entry shell_cmd_bt;
 extern const struct shell_cmd_entry shell_cmd_mesh;
+extern const struct shell_cmd_entry shell_cmd_audio;
 extern const struct shell_cmd_entry shell_cmd_br;
+extern const struct shell_cmd_entry shell_cmd_csis_client;
+extern const struct shell_cmd_entry shell_cmd_csis;
 extern const struct shell_cmd_entry shell_cmd_gatt;
 extern const struct shell_cmd_entry shell_cmd_mible;
 extern const struct shell_cmd_entry shell_cmd_iso;
 extern const struct shell_cmd_entry shell_cmd_l2cap;
+extern const struct shell_cmd_entry shell_cmd_mcc;
+extern const struct shell_cmd_entry shell_cmd_media;
+extern const struct shell_cmd_entry shell_cmd_mics_client;
+extern const struct shell_cmd_entry shell_cmd_mics;
+extern const struct shell_cmd_entry shell_cmd_mpl;
 extern const struct shell_cmd_entry shell_cmd_rfcomm;
 extern const struct shell_cmd_entry shell_cmd_vcs_client;
 extern const struct shell_cmd_entry shell_cmd_vcs;
@@ -301,19 +331,43 @@ extern const struct shell_cmd_entry shell_cmd_fs;
 const struct shell_cmd_entry * const _shell_cmd_entry_list[] =
 {
 #if defined(CONFIG_BT_SHELL)
+	&shell_cmd_bt,
 #if defined(CONFIG_BT_BREDR)
 	&shell_cmd_br,
 #endif /* CONFIG_BT_BREDR */
 #if defined(CONFIG_BT_CONN)
 	&shell_cmd_gatt,
-	&shell_cmd_l2cap,
 #endif /* CONFIG_BT_CONN */
+#if defined(CONFIG_BT_L2CAP_DYNAMIC_CHANNEL)
+	&shell_cmd_l2cap,
+#endif /* CONFIG_BT_L2CAP_DYNAMIC_CHANNEL */
 #if defined(CONFIG_BT_ISO)
 	&shell_cmd_iso,
 #endif /* CONFIG_BT_ISO */
 #if defined(CONFIG_BT_RFCOMM)
 	&shell_cmd_rfcomm,
 #endif /* CONFIG_BT_RFCOMM */
+#if defined(CONFIG_BT_AUDIO_STREAM)
+	&shell_cmd_audio,
+#endif /* CONFIG_BT_AUDIO_STREAM */
+#if defined(CONFIG_BT_CSIS_CLIENT)
+	&shell_cmd_csis_client,
+#endif /* CONFIG_BT_CSIS_CLIENT */
+#if defined(CONFIG_BT_CSIS)
+	&shell_cmd_csis,
+#endif /* CONFIG_BT_CSIS */
+#if defined(CONFIG_BT_MCC)
+	&shell_cmd_mcc,
+#endif /* CONFIG_BT_MCC */
+#if defined(CONFIG_BT_MCS)
+	&shell_cmd_media,
+#endif /* CONFIG_BT_MCS */
+#if defined(CONFIG_BT_MICS_CLIENT)
+	&shell_cmd_mics_client,
+#endif /* CONFIG_BT_MICS_CLIENT */
+#if defined(CONFIG_BT_MICS)
+	&shell_cmd_mics,
+#endif /* CONFIG_BT_MICS */
 #if defined(CONFIG_BT_VCS_CLIENT)
 	&shell_cmd_vcs_client,
 #endif /* CONFIG_BT_VCS_CLIENT */
@@ -325,12 +379,12 @@ const struct shell_cmd_entry * const _shell_cmd_entry_list[] =
 	&shell_cmd_mesh,
 #endif /* CONFIG_BT_MESH */
 #endif /* CONFIG_BT_MESH_SHELL */
-#if defined(CONFIG_SETTINGS_FS)
-	&shell_cmd_fs,
-#endif /* CONFIG_SETTINGS_FS */
 #if defined(CONFIG_BT_MIBLE_TEST)
 	&shell_cmd_mible,
 #endif /* CONFIG_BT_MIBLE_TEST */
+#if defined(CONFIG_SETTINGS_FS)
+	&shell_cmd_fs,
+#endif /* CONFIG_SETTINGS_FS */
 #endif /* CONFIG_BT_SHELL */
 	NULL,
 };
@@ -340,6 +394,7 @@ const struct shell_cmd_entry * const _shell_cmd_entry_list[] =
 extern struct k_mem_slab req_slab;
 extern struct k_mem_slab att_slab;
 extern struct k_mem_slab chan_slab;
+extern struct k_mem_slab loopback_buf_pool;
 extern struct k_mem_slab segs;
 extern struct k_mem_slab mslab1;
 struct k_mem_slab * const _k_mem_slab_list[] =
@@ -350,6 +405,7 @@ struct k_mem_slab * const _k_mem_slab_list[] =
 	&chan_slab,
 #endif /* CONFIG_BT_CONN */
 #if defined(CONFIG_BT_MESH)
+	&loopback_buf_pool,
 	&segs,
 #endif /* CONFIG_BT_MESH */
 #if defined(CONFIG_ZTEST_MEMSLAB)
@@ -376,6 +432,9 @@ const struct bt_mesh_subnet_cb * const _bt_mesh_subnet_cb_list[] =
 #if defined(CONFIG_BT_MESH_LPN)
 	&bt_mesh_subnet_cb_subnet_evt_lpn,
 #endif /* CONFIG_BT_MESH_LPN */
+#if defined(CONFIG_BT_MESH_PROXY_CLIENT)
+	& bt_mesh_subnet_cb_proxy_cli,
+#endif /* CONFIG_BT_MESH_PROXY_CLIENT */
 #if defined(CONFIG_BT_MESH_GATT_PROXY)
 	&bt_mesh_subnet_cb_subnet_evt_proxy,
 #endif /* CONFIG_BT_MESH_GATT_PROXY */
@@ -467,3 +526,47 @@ const struct init_entry * const _init_entry_list[] =
 	NULL,
 };
 /* kernel END */
+
+/* bt_conn_cb START */
+
+extern const struct bt_conn_cb bt_conn_cb_central;
+extern const struct bt_conn_cb bt_conn_cb_peripheral;
+extern const struct bt_conn_cb bt_conn_cb_gatt_cli;
+extern const struct bt_conn_cb bt_conn_cb_pb_gatt_srv;
+extern const struct bt_conn_cb bt_conn_cb_proxy_srv;
+extern const struct bt_conn_cb bt_conn_cb_ots;
+extern const struct bt_conn_cb bt_conn_cb_l2cap;
+const struct bt_conn_cb * const _bt_conn_cb_list[] =
+{
+#if defined(CONFIG_BT_SAMPLE)
+#if defined(CONFIG_BT_SAMPLE_CENTRAL)
+	&bt_conn_cb_central,
+#endif /* CONFIG_BT_SAMPLE_CENTRAL */
+#if defined(CONFIG_BT_SAMPLE_PERIPHERAL)
+	&bt_conn_cb_peripheral,
+#endif /* CONFIG_BT_SAMPLE_PERIPHERAL */
+#endif /* CONFIG_BT_SAMPLE */
+#if defined(CONFIG_BT_MESH)
+#if defined(CONFIG_BT_MESH_GATT_CLIENT)
+	&bt_conn_cb_gatt_cli,
+#endif /* CONFIG_BT_MESH_GATT_CLIENT */
+#if defined(CONFIG_BT_MESH_PB_GATT)
+	&bt_conn_cb_pb_gatt_srv,
+#endif /* CONFIG_BT_MESH_PB_GATT */
+#if defined(CONFIG_BT_MESH_GATT_PROXY)
+	&bt_conn_cb_proxy_srv,
+#endif /* CONFIG_BT_MESH_GATT_PROXY */
+#endif /* CONFIG_BT_MESH */
+#if defined(CONFIG_BT_CONN)
+#if defined(CONFIG_BT_OTS)
+	&bt_conn_cb_ots,
+#endif /* CONFIG_BT_OTS */
+#endif /* CONFIG_BT_CONN */
+#if defined(CONFIG_BT_SHELL)
+#if defined(CONFIG_BT_L2CAP_DYNAMIC_CHANNEL)
+	&bt_conn_cb_l2cap,
+#endif /* CONFIG_BT_L2CAP_DYNAMIC_CHANNEL */
+#endif /* CONFIG_BT_SHELL */
+	NULL,
+};
+/* bt_conn_cb END */

@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
 {
 	int ret;
 
-	Z_STRUCT_SECTION_FOREACH(init_entry, init) {
+	STRUCT_SECTION_FOREACH(init_entry, init) {
 		ret = init->init(init->dev);
 		if (ret) {
 			return ret;

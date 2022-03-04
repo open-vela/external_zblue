@@ -645,7 +645,7 @@ static void ots_conn_disconnected(struct bt_conn *conn, uint8_t reason)
 	}
 }
 
-BT_CONN_CB_DEFINE(conn_callbacks) = {
+BT_CONN_CB_DEFINE(ots) = {
 	.disconnected = ots_conn_disconnected,
 };
 

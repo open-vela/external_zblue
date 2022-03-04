@@ -90,3 +90,7 @@ config SYS_CLOCK_HW_CYCLES_PER_SEC
 config SYS_CLOCK_EXISTS
 	bool
 	default y
+
+config SYS_CLOCK_MAX_TIMEOUT_DAYS
+	int
+	default 365

@@ -354,7 +354,7 @@ void bt_mesh_gatt_client_deinit(void)
 	bt_le_scan_cb_unregister(&scan_cb);
 }
 
-BT_CONN_CB_DEFINE(conn_callbacks) = {
+BT_CONN_CB_DEFINE(gatt_cli) = {
 	.connected = gatt_connected,
 	.disconnected = gatt_disconnected,
 };
