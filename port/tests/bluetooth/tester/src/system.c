@@ -8,8 +8,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <sys/byteorder.h>
-#include <power/reboot.h>
-
+#include <sys/reboot.h>
 #include <bttester.h>
 
 #define TESTER_SYSTEM_RESET 0xff

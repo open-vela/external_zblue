@@ -12,7 +12,7 @@
 
 #include <kernel.h>
 #include <sys/printk.h>
-#include <power/reboot.h>
+#include <sys/reboot.h>
 #include <sys/boardctl.h>
 
 void sys_reboot(int type)
