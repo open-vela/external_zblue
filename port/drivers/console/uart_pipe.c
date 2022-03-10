@@ -45,8 +45,8 @@
 #include <logging/log.h>
 LOG_MODULE_REGISTER(uart_pipe, CONFIG_UART_CONSOLE_LOG_LEVEL);
 
-static K_THREAD_STACK_DEFINE(pipe_thread_stack, CONFIG_UART_PIPE_RX_STACK_SIZE);
-static struct k_thread        pipe_thread_data;
+static void poll_handler(struct k_work *work);
+static K_WORK_DELAYABLE_DEFINE(tester, poll_handler);
 
 static struct file            g_filep;
 static uint8_t               *recv_buf;
@@ -54,75 +54,56 @@ static size_t                 recv_buf_len;
 static uart_pipe_recv_cb      app_cb;
 static size_t                 recv_off;
 
-static int data_send_internal(FAR const uint8_t *buf, size_t count, bool wait)
+static void poll_handler(struct k_work *work)
 {
-	ssize_t ret, nwritten = 0;
+	ssize_t ret;
 
-	while (nwritten != count) {
-		ret = file_write(&g_filep, buf + nwritten, count - nwritten);
-		if (ret < 0) {
-			return ret;
-		}
-
-		nwritten += ret;
+	ret = file_read(&g_filep, recv_buf + recv_off, recv_buf_len - recv_off);
+	if (ret <= 0) {
+		goto repeat;
 	}
 
-	return nwritten;
-}
+	/*
+	 * Call application callback with received data. Application
+	 * may provide new buffer or alter data offset.
+	 */
+	recv_off += ret;
+	recv_buf = app_cb(recv_buf, &recv_off);
 
-static int data_send(FAR const uint8_t *buf, size_t count)
-{
-	return data_send_internal(buf, count, true);
-}
-
-static void pipe_thread(void *p1, void *p2, void *p3)
-{
-	uint8_t reset_cmd[5] = "\xee\xff\x00\x00\x00";
-	int got;
-
-	for (;;) {
-		got = file_read(&g_filep, recv_buf + recv_off, recv_buf_len - recv_off);
-		if (got <= 0) {
-			break;
-		}
-
-		if (got == sizeof(reset_cmd) && !memcmp(recv_buf + recv_off, reset_cmd, got)) {
-			app_cb(recv_buf + recv_off, (unsigned int *)&got);
-			continue;
-		}
-
-		LOG_HEXDUMP_DBG(recv_buf + recv_off, got, "RX");
-
-		/*
-		 * Call application callback with received data. Application
-		 * may provide new buffer or alter data offset.
-		 */
-		recv_off += got;
-		recv_buf = app_cb(recv_buf, &recv_off);
-	}
+repeat:
+	k_work_reschedule(&tester, K_MSEC(20));
 }
 
 int uart_pipe_send(const uint8_t *data, int len)
 {
-	return data_send(data, len);
+	ssize_t offset = 0, ret;
+	
+	while(len) {
+		ret = file_write(&g_filep, data + offset, len);
+		if (ret < 0) {
+			__ASSERT_NO_MSG(false);
+		}
+
+		len -= ret;
+		offset += ret;
+	}
+	
+	return 0;
 }
 
 void uart_pipe_register(uint8_t *buf, size_t len, uart_pipe_recv_cb cb)
 {
 	int ret;
 
-	ret = file_open(&g_filep, CONFIG_UART_PIPE_ON_DEV_NAME, O_RDWR | O_BINARY);
-	if(ret < 0)
-		return;
-
 	recv_buf = buf;
 	recv_buf_len = len;
 	app_cb = cb;
 
-	k_thread_create(&pipe_thread_data, pipe_thread_stack,
-			K_THREAD_STACK_SIZEOF(pipe_thread_stack),
-			pipe_thread, NULL, NULL, NULL,
-			K_PRIO_COOP(CONFIG_UART_PIPE_RX_PRIO), 0, K_NO_WAIT);
+	ret = file_open(&g_filep, CONFIG_UART_PIPE_ON_DEV_NAME,
+			O_RDWR | O_BINARY | O_NONBLOCK);
+	if(ret < 0) {
+		return;
+	}
 
-	k_thread_name_set(&pipe_thread_data, "BT PIPE");
+	k_work_submit(&tester.work);
 }

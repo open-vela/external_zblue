@@ -709,7 +709,7 @@ struct bt_mesh_lpn_cb {
  *  @param _name Name of callback structure.
  */
 #define BT_MESH_LPN_CB_DEFINE(_name)                                    \
-	const Z_STRUCT_SECTION_ITERABLE(bt_mesh_lpn_cb,         	\
+	const STRUCT_SECTION_ITERABLE(bt_mesh_lpn_cb,         	\
 					       _CONCAT(bt_mesh_lpn_cb_, \
 						       _name))
 
