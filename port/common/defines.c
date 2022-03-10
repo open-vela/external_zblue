@@ -192,7 +192,9 @@ struct net_buf_pool * const _net_buf_pool_list[] =
 #endif /* CONFIG_BT_HCI */
 #if defined(CONFIG_BT_TESTER)
 	&server_pool,
+#if defined(CONFIG_BT_L2CAP_DYNAMIC_CHANNEL)
 	&data_pool,
+#endif /* CONFIG_BT_L2CAP_DYNAMIC_CHANNEL */
 #endif /* CONFIG_BT_TESTER */
 #if defined(CONFIG_BT_SHELL)
 #if defined(CONFIG_BT_L2CAP_DYNAMIC_CHANNEL)
