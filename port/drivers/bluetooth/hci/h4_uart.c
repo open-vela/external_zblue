@@ -39,7 +39,9 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <sys/uio.h>
-#include <common/log.h>
+
+#define LOG_MODULE_NAME bt_h4
+#include "common/log.h"
 
 #include "bluetooth/bluetooth.h"
 #include "drivers/bluetooth/hci_driver.h"
@@ -53,8 +55,8 @@
 
 //#define HCI_DEBUG
 
-static K_THREAD_STACK_DEFINE(rx_thread_stack, CONFIG_BT_RX_STACK_SIZE);
-static struct k_thread        rx_thread_data;
+static K_THREAD_STACK_DEFINE(tx_thread_stack, CONFIG_BT_UART_H4_TX_STACK_SIZE);
+static struct k_thread        tx_thread_data;
 static struct file            g_filep;
 
 #ifdef CONFIG_BT_H4_DEBUG
@@ -103,7 +105,44 @@ static int h4_send_data(uint8_t *buf, size_t count)
 	return nwritten;
 }
 
-static void h4_rx_thread(void *p1, void *p2, void *p3)
+static bool valid_type(uint8_t type)
+{
+	return (type == H4_CMD) | (type == H4_ACL) | (type == H4_ISO);
+}
+
+/* Function expects that type is validated and only CMD, ISO or ACL will be used. */
+static uint32_t get_len(const uint8_t *hdr_buf, uint8_t type)
+{
+	switch (type) {
+	case H4_CMD:
+		return ((const struct bt_hci_cmd_hdr *)hdr_buf)->param_len;
+	case H4_ISO:
+		return bt_iso_hdr_len(
+			((const struct bt_hci_iso_hdr *)hdr_buf)->len);
+	case H4_ACL:
+		return ((const struct bt_hci_acl_hdr *)hdr_buf)->len;
+	default:
+		LOG_ERR("Invalid type: %u", type);
+		return 0;
+	}
+}
+
+static int hdrlen(uint8_t type)
+{
+	switch (type) {
+	case H4_CMD:
+		return sizeof(struct bt_hci_cmd_hdr);
+	case H4_ISO:
+		return sizeof(struct bt_hci_iso_hdr);
+	case H4_ACL:
+		return sizeof(struct bt_hci_acl_hdr);
+	default:
+		LOG_ERR("Invalid type: %u", type);
+		return 0;
+	}
+}
+
+static void h4_tx_thread(void *p1, void *p2, void *p3)
 {
 	unsigned char buffer[1];
 	int hdr_len, data_len, ret;
@@ -112,104 +151,58 @@ static void h4_rx_thread(void *p1, void *p2, void *p3)
 	uint8_t type;
 	uint8_t event;
 	union {
-		struct bt_hci_evt_hdr evt;
+		struct bt_hci_cmd_hdr cmd;
 		struct bt_hci_acl_hdr acl;
 		struct bt_hci_iso_hdr iso;
 	} hdr;
 
 	for (;;) {
 		ret = h4_recv_data(&type, 1);
-		if (ret != 1)
+		if (ret != 1) {
+			LOG_ERR("Receiving type failed (err %d)", ret);
 			break;
-
-		if (type != H4_EVT &&
-		    type != H4_ACL &&
-		    type != H4_ISO)
-			continue;
-
-		if (type == H4_EVT)
-			hdr_len = sizeof(struct bt_hci_evt_hdr);
-		else if (type == H4_ACL)
-			hdr_len = sizeof(struct bt_hci_acl_hdr);
-		else if (IS_ENABLED(CONFIG_BT_ISO) && type == H4_ISO)
-			hdr_len = sizeof(struct bt_hci_iso_hdr);
-		else
-			continue;
-
-		ret = h4_recv_data((uint8_t *)&hdr, hdr_len);
-		if (ret != hdr_len)
-			break;
-
-		if (type == H4_EVT) {
-			data_len = hdr.evt.len;
-			discardable = false;
-			if (hdr.evt.evt == BT_HCI_EVT_LE_META_EVENT) {
-				ret = h4_recv_data(&event, 1);
-				if (ret != 1)
-					break;
-
-				if (event == BT_HCI_EVT_LE_ADVERTISING_REPORT ||
-				    event == BT_HCI_EVT_LE_EXT_ADVERTISING_REPORT)
-					discardable = true;
-			}
-
-			buf = bt_buf_get_evt(hdr.evt.evt, discardable,
-					     discardable ? K_NO_WAIT : K_FOREVER);
-			if (buf == NULL) {
-				if (discardable && data_len) {
-					while(--data_len) {
-						h4_recv_data(buffer, 1);
-					}
-
-					continue;
-				} else
-					break;
-			}
-
-			memcpy(buf->data, &hdr, hdr_len);
-
-			if (hdr.evt.evt == BT_HCI_EVT_LE_META_EVENT) {
-				buf->data[sizeof(struct bt_hci_evt_hdr)] = event;
-				hdr_len += 1;
-				data_len -= 1;
-			}
-
-			bt_buf_set_type(buf, BT_BUF_EVT);
-		} else if (type == H4_ACL) {
-			buf = bt_buf_get_rx(BT_BUF_ACL_IN, K_FOREVER);
-			if (buf == NULL)
-				break;
-
-			data_len = hdr.acl.len;
-			bt_buf_set_type(buf, BT_BUF_ACL_IN);
-			memcpy(buf->data, &hdr, hdr_len);
-		} else if (IS_ENABLED(CONFIG_BT_ISO) && type == H4_ISO) {
-			buf = bt_buf_get_rx(BT_BUF_ISO_IN, K_FOREVER);
-			if (buf == NULL)
-				break;
-
-			data_len = hdr.iso.len;
-			bt_buf_set_type(buf, BT_BUF_ISO_IN);
-			memcpy(buf->data, &hdr, hdr_len);
-		} else
-			break;
-
-
-		if (data_len + hdr_len > buf->size) {
-			net_buf_unref(buf);
-			continue;
 		}
 
-		ret = h4_recv_data(buf->data + hdr_len, data_len);
-		if (ret != data_len)
+		if (!valid_type(type)) {
+			LOG_ERR("Invalid type received (type 0x%02x)", type);
 			break;
+		}
 
-		net_buf_add(buf, hdr_len + data_len);
+		hdr_len = hdrlen(type);
+
+		ret = h4_recv_data((uint8_t *)&hdr, hdr_len);
+		if (ret != hdr_len) {
+			LOG_ERR("Receiving hdr failed (err %d)", ret);
+			break;
+		}
+
+		data_len = get_len(&hdr, type);
+
+		buf = bt_buf_get_tx(BT_BUF_H4, K_NO_WAIT,
+				    &type, sizeof(type));
+		if (!buf) {
+			LOG_ERR("No available command buffers!");
+			break;
+		}
+
+		net_buf_add_mem(buf, &hdr, hdr_len);
+
+		ret = h4_recv_data(buf->data + hdr_len, data_len);
+		if (ret != data_len) {
+			LOG_ERR("Receiving payload failed (err %d)", ret);
+			break;
+		}
+
+		net_buf_add(buf, data_len);
 
 #ifdef CONFIG_BT_H4_DEBUG
-		h4_data_dump("BT RX", type, buf->data, hdr_len + data_len);
+		h4_data_dump("BT H4 RX", type, buf->data, hdr_len + data_len);
 #endif
-		bt_recv(buf);
+		ret = bt_send(buf);
+		if (ret) {
+			LOG_ERR("Unable to send (err %d)", ret);
+			break;
+		}
 	}
 
 	BT_ASSERT(false);
@@ -219,28 +212,24 @@ static int h4_open(void)
 {
 	int ret;
 
-	ret = file_open(&g_filep, CONFIG_BT_UART_ON_DEV_NAME, O_RDWR | O_BINARY);
-	if (ret < 0)
-		goto bail;
+	ret = file_open(&g_filep, CONFIG_BT_UART_H4_ON_DEV_NAME, O_RDWR | O_BINARY);
+	if (ret < 0) {
+		return ret;
+	}
 
-	ret = (int)k_thread_create(&rx_thread_data, rx_thread_stack,
-			K_THREAD_STACK_SIZEOF(rx_thread_stack),
-			h4_rx_thread, NULL, NULL, NULL,
+	ret = (int)k_thread_create(&tx_thread_data, tx_thread_stack,
+			K_THREAD_STACK_SIZEOF(tx_thread_stack),
+			h4_tx_thread, NULL, NULL, NULL,
 			K_PRIO_COOP(CONFIG_BT_RX_PRIO), 0, K_NO_WAIT);
 
-	if (ret < 0)
-		goto bail;
-	else
-		ret = 0;
+	if (ret < 0) {
+		file_close(&g_filep);
+		return ret;
+	}
 
-	k_thread_name_set(&rx_thread_data, "BT Driver");
+	k_thread_name_set(&tx_thread_data, "BT H4 TX");
 
 	return 0;
-
-bail:
-	file_close(&g_filep);
-
-	return ret;
 }
 
 static int h4_send(struct net_buf *buf)
@@ -248,54 +237,42 @@ static int h4_send(struct net_buf *buf)
 	uint8_t type;
 	int ret;
 
-	switch (bt_buf_get_type(buf)) {
-		case BT_BUF_ACL_OUT:
-			type = H4_ACL;
-			break;
-		case BT_BUF_CMD:
-			type = H4_CMD;
-			break;
-		case BT_BUF_ISO_OUT:
-			type = H4_ISO;
-			break;
-		default:
-			ret = -EINVAL;
-			goto bail;
-	}
-
 #ifdef CONFIG_BT_H4_DEBUG
-	h4_data_dump("BT TX", type, buf->data, buf->len);
+	h4_data_dump("BT H4 TX", buf->data[0], buf->data + 1, buf->len - 1);
 #endif
-
-	ret = h4_send_data(&type, 1);
-	if (ret != 1) {
-		ret = -EINVAL;
-	}
 
 	ret = h4_send_data(buf->data, buf->len);
 	if (ret != buf->len) {
 		ret = -EINVAL;
 	}
 
-bail:
 	net_buf_unref(buf);
 
 	return ret < 0 ? ret : 0;
 }
 
-static struct bt_hci_driver driver = {
-	.name   = "H:4",
-	.bus    = BT_HCI_DRIVER_BUS_UART,
-	.open   = h4_open,
-	.send   = h4_send,
-#if defined(CONFIG_BT_QUIRK_NO_RESET)
-	.quirks = BT_QUIRK_NO_RESET,
-#endif
-};
-
-static int bt_uart_init(const struct device *dev)
+int main(int argc, char *argv[])
 {
-	return bt_hci_driver_register(&driver);
-}
+	static K_FIFO_DEFINE(rx_queue);
+	int err;
 
-SYS_INIT(bt_uart_init, PRE_KERNEL_1, CONFIG_KERNEL_INIT_PRIORITY_OBJECTS);
+	/* Enable the raw interface, this will in turn open the HCI driver */
+	bt_enable_raw(&rx_queue);
+	
+	err = h4_open();
+	if (err) {
+		LOG_ERR("bt tx open failed (err %d)", err);
+		return err;
+    	}
+
+	while(true) {
+		struct net_buf *buf;
+
+		buf = net_buf_get(&rx_queue, K_FOREVER);
+
+		err = h4_send(buf);
+		__ASSERT_NO_MSG(err == 0);
+	}
+
+    	return 0;
+}
