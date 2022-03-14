@@ -401,6 +401,7 @@ extern struct k_mem_slab segs;
 extern struct k_mem_slab mslab1;
 struct k_mem_slab * const _k_mem_slab_list[] =
 {
+#if defined(CONFIG_BT_HCI_HOST)
 #if defined(CONFIG_BT_CONN)
 	&req_slab,
 	&att_slab,
@@ -410,6 +411,7 @@ struct k_mem_slab * const _k_mem_slab_list[] =
 	&loopback_buf_pool,
 	&segs,
 #endif /* CONFIG_BT_MESH */
+#endif /* CONFIG_BT_HCI_HOST */
 #if defined(CONFIG_ZTEST_MEMSLAB)
 	&mslab1,
 #endif /* CONFIG_ZTEST_MEMSLAB */

@@ -92,6 +92,47 @@ config BT_UART_ON_DEV_NAME
     This option specifies the name of UART device to be used
     for Bluetooth.
 
+
+config BT_H4_ENABLE
+  bool "Enable used with Bluetooth HCI UART"
+  depends on BT_HCI_RAW
+  help
+    Enable used with Bluetooth HCI UART
+
+if BT_H4_ENABLE
+
+config BT_UART_H4_ON_DEV_NAME
+  string "Device Name of UART Device for Bluetooth H4"
+  default "/dev/ttyS1"
+  help
+    This option specifies the name of UART device to be used
+    for Bluetooth H4.
+
+config BT_UART_H4_TX_STACK_SIZE
+  int "Size of TX Thread Stack for Bluetooth H4"
+  default 4096
+  help
+    This option specifies the size of stack to be used
+    for Bluetooth H4.
+
+config BT_RX_STACK_SIZE
+  int "Size of the receiving thread stack"
+  default 4096
+  help
+    Size of the receiving thread stack. This is the context from
+    which all event callbacks to the application occur. The
+    default value is sufficient for basic operation, but if the
+    application needs to do advanced things in its callbacks that
+    require extra stack space, this value can be increased to
+    accommodate for that.
+
+config BT_RX_PRIO
+  # Hidden option for Co-Operative Rx thread priority
+  int
+  default 7
+
+endif
+
 config BT_DEBUG_LOG_LEVEL
   int "BT Debug Log Level"
   default 6

@@ -310,6 +310,11 @@ ifneq ($(CONFIG_BT_SAMPLE),)
 
 endif
 
+ifeq ($(CONFIG_BT_H4_ENABLE),y)
+  PROGNAME += hci_uart
+  MAINSRC += port/drivers/bluetooth/hci/h4_uart.c
+endif
+
 PROGNAME += zblue
 MAINSRC  += port/drivers/bluetooth/hci/hci.c
 
