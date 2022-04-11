@@ -28,6 +28,7 @@
 #include <bluetooth/l2cap.h>
 #include <bluetooth/rfcomm.h>
 #include <bluetooth/sdp.h>
+#include "../host/hci_core.h"
 
 #include <shell/shell.h>
 #include "bt.h"
@@ -38,7 +39,7 @@ enum {
 	CMD_PERIPHERAL,
 	CMD_PERIPHERAL_CONN,
 	CMD_PERIPHERAL_CONN_TERMINATED,
-        CMD_PERIPHERAL_CANCEL_PENDING,
+	CMD_PERIPHERAL_CANCEL_PENDING,
 	CMD_CENTRAL,
 	CMD_CENTRAL_CONN,
 	CMD_CENTRAL_CONN_TERMINATED,
@@ -47,38 +48,50 @@ enum {
 
 static atomic_t states;
 
-#define MIBLE_SCAN_WIN_DEF	30
-#define MIBLE_SCAN_INT_DEF	30
+#define MIBLE_SCAN_WIN_DEF				30
+#define MIBLE_SCAN_INT_DEF				30
 
-#define BD_TEST_COUNT_DEF 1000
-#define ADV_INT_FAST_MS 20
-#define BT_ADV_SCAN_UNIT(_ms) ((_ms) * 8 / 5)
+#define BD_TEST_COUNT_DEF				250
+#define ADV_INT_FAST_MS					20
+#define ADV_INT_SLOW_MS					100
+#define BT_ADV_SCAN_UNIT(_ms)				((_ms) * 8 / 5)
 
 static uint32_t bd_count;
 static uint32_t mfg_data;
-#define BD_NAME_PREFIX	"Xiaomi-IOT"
-static uint8_t bd_name[] = BD_NAME_PREFIX"-00";
+#define BD_NAME_PREFIX					"Xiaomi-IOT"
+static uint8_t bd_name[] =				BD_NAME_PREFIX"-00";
 
 static uint16_t write_cmd_handle = 0x21;
 static void central_handler(struct k_work *work);
 static k_timeout_t central_throughput_interval = K_FOREVER;
-
 static K_WORK_DELAYABLE_DEFINE(central_work, central_handler);
+
+static uint32_t cmd_cen_disc_timeout;
+static void cmd_cen_disc_handler(struct k_work *work);
+static K_WORK_DELAYABLE_DEFINE(cmd_c_disc, cmd_cen_disc_handler);
 
 static void peripheral_handler(struct k_work *work);
 static K_WORK_DELAYABLE_DEFINE(peripheral_work, peripheral_handler);
 static k_timeout_t peripheral_throughput_interval = K_FOREVER;
+const struct bt_gatt_attr *notify_attr;
 
 static struct {
+	uint32_t connecting_count;
 	uint32_t connected_count;
+	uint32_t disconncted_count;
 	uint32_t tx_octers;
+	uint32_t tx_checksum;
 	uint32_t rx_octers;
+	uint32_t rx_checksum;
+	uint16_t reason[256];
 } central_status;
 
 static struct {
 	uint32_t connected_count;
 	uint32_t tx_octers;
+	uint32_t tx_checksum;
 	uint32_t rx_octers;
+	uint32_t rx_checksum;
 } peripheral_status;
 
 /* Custom Service Variables */
@@ -91,15 +104,41 @@ static struct bt_uuid_128 vnd_uuid = BT_UUID_INIT_128(
 static struct bt_uuid_128 vnd_ntf_uuid = BT_UUID_INIT_128(
 	BT_UUID_128_ENCODE(0x12345678, 0x1234, 0x5678, 0x1234, 0x56789abcdef1));
 
-#define VND_MAX_LEN 18
+#define VND_MAX_LEN (MIN(BT_L2CAP_RX_MTU, BT_L2CAP_TX_MTU) - 4)
 
-static uint8_t vnd_value[VND_MAX_LEN + 1] = { 'V', 'e', 'n', 'd', 'o', 'r'};
+static uint8_t vnd_value[] = { 'V', 'e', 'n', 'd', 'o', 'r', '\0'};
 static uint8_t vnd_wwr_value[VND_MAX_LEN + 1] = { 'V', 'e', 'n', 'd', 'o', 'r' };
 
-static void update_beacon_handler(struct k_work *work);
-static K_WORK_DELAYABLE_DEFINE(update_beacon, update_beacon_handler);
-static int update_beacon_interval = ADV_INT_FAST_MS;
+static void adv_timeout_handler(struct k_work *work);
+static K_WORK_DELAYABLE_DEFINE(adv_timeout, adv_timeout_handler);
 
+static uint32_t cmd_peri_disc_timeout;
+static void cmd_peri_disc_handler(struct k_work *work);
+static K_WORK_DELAYABLE_DEFINE(cmd_per_disc, cmd_peri_disc_handler);
+
+static uint32_t crc32_ieee_update(uint32_t crc, const uint8_t *data, size_t len)
+{
+	/* crc table generated from polynomial 0xedb88320 */
+	static const uint32_t table[16] = {
+		0x00000000, 0x1db71064, 0x3b6e20c8, 0x26d930ac,
+		0x76dc4190, 0x6b6b51f4, 0x4db26158, 0x5005713c,
+		0xedb88320, 0xf00f9344, 0xd6d6a3e8, 0xcb61b38c,
+		0x9b64c2b0, 0x86d3d2d4, 0xa00ae278, 0xbdbdf21c,
+	};
+
+	crc = ~crc;
+
+	for (size_t i = 0; i < len; i++) {
+		uint8_t byte = data[i];
+
+		crc = (crc >> 4) ^ table[(crc ^ byte) & 0x0f];
+		crc = (crc >> 4) ^ table[(crc ^ ((uint32_t)byte >> 4)) & 0x0f];
+	}
+
+	return (~crc);
+}
+
+#if defined(CONFIG_BT_PERIPHERAL)
 static ssize_t read_vnd(struct bt_conn *conn, const struct bt_gatt_attr *attr,
 			void *buf, uint16_t len, uint16_t offset)
 {
@@ -147,7 +186,8 @@ static ssize_t write_without_rsp_vnd(struct bt_conn *conn,
 	}
 
 	peripheral_status.rx_octers += len;
-
+	peripheral_status.rx_checksum += crc32_ieee_update(peripheral_status.rx_checksum,
+							   buf, len);
 	memcpy(value + offset, buf, len);
 	value[offset + len] = 0;
 
@@ -167,6 +207,7 @@ BT_GATT_SERVICE_DEFINE(mible_svc,
 			       BT_GATT_PERM_WRITE, NULL,
 			       write_without_rsp_vnd, &vnd_wwr_value),
 );
+#endif
 
 static const struct bt_data ad[] = {
 	BT_DATA_BYTES(BT_DATA_FLAGS, BT_LE_AD_NO_BREDR),
@@ -174,56 +215,66 @@ static const struct bt_data ad[] = {
 	BT_DATA(BT_DATA_MANUFACTURER_DATA, &mfg_data, sizeof(mfg_data)),
 };
 
-static void update_beacon_handler(struct k_work *work)
+static void adv_timeout_handler(struct k_work *work)
 {
 	int err;
-	struct k_work_delayable *d_work;
 
 	if (!atomic_test_bit(&states, CMD_BROADCAST)) {
 		return;
 	}
 
-	if (mfg_data++ > bd_count) {
-		err = bt_le_adv_stop();
-		if (err) {
-			shell_error(ctx_shell, "Unable to stop advertiser (err %d)", err);
-		}
-
-		atomic_clear_bit(&states, CMD_BROADCAST);
-
-		mfg_data = 0;
-
-		shell_print(ctx_shell, "Broadcaster test completed");
-		return;
-	}
-
-	err = bt_le_adv_update_data(ad, ARRAY_SIZE(ad), NULL, 0);
+	err = bt_le_adv_stop();
 	if (err) {
-		shell_error(ctx_shell, "Unable to update data err:%d", err);
-		return;
+		shell_error(ctx_shell, "Unable to stop advertiser (err %d)", err);
 	}
 
-	d_work = CONTAINER_OF(work, struct k_work_delayable, work);
-	k_work_reschedule(d_work, K_MSEC(update_beacon_interval));
+	atomic_clear_bit(&states, CMD_BROADCAST);
+
+	shell_print(ctx_shell, "Broadcaster test completed");
 }
 
 static void central_device_found(const bt_addr_le_t *addr, int8_t rssi, uint8_t type,
 			         struct net_buf_simple *ad);
+
+static uint8_t bt_gatt_notify_func(struct bt_conn *conn,
+				   struct bt_gatt_subscribe_params *params,
+				   const void *data, uint16_t length)
+{
+	central_status.rx_octers += length;
+	central_status.rx_checksum += crc32_ieee_update(central_status.rx_checksum,
+							data, length);
+
+	return BT_GATT_ITER_CONTINUE;
+}
 
 static struct bt_conn *peripheral_conn;
 static struct bt_conn *central_conn;
 static void le_connected(struct bt_conn *conn, uint8_t err)
 {
 	int ret;
+	char buffer[BT_ADDR_LE_STR_LEN];
 	struct bt_conn_info info;
 	struct bt_le_scan_param param = {
 		.type = BT_LE_SCAN_TYPE_ACTIVE,
 		.interval = BT_ADV_SCAN_UNIT(MIBLE_SCAN_INT_DEF),
 		.window = BT_ADV_SCAN_UNIT(MIBLE_SCAN_WIN_DEF),
 	};
+	static struct bt_gatt_subscribe_params params;
+
+	params.notify = bt_gatt_notify_func;
+	params.value = 0x0001;
+	params.value_handle = bt_gatt_attr_get_handle(notify_attr);
+	params.ccc_handle = params.value_handle + 1;
 
 	if (err) {
+		if (!IS_ENABLED(CONFIG_BT_CENTRAL)) {
+			return;
+		}
+
 		shell_error(ctx_shell, "Failed to connect (%u)\n", err);
+
+		central_status.reason[err]++;
+		central_status.disconncted_count++;
 
 		if (central_conn) {
 			bt_conn_unref(central_conn);
@@ -246,8 +297,18 @@ static void le_connected(struct bt_conn *conn, uint8_t err)
 		return;
 	}
 
+
 	bt_conn_get_info(conn, &info);
-	if (info.role == BT_CONN_ROLE_SLAVE) {
+	bt_addr_le_to_str(info.le.dst, buffer, sizeof(buffer));
+
+	shell_print(ctx_shell, "%s connected with %s",
+		    info.role == BT_CONN_ROLE_PERIPHERAL ? "Peripheral" : "Central", buffer);
+
+	if (info.role == BT_CONN_ROLE_PERIPHERAL) {
+		if (!IS_ENABLED(CONFIG_BT_PERIPHERAL)) {
+			return;
+		}
+
 		peripheral_conn = bt_conn_ref(conn);
 		peripheral_status.connected_count++;
 		atomic_set_bit(&states, CMD_PERIPHERAL_CONN);
@@ -255,10 +316,21 @@ static void le_connected(struct bt_conn *conn, uint8_t err)
 		return;
 	}
 
+	if (!IS_ENABLED(CONFIG_BT_CENTRAL)) {
+		return;
+	}
+
 	central_status.connected_count++;
 	atomic_set_bit(&states, CMD_CENTRAL_CONN);
 
-	k_work_reschedule(&central_work, central_throughput_interval);
+
+#if defined(CONFIG_BT_GATT_CLIENT)
+	bt_gatt_subscribe(conn, &params);
+#endif
+
+	if (IS_ENABLED(CONFIG_BT_GATT_CLIENT)) {
+		k_work_reschedule(&central_work, central_throughput_interval);
+	}
 }
 
 static void le_disconnected(struct bt_conn *conn, uint8_t reason)
@@ -272,7 +344,11 @@ static void le_disconnected(struct bt_conn *conn, uint8_t reason)
 	};
 
 	bt_conn_get_info(conn, &info);
-	if (info.role == BT_CONN_ROLE_SLAVE) {
+	if (info.role == BT_CONN_ROLE_PERIPHERAL) {
+		if (!IS_ENABLED(CONFIG_BT_PERIPHERAL)) {
+			return;
+		}
+
 		if (peripheral_conn) {
 			bt_conn_unref(peripheral_conn);
 			peripheral_conn = NULL;
@@ -289,6 +365,13 @@ static void le_disconnected(struct bt_conn *conn, uint8_t reason)
                 atomic_clear_bit(&states, CMD_PERIPHERAL_CANCEL_PENDING);
 		return;
 	}
+
+	if (!IS_ENABLED(CONFIG_BT_CENTRAL)) {
+		return;
+	}
+
+	central_status.reason[reason]++;
+	central_status.disconncted_count++;
 
 	bt_conn_unref(central_conn);
 	central_conn = NULL;
@@ -311,35 +394,30 @@ static struct bt_conn_cb conn_cb = {
 	.disconnected = le_disconnected,
 };
 
-static uint8_t find_next(const struct bt_gatt_attr *attr, uint16_t handle,
-			 void *user_data)
+#if defined(CONFIG_BT_EXT_ADV)
+struct bt_le_ext_adv *advs[CONFIG_BT_EXT_ADV_MAX_ADV_SET];
+
+static void ext_adv_sent(struct bt_le_ext_adv *instance,
+			 struct bt_le_ext_adv_sent_info *info)
 {
-	struct bt_gatt_attr **next = user_data;
+	shell_print(ctx_shell, "Broadcaster set terminated");
 
-	*next = (struct bt_gatt_attr *)attr;
+	for (int i = 1; i < CONFIG_BT_EXT_ADV_MAX_ADV_SET; i++) {
+		if (atomic_test_bit(advs[i]->flags, BT_ADV_ENABLED)) {
+			return;
+		}
+	}
 
-	return BT_GATT_ITER_STOP;
+	atomic_clear_bit(&states, CMD_BROADCAST);
+
+	shell_print(ctx_shell, "Broadcaster test completed");
 }
-
-static struct bt_gatt_attr *bt_gatt_find_by_uuid(const struct bt_gatt_attr *attr,
-					  uint16_t attr_count,
-					  const struct bt_uuid *uuid)
-{
-	struct bt_gatt_attr *found = NULL;
-	uint16_t start_handle = bt_gatt_attr_value_handle(attr);
-	uint16_t end_handle = start_handle && attr_count ?
-			      start_handle + attr_count : 0xffff;
-
-	bt_gatt_foreach_attr_type(start_handle, end_handle, uuid, NULL, 1,
-				  find_next, &found);
-
-	return found;
-}
+#endif
 
 static int cmd_init(const struct shell *shell, size_t argc, char *argv[])
 {
 	int err;
-	struct bt_gatt_attr *vnd_ntf_attr, *vnd_cmd_attr;
+	const struct bt_gatt_attr *vnd_ntf_attr, *vnd_cmd_attr;
 
 	err = bt_enable(NULL);
 	if (err) {
@@ -348,17 +426,33 @@ static int cmd_init(const struct shell *shell, size_t argc, char *argv[])
 
 	ctx_shell = shell;
 
-	vnd_ntf_attr = bt_gatt_find_by_uuid(mible_svc.attrs, mible_svc.attr_count,
-					    &vnd_ntf_uuid.uuid);
-	shell_print(shell, "Notify VND handle 0x%04x",
-		    bt_gatt_attr_get_handle(vnd_ntf_attr));
+#if defined(CONFIG_BT_EXT_ADV)
+	static const struct bt_le_ext_adv_cb adv_cb = {
+		.sent = ext_adv_sent,
+	};
 
-	vnd_cmd_attr = bt_gatt_find_by_uuid(mible_svc.attrs, mible_svc.attr_count,
-					    &vnd_write_cmd_uuid.uuid);
-	shell_print(shell, "Write Command VND handle 0x%04x",
-		    bt_gatt_attr_get_handle(vnd_cmd_attr));
+	struct bt_le_adv_param adv_param = {
+		.id = BT_ID_DEFAULT,
+		.interval_min = BT_ADV_SCAN_UNIT(ADV_INT_FAST_MS),
+		.interval_max = BT_ADV_SCAN_UNIT(ADV_INT_FAST_MS),
+	};
+
+	for (int i = 1; i < CONFIG_BT_EXT_ADV_MAX_ADV_SET; i++) {
+		err = bt_le_ext_adv_create(&adv_param, &adv_cb, &advs[i]);
+		if (err) {
+			return err;
+		}
+	}
+#endif
+
+#if defined(CONFIG_BT_CONN)
+	vnd_cmd_attr = &mible_svc.attrs[5];
+	write_cmd_handle = bt_gatt_attr_get_handle(vnd_cmd_attr);
+
+	vnd_ntf_attr = notify_attr = &mible_svc.attrs[2];
 
 	bt_conn_cb_register(&conn_cb);
+#endif
 
 	shell_print(shell, "Bluetooth initialized");
 
@@ -385,13 +479,25 @@ static int cmd_broadcast(const struct shell *shell, size_t argc, char *argv[])
 			return 0;
 		}
 
+#if defined(CONFIG_BT_EXT_ADV)
+		for (int i = 1; i < CONFIG_BT_EXT_ADV_MAX_ADV_SET; i++) {
+			if (!atomic_test_bit(advs[i]->flags, BT_ADV_ENABLED)) {
+				continue;
+			}
+
+			err = bt_le_ext_adv_stop(advs[i]);
+			if (err) {
+				shell_error(shell, "Unable to stop advertiser (err %d)", err);
+			}
+		}
+#else
 		err = bt_le_adv_stop();
 		if (err) {
 			shell_error(shell, "Unable to stop advertiser (err %d)", err);
 		}
 
-		mfg_data = 0;
-		k_work_cancel_delayable(&update_beacon);
+		k_work_cancel_delayable(&adv_timeout);
+#endif
 
 		shell_print(shell, "Stoped");
 
@@ -413,6 +519,7 @@ static int cmd_broadcast(const struct shell *shell, size_t argc, char *argv[])
 		}
 	}
 
+#if !defined(CONFIG_BT_EXT_ADV)
 	if (atomic_test_bit(&states, CMD_PERIPHERAL)) {
 		if (!atomic_test_bit(&states, CMD_PERIPHERAL_CONN)) {
 			shell_error(shell, "Busy peripheral advertising");
@@ -422,12 +529,36 @@ static int cmd_broadcast(const struct shell *shell, size_t argc, char *argv[])
 			return 0;
 		}
 	}
+#endif
 
 	if (atomic_test_and_set_bit(&states, CMD_BROADCAST)) {
 		shell_error(shell, "Busy");
 		return 0;
 	}
 
+#if defined(CONFIG_BT_EXT_ADV)
+	struct bt_le_ext_adv_start_param ext_params = {
+		.num_events = bd_count,
+	};
+
+	for (int i = 1; i < CONFIG_BT_EXT_ADV_MAX_ADV_SET; i++) {
+		bd_name[sizeof(bd_name) - 3] = (uint8_t)'0' + ((i & 0xf0) >> 4);
+		bd_name[sizeof(bd_name) - 2] = (uint8_t)'0' + (i & 0x0f);
+
+		err = bt_le_ext_adv_set_data(advs[i], ad, ARRAY_SIZE(ad), NULL, 0);
+		if (err) {
+			shell_error(ctx_shell, "Failed setting adv data: %d", err);
+			return err;
+		}
+
+		err = bt_le_ext_adv_start(advs[i], &ext_params);
+		if (err) {
+			shell_error(ctx_shell, "Advertising failed: err %d", err);
+		}
+
+		ext_params.num_events += 1;
+	}
+#else
 	param.id = BT_ID_DEFAULT;
 	param.interval_min = BT_ADV_SCAN_UNIT(ADV_INT_FAST_MS);
 	param.interval_max = param.interval_min;
@@ -439,9 +570,9 @@ static int cmd_broadcast(const struct shell *shell, size_t argc, char *argv[])
 		return 0;
 	}
 
+	k_work_reschedule(&adv_timeout, K_MSEC((ADV_INT_FAST_MS + 5) * bd_count));
+#endif
 	shell_print(shell, "Broadcaster started with cycles %d", bd_count);
-
-	k_work_reschedule(&update_beacon, K_MSEC(ADV_INT_FAST_MS));
 
 	return 0;
 }
@@ -454,13 +585,7 @@ static int cmd_broadcast_id(const struct shell *shell, size_t argc, char *argv[]
 	bd_name[sizeof(bd_name) - 3] = (uint8_t)'0' + ((id & 0xf0) >> 4);
 	bd_name[sizeof(bd_name) - 2] = (uint8_t)'0' + (id & 0x0f);
 
-	if (argc > 2) {
-		update_beacon_interval = strtoul(argv[2], NULL, 10);
-	}
-
 	shell_print(shell, "Broadcaster id set successfully");
-
-	k_work_reschedule(&update_beacon, K_MSEC(update_beacon_interval));
 
 	return 0;
 }
@@ -568,31 +693,38 @@ static int cmd_observer(const struct shell *shell, size_t argc, char *argv[])
 	shell_print(shell, "Scanning successfully started with win/int = %d/%d(ms)",
 		    window, interval);
 
-	k_work_reschedule(&update_beacon, K_MSEC(update_beacon_interval));
-
 	return 0;
 }
 
 static void peripheral_notify_cb(struct bt_conn *conn, void *user_data)
 {
-	peripheral_status.tx_octers += ARRAY_SIZE(vnd_wwr_value);
+	const uint16_t *mtu = user_data;
+
+	peripheral_status.tx_octers += *mtu;
+	peripheral_status.tx_checksum += crc32_ieee_update(peripheral_status.tx_checksum,
+							   vnd_wwr_value, *mtu);
 	k_work_reschedule(&peripheral_work, peripheral_throughput_interval);
 }
 
 static void peripheral_handler(struct k_work *work)
 {
 	int err;
+	static uint16_t mtu;
+
 	struct bt_gatt_notify_params params = {
 		.data = vnd_wwr_value,
-		.len = ARRAY_SIZE(vnd_wwr_value),
 		.func = peripheral_notify_cb,
+		.user_data = &mtu,
 	};
 
-	params.attr = &mible_svc.attrs[2];
+	params.attr = notify_attr;
 
 	if (!peripheral_conn) {
 		return;
 	}
+
+	mtu = bt_gatt_get_mtu(peripheral_conn) - 4;
+	params.len = mtu;
 
 	err = bt_gatt_notify_cb(peripheral_conn, &params);
 	if (err && err != -ENOTCONN) {
@@ -636,19 +768,25 @@ static int cmd_peripheral(const struct shell *shell, size_t argc, char *argv[])
                         atomic_set_bit(&states, CMD_PERIPHERAL_CANCEL_PENDING);
 		}
 
+		(void)k_work_cancel_delayable(&cmd_per_disc);
+
 		shell_print(shell, "Stoped");
 
 		return 0;
 	}
 
-	if (atomic_test_bit(&states, CMD_BROADCAST) ||
+	if ((!IS_ENABLED(CONFIG_BT_EXT_ADV) &&
+	     atomic_test_bit(&states, CMD_BROADCAST)) ||
 	    atomic_test_and_set_bit(&states, CMD_PERIPHERAL)) {
 		shell_error(shell, "Busy");
 		return 0;
 	}
 
+	bd_name[sizeof(bd_name) - 3] = (uint8_t)'0';
+	bd_name[sizeof(bd_name) - 2] = (uint8_t)'0';
+
 	param.id = BT_ID_DEFAULT;
-	param.interval_min = BT_ADV_SCAN_UNIT(ADV_INT_FAST_MS);
+	param.interval_min = BT_ADV_SCAN_UNIT(ADV_INT_SLOW_MS);
 	param.interval_max = param.interval_min;
 	param.options = BT_LE_ADV_OPT_CONNECTABLE | BT_LE_ADV_OPT_USE_IDENTITY;
 
@@ -702,6 +840,7 @@ static void central_device_found(const bt_addr_le_t *addr, int8_t rssi, uint8_t 
 			         struct net_buf_simple *ad)
 {
 	int err;
+	char buffer[BT_ADDR_LE_STR_LEN];
 	struct bt_le_scan_param param = {
 		.type = BT_LE_SCAN_TYPE_ACTIVE,
 		.interval = BT_ADV_SCAN_UNIT(MIBLE_SCAN_INT_DEF),
@@ -749,26 +888,35 @@ static void central_device_found(const bt_addr_le_t *addr, int8_t rssi, uint8_t 
 		return;
 	}
 
-	shell_print(ctx_shell, "Try to create connection");
+	bt_addr_le_to_str(addr, buffer, sizeof(buffer));
+	shell_print(ctx_shell, "Try to create connection %s", buffer);
+
+	central_status.connecting_count++;
 }
 
 static void central_write_cmd_cb(struct bt_conn *conn, void *user_data)
 {
-	central_status.tx_octers += ARRAY_SIZE(vnd_wwr_value);
+	const uint16_t *mtu = user_data;
+	central_status.tx_octers += *mtu;
+	central_status.tx_checksum += crc32_ieee_update(central_status.tx_checksum,
+							vnd_wwr_value, *mtu);
 	k_work_reschedule(&central_work, central_throughput_interval);
 }
 
 static void central_handler(struct k_work *work)
 {
 	int err;
+	static uint16_t mtu;
 
 	if (!central_conn) {
 		return;
 	}
 
+	mtu = bt_gatt_get_mtu(central_conn) - 4;
+
 	err = bt_gatt_write_without_response_cb(central_conn, write_cmd_handle,
-					        vnd_wwr_value, ARRAY_SIZE(vnd_wwr_value),
-						false, central_write_cmd_cb, NULL);
+					        vnd_wwr_value, mtu,
+						false, central_write_cmd_cb, &mtu);
 	if (err && err != -ENOTCONN) {
 		shell_error(ctx_shell, "Unable send write command (err %d)", err);
 	}
@@ -812,6 +960,8 @@ static int cmd_central(const struct shell *shell, size_t argc, char *argv[])
 			atomic_set_bit(&states, CMD_CENTRAL_CONN_TERMINATED);
                         atomic_set_bit(&states, CMD_CENTRAL_CANCEL_PENDING);
 		}
+
+		(void)k_work_cancel_delayable(&cmd_c_disc);
 
 		shell_print(shell, "Stoped");
 
@@ -886,15 +1036,32 @@ static void cmd_show_handler(struct k_work *work)
 	}
 
         if (atomic_test_bit(&states, CMD_CENTRAL)) {
-	        shell_print(ctx_shell, "[Central]  CONN %d TX %d", 
-		            central_status.connected_count,
-			    central_status.tx_octers);
+	        shell_print(ctx_shell, "[Central]  CONNING %d CONNED %d RATE %d%% TX %d [Checksum 0x%08x] RX %d [Checksum 0x%08x]",
+		            central_status.connecting_count,central_status.connected_count,
+			    central_status.disconncted_count > 1 ?
+			    (((central_status.reason[BT_HCI_ERR_REMOTE_USER_TERM_CONN] +
+			       central_status.reason[BT_HCI_ERR_LOCALHOST_TERM_CONN]) * 100) /
+			      (central_status.disconncted_count)) :
+			    0,
+			    central_status.tx_octers, central_status.tx_checksum,
+			    central_status.rx_octers, central_status.rx_checksum);
+
+
+			for (int i = 0; i < ARRAY_SIZE(central_status.reason); i++) {
+				if (!central_status.reason[i]) {
+					continue;
+				}
+
+				shell_print(ctx_shell, "[Central] Reason 0x%02x Count %d",
+					    i, central_status.reason[i]);
+			}
         }
 
         if (atomic_test_bit(&states, CMD_PERIPHERAL)) {
-	        shell_print(ctx_shell, "[PERIPHERAL]  CONN %d TX %d RX %d", 
+	        shell_print(ctx_shell, "[PERIPHERAL]  CONN %d TX %d [Checksum 0x%08x] RX %d [Checksum 0x%08x]",
 		            peripheral_status.connected_count,
-			    peripheral_status.tx_octers, peripheral_status.rx_octers);
+			    peripheral_status.tx_octers, peripheral_status.tx_checksum,
+			    peripheral_status.rx_octers, peripheral_status.rx_checksum);
         }
 
 	if (cmd_show_timeout) {
@@ -953,10 +1120,6 @@ static int cmd_log_clear(const struct shell *shell, size_t argc, char *argv[])
 	return 0;
 }
 
-static uint32_t cmd_peri_disc_timeout;
-static void cmd_peri_disc_handler(struct k_work *work);
-static K_WORK_DELAYABLE_DEFINE(cmd_per_disc, cmd_peri_disc_handler);
-
 static void cmd_peri_disc_handler(struct k_work *work)
 {
 	int err;
@@ -967,11 +1130,12 @@ static void cmd_peri_disc_handler(struct k_work *work)
 		err = bt_conn_disconnect(peripheral_conn, 0x13);
 		if (err) {
 			shell_error(ctx_shell, "Unable to disconnect (err %d)", err);
+			return;
 		}
 
                 atomic_set_bit(&states, CMD_PERIPHERAL_CANCEL_PENDING);
 	} else {
-		shell_print(ctx_shell, "[Periodic] Peripheral not disconnected, skiped");
+		shell_print(ctx_shell, "[Periodic] Peripheral not connected, skiped");
 	}
 
 	if (cmd_peri_disc_timeout) {
@@ -999,10 +1163,6 @@ static int cmd_peripheral_periodic_disconnect(const struct shell *shell, size_t 
 	return 0;
 }
 
-static uint32_t cmd_cen_disc_timeout;
-static void cmd_cen_disc_handler(struct k_work *work);
-static K_WORK_DELAYABLE_DEFINE(cmd_c_disc, cmd_cen_disc_handler);
-
 static void cmd_cen_disc_handler(struct k_work *work)
 {
 	int err;
@@ -1010,15 +1170,19 @@ static void cmd_cen_disc_handler(struct k_work *work)
 	if (atomic_test_bit(&states, CMD_CENTRAL_CONN)) {
 		shell_print(ctx_shell, "[Periodic] Central disconnecting");
 
-		(void)k_work_cancel_delayable(&central_work);
+		if (IS_ENABLED(CONFIG_BT_GATT_CLIENT)) {
+			(void)k_work_cancel_delayable(&central_work);
+		}
+
 		err = bt_conn_disconnect(central_conn, 0x13);
 		if (err) {
 			shell_error(ctx_shell, "Unable to disconnect (err %d)", err);
+			return;
 		}
 
                 atomic_set_bit(&states, CMD_CENTRAL_CANCEL_PENDING);
 	} else {
-		shell_print(ctx_shell, "[Periodic] Central not disconnected, skiped");
+		shell_print(ctx_shell, "[Periodic] Central not connected, skiped");
 	}
 
 	if (cmd_cen_disc_timeout) {
@@ -1048,18 +1212,27 @@ static int cmd_central_periodic_disconnect(const struct shell *shell, size_t arg
 
 SHELL_STATIC_SUBCMD_SET_CREATE(mible_cmds,
 	SHELL_CMD_ARG(init, NULL, NULL, cmd_init, 1, 0),
+#if defined(CONFIG_BT_BROADCASTER)
 	SHELL_CMD_ARG(broadcast, NULL, "<value on, off> [cycles force]", cmd_broadcast, 2, 2),
-	SHELL_CMD_ARG(broadcast_id, NULL, "<id> [interval(ms)]", cmd_broadcast_id, 2, 1),
+	SHELL_CMD_ARG(broadcast_id, NULL, "<id>", cmd_broadcast_id, 2, 0),
+#endif
+#if defined(CONFIG_BT_OBSERVER)
 	SHELL_CMD_ARG(observer, NULL, "<value on, off> [window interval(ms)]", cmd_observer, 2, 2),
+#endif
+#if defined(CONFIG_BT_PERIPHERAL)
 	SHELL_CMD_ARG(peripheral, NULL, "<value on, off>", cmd_peripheral, 2, 0),
 	SHELL_CMD_ARG(peripheral_periodic_disconnect, NULL, "periodic(s)", cmd_peripheral_periodic_disconnect, 2, 0),
 	SHELL_CMD_ARG(peripheral_id, NULL, "<id>", cmd_peripheral_id, 2, 0),
 	SHELL_CMD_ARG(peripheral_throughput, NULL, "<interval(ms)>", cmd_peripheral_throughput, 2, 0),
+#endif
+#if defined(CONFIG_BT_CENTRAL)
 	SHELL_CMD_ARG(central, NULL, "<value on, off>", cmd_central, 2, 0),
 	SHELL_CMD_ARG(central_periodic_disconnect, NULL, "periodic(s)", cmd_central_periodic_disconnect, 2, 0),
 	SHELL_CMD_ARG(central_target, NULL, "<peer address> [handle]", cmd_central_target, 2, 1),
+#if defined(CONFIG_BT_GATT_CLIENT)
 	SHELL_CMD_ARG(central_throughput, NULL, "<interval(ms)>", cmd_central_throughput, 2, 0),
-
+#endif
+#endif
 	SHELL_CMD_ARG(log_show, NULL, "[periodic(s)]", cmd_log_show, 1, 1),
 	SHELL_CMD_ARG(log_clear, NULL, NULL, cmd_log_clear, 1, 0),
 	SHELL_SUBCMD_SET_END
