@@ -34,6 +34,7 @@
 
 #include <kernel.h>
 #include <net/buf.h>
+#include <bluetooth/l2cap.h>
 
 /* bt_l2cap_fixed_chan START */
 extern const struct bt_l2cap_fixed_chan att_fixed_chan;
@@ -61,6 +62,11 @@ const struct bt_l2cap_fixed_chan * const _bt_l2cap_fixed_chan_list[] =
 /* bt_gatt_service_static START */
 extern const struct bt_gatt_service_static _1_gatt_svc;
 extern const struct bt_gatt_service_static _2_gap_svc;
+extern const struct bt_gatt_service_static ascs_svc;
+extern const struct bt_gatt_service_static bass_svc;
+extern const struct bt_gatt_service_static has_svc;
+extern const struct bt_gatt_service_static pacs_svc;
+extern const struct bt_gatt_service_static gtbs_svc;
 extern const struct bt_gatt_service_static bas;
 extern const struct bt_gatt_service_static dis_svc;
 extern const struct bt_gatt_service_static hrs_svc;
@@ -76,6 +82,29 @@ const struct bt_gatt_service_static * const _bt_gatt_service_static_list[] =
 	&_2_gap_svc,
 #endif /* CONFIG_BT_CONN */
 #endif /* CONFIG_BT_HCI_HOST */
+#if defined(CONFIG_BT_AUDIO)
+#if defined(CONFIG_BT_ASCS)
+#if defined(CONFIG_BT_AUDIO_UNICAST_SERVER)
+	&ascs_svc,
+#endif /* CONFIG_BT_AUDIO_UNICAST_SERVER */
+#endif /* CONFIG_BT_ASCS */
+#if defined(CONFIG_BT_BASS)
+	&bass_svc,
+#endif /* CONFIG_BT_BASS */
+#if defined(CONFIG_BT_HAS)
+	&has_svc,
+#endif /* CONFIG_BT_HAS */
+#if defined(CONFIG_BT_PACS)
+#if defined(CONFIG_BT_PAC_SNK) || defined(CONFIG_BT_PAC_SRC)
+	&has_svc,
+#endif /* CONFIG_BT_PAC_SNK || CONFIG_BT_PAC_SRC */
+#endif /* CONFIG_BT_PACS */
+#if defined(CONFIG_BT_TBS)
+#if defined(CONFIG_BT_GTBS)
+	&gtbs_svc,
+#endif /* CONFIG_BT_GTBS */
+#endif /* CONFIG_BT_TBS */
+#endif /* CONFIG_BT_AUDIO */
 #if defined(CONFIG_BT_BAS)
 	&bas,
 #endif /* CONFIG_BT_BAS */
@@ -102,8 +131,6 @@ const struct bt_gatt_service_static * const _bt_gatt_service_static_list[] =
 /* bt_gatt_service_static END */
 
 /* net_buf_pool START */
-extern struct net_buf_pool ots_c_read_queue;
-extern struct net_buf_pool otc_l2cap_pool;
 extern struct net_buf_pool iso_rx_pool;
 extern struct net_buf_pool iso_tx_pool;
 extern struct net_buf_pool iso_frag_pool;
@@ -130,6 +157,7 @@ extern struct net_buf_pool prep_pool;
 extern struct net_buf_pool server_pool;
 extern struct net_buf_pool sdp_pool;
 extern struct net_buf_pool ot_chan_tx_pool;
+extern struct net_buf_pool ot_chan_rx_pool;
 extern struct net_buf_pool tx_pool;
 extern struct net_buf_pool bis_tx_pool;
 extern struct net_buf_pool data_tx_pool;
@@ -168,9 +196,11 @@ struct net_buf_pool * const _net_buf_pool_list[] =
 #else /* !CONFIG_BT_HCI_ACL_FLOW_CONTROL */
 	&hci_rx_pool,
 #endif /* CONFIG_BT_HCI_ACL_FLOW_CONTROL */
+#if defined(CONFIG_BT_CONN) || defined(CONFIG_BT_ISO)
+	&num_complete_pool,
+#endif /* CONFIG_BT_CONN || CONFIG_BT_ISO */
 #if defined(CONFIG_BT_CONN)
 	&acl_tx_pool,
-	&num_complete_pool,
 #if CONFIG_BT_L2CAP_TX_FRAG_COUNT > 0
 	&frag_pool,
 #endif /* CONFIG_BT_L2CAP_TX_FRAG_COUNT > 0 */
@@ -209,9 +239,14 @@ struct net_buf_pool * const _net_buf_pool_list[] =
 	&pool,
 #endif /* CONFIG_BT_RFCOMM */
 #endif /* CONFIG_BT_SHELL */
-#if defined(CONFIG_BT_OTS)
+#if defined(CONFIG_BT_CONN)
+#if defined(CONFIG_BT_OTS) || defined(CONFIG_BT_OTS_CLIENT)
 	&ot_chan_tx_pool,
-#endif /* CONFIG_BT_OTS */
+#if (CONFIG_BT_OTS_L2CAP_CHAN_RX_MTU > BT_L2CAP_SDU_RX_MTU)
+	&ot_chan_rx_pool,
+#endif /* CONFIG_BT_OTS_L2CAP_CHAN_RX_MTU > BT_L2CAP_SDU_RX_MTU */
+#endif /* CONFIG_BT_OTS || CONFIG_BT_OTS_CLIENT */
+#endif /* CONFIG_BT_CONN */
 #if defined(CONFIG_BT_RFCOMM)
 	&dummy_pool,
 #endif /* CONFIG_BT_RFCOMM */
@@ -229,12 +264,6 @@ struct net_buf_pool * const _net_buf_pool_list[] =
 	&friend_buf_pool,
 #endif /* CONFIG_BT_MESH_FRIEND */
 #endif /* CONFIG_BT_MESH */
-#if defined(CONFIG_BT_AUDIO)
-#if defined(CONFIG_BT_OTC)
-	&ots_c_read_queue,
-	&otc_l2cap_pool,
-#endif /* CONFIG_BT_OTC */
-#endif /* CONFIG_BT_AUDIO */
 	NULL
 };
 /* net_buf_pool END */
@@ -390,6 +419,13 @@ const struct shell_cmd_entry * const _shell_cmd_entry_list[] =
 #endif /* CONFIG_BT_SHELL */
 	NULL,
 };
+
+const struct shell_cmd_entry * __shell_root_cmds_start =
+		(void *)_shell_cmd_entry_list;
+
+const struct shell_cmd_entry * __shell_root_cmds_end =
+		(void *)&_shell_cmd_entry_list[ARRAY_SIZE(_shell_cmd_entry_list)];
+
 /* shell_cmd_entry END */
 
 /* k_mem_slab START */
