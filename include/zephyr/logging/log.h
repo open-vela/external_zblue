@@ -11,15 +11,8 @@
 #include <zephyr/logging/log_core.h>
 #include <zephyr/sys/iterable_sections.h>
 
-#define LOG_MODULE_REGISTER(a, ...)
-
-#undef LOG_DBG
-#undef LOG_INF
-#undef LOG_WRN
-#undef LOG_ERR
-
-#ifndef BT_DBG_ENABLED
-#define BT_DBG_ENABLED 1
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 /**
@@ -475,47 +468,24 @@ void z_log_vprintk(const char *fmt, va_list ap);
 #undef LOG_INF
 #undef LOG_DBG
 
-#define PORT_LOG_EMERG     0  /* System is unusable */
-#define PORT_LOG_ALERT     1  /* Action must be taken immediately */
-#define PORT_LOG_CRIT      2  /* Critical conditions */
-#define PORT_LOG_ERR       3  /* Error conditions */
-#define PORT_LOG_WARNING   4  /* Warning conditions */
-#define PORT_LOG_NOTICE    5  /* Normal, but significant, condition */
-#define PORT_LOG_INFO      6  /* Informational message */
-#define PORT_LOG_DEBUG     7  /* Debug-level message */
+#undef LOG_HEXDUMP_ERR
+#undef LOG_HEXDUMP_WRN
+#undef LOG_HEXDUMP_INF
+#undef LOG_HEXDUMP_DBG
 
-#define _STR(_s)	   #_s
-#define STR(s)	   	   _STR(s)
+#define LOG_ERR(...) (void) 0
+#define LOG_WRN(...) (void) 0
+#define LOG_DBG(...) (void) 0
+#define LOG_INF(...) (void) 0
 
-#if (CONFIG_BT_DEBUG_LOG_LEVEL >= PORT_LOG_DEBUG) && (BT_DBG_ENABLED)
-  #define LOG_DBG(fmt, ...) syslog(PORT_LOG_DEBUG,   "<dbg> "STR(LOG_MODULE_NAME)": "fmt"\n", ##__VA_ARGS__)
-#else
-  #define LOG_DBG(fmt, ...)
+#define LOG_HEXDUMP_ERR(...) (void) 0
+#define LOG_HEXDUMP_WRN(...) (void) 0
+#define LOG_HEXDUMP_DBG(...) (void) 0
+#define LOG_HEXDUMP_INF(...) (void) 0
 #endif
 
-#if (CONFIG_BT_DEBUG_LOG_LEVEL >= PORT_LOG_INFO)
-  #define LOG_INF(fmt, ...) syslog(PORT_LOG_INFO,    "<inf> "STR(LOG_MODULE_NAME)": "fmt"\n", ##__VA_ARGS__)
-#else
-  #define LOG_INF(fmt, ...)
-#endif
-
-#if (CONFIG_BT_DEBUG_LOG_LEVEL >= PORT_LOG_WARNING)
-  #define LOG_WRN(fmt, ...) syslog(PORT_LOG_WARNING, "<wrn> "STR(LOG_MODULE_NAME)": "fmt"\n", ##__VA_ARGS__)
-#else
-  #define LOG_WRN(fmt, ...)
-#endif
-
-#if (CONFIG_BT_DEBUG_LOG_LEVEL >= PORT_LOG_ERR)
-  #define LOG_ERR(fmt, ...) syslog(PORT_LOG_ERR,     "<err> "STR(LOG_MODULE_NAME)": "fmt"\n", ##__VA_ARGS__)
-#else
-  #define LOG_ERR(fmt, ...)
-#endif
-
-#define LOG_HEXDUMP_DBG(_data, _length, _str)
-
-static inline char *log_strdup(const char *str)
-{
-	return (char *)str;
-}
+/**
+ * @}
+ */
 
 #endif /* ZEPHYR_INCLUDE_LOGGING_LOG_H_ */

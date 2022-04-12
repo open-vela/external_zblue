@@ -74,6 +74,7 @@ extern const struct bt_gatt_service_static tps_svc;
 extern const struct bt_gatt_service_static cts_cvs;
 extern const struct bt_gatt_service_static vnd_svc;
 extern const struct bt_gatt_service_static mible_svc;
+extern const struct bt_gatt_service_static mible_lib_svc;
 const struct bt_gatt_service_static * const _bt_gatt_service_static_list[] =
 {
 #if defined(CONFIG_BT_HCI_HOST)
@@ -126,6 +127,9 @@ const struct bt_gatt_service_static * const _bt_gatt_service_static_list[] =
 	&mible_svc,
 #endif /*CONFIG_BT_MIBLE_TEST*/
 #endif /* CONFIG_BT_SAMPLE */
+#if defined(CONFIG_MI_MESH_APP)
+	&mible_lib_svc,
+#endif /* CONFIG_MI_MESH_APP */
 	NULL
 };
 /* bt_gatt_service_static END */
@@ -435,6 +439,8 @@ extern struct k_mem_slab chan_slab;
 extern struct k_mem_slab loopback_buf_pool;
 extern struct k_mem_slab segs;
 extern struct k_mem_slab mslab1;
+extern struct k_mem_slab mible_tasks;
+extern struct k_mem_slab mible_timers;
 struct k_mem_slab * const _k_mem_slab_list[] =
 {
 #if defined(CONFIG_BT_HCI_HOST)
@@ -451,6 +457,10 @@ struct k_mem_slab * const _k_mem_slab_list[] =
 #if defined(CONFIG_ZTEST_MEMSLAB)
 	&mslab1,
 #endif /* CONFIG_ZTEST_MEMSLAB */
+#if defined(CONFIG_MI_MESH_APP)
+	&mible_tasks,
+	&mible_timers,
+#endif /* CONFIG_MI_MESH_APP */
 	NULL,
 };
 /* k_mem_slab END */
@@ -553,12 +563,18 @@ const struct bt_mesh_lpn_cb * const _bt_mesh_lpn_cb_list[] =
 /* kernel START */
 extern const struct init_entry __init_sys_init_init_mem_slab_module;
 extern const struct init_entry __init_sys_init_bt_uart_init;
+extern const struct init_entry __init_sys_init_bt_userchan_init;
 extern const struct init_entry __init_sys_init_k_sys_work_q_init;
 const struct init_entry * const _init_entry_list[] =
 {
 	&__init_sys_init_init_mem_slab_module,
 #if defined(CONFIG_BT_HCI)
+#if defined(CONFIG_BT_H4)
 	&__init_sys_init_bt_uart_init,
+#endif
+#if defined(CONFIG_ARCH_SIM)
+	&__init_sys_init_bt_userchan_init,
+#endif
 #endif /* CONFIG_BT_HCI */
 #if defined(CONFIG_ZEPHYR_WORK_QUEUE)
 	&__init_sys_init_k_sys_work_q_init,
@@ -576,6 +592,7 @@ extern const struct bt_conn_cb bt_conn_cb_pb_gatt_srv;
 extern const struct bt_conn_cb bt_conn_cb_proxy_srv;
 extern const struct bt_conn_cb bt_conn_cb_ots;
 extern const struct bt_conn_cb bt_conn_cb_l2cap;
+extern const struct bt_conn_cb bt_conn_cb_mible_api;
 const struct bt_conn_cb * const _bt_conn_cb_list[] =
 {
 #if defined(CONFIG_BT_SAMPLE)
@@ -607,6 +624,9 @@ const struct bt_conn_cb * const _bt_conn_cb_list[] =
 	&bt_conn_cb_l2cap,
 #endif /* CONFIG_BT_L2CAP_DYNAMIC_CHANNEL */
 #endif /* CONFIG_BT_SHELL */
+#if defined(CONFIG_MI_MESH_APP)
+	&bt_conn_cb_mible_api,
+#endif /* CONFIG_MI_MESH_APP */
 	NULL,
 };
 /* bt_conn_cb END */

@@ -233,8 +233,6 @@ ifeq ($(CONFIG_BT_TESTER),y)
   CSRCS += port/drivers/console/uart_pipe.c
   CSRCS += port/tests/bluetooth/tester/src/system.c
 
-  CSRCS += port/subsys/power/reboot.c
-
   MAINSRC  += tests/bluetooth/tester/src/main.c
   PROGNAME += bttester
 
@@ -280,11 +278,6 @@ CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" subsys/bluetooth/services}
 CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" subsys/bluetooth/mesh}
 CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" subsys/bluetooth/common}
 CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" $(APPDIR)/external/tinycrypt/lib/include}
-
-ifeq ($(CONFIG_ARCH_SIM),y)
-  CFLAGS += -O2 -fno-strict-aliasing
-  CFLAGS += -ffunction-sections -fdata-sections
-endif
 
 ifneq ($(CONFIG_BT_SAMPLE),)
   ifneq ($(CONFIG_BT_SAMPLE_PERIPHERAL),)
