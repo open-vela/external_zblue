@@ -158,6 +158,18 @@ config BT_H4
     Bluetooth H:4 UART driver. Requires hardware flow control
     lines to be available.
 
+config BT_USERCHAN
+  bool
+  default y if ARCH_SIM
+
+config BT_HCI_DEVID
+  int "Bluetooth Device ID"
+  default 0
+  depends on BT_USERCHAN
+  help
+    Attached the local bluetooth device use specific
+    Bluetooth HCI number id.
+
 if BT_H4
 
 config BT_H4_DEBUG
