@@ -59,7 +59,7 @@ static int nxthread_create(FAR const char *name, uint8_t ttype, int priority,
 
 	ttcb->cmn.flags = ttype;
 
-	ret = nxtask_init(ttcb, name, priority, stack, stack_size, entry, argv);
+	ret = nxtask_init(ttcb, name, priority, stack, stack_size, entry, argv, NULL);
 	if (ret < OK) {
 		kmm_free(ttcb);
 		return ret;
@@ -157,7 +157,7 @@ k_tid_t k_thread_create(struct k_thread *new_thread,
 	argv[2] = NULL;
 
 	ret = nxthread_create("zephyr", TCB_FLAG_TTYPE_KERNEL, prio,
-			      stack, stack_size, k_thread_main, (FAR char * const *)argv);
+			      stack, stack_size, k_thread_main, (FAR char * const *)argv, NULL);
 	if (ret < 0) {
 		kmm_free(_main);
 		return (k_tid_t)-1;
@@ -188,6 +188,10 @@ static void *k_thread_main(void * args)
 	sched_getparam(0, &param);
 	sched_setscheduler(0, SCHED_FIFO, &param);
 
+#if CONFIG_BT_THREAD_NO_PREEM
+	sched_lock();
+#endif /* CONFIG_BT_THREAD_NO_PREEM */
+
 	((k_thread_entry_t)_argv[0])(_argv[1], _argv[2], _argv[3]);
 	return NULL;
 }
@@ -201,6 +205,9 @@ k_tid_t k_thread_create(struct k_thread *new_thread,
 	k_thread_main_t *_main;
 	pthread_attr_t pattr;
 	pthread_t pid;
+	struct sched_param param = {
+		.sched_priority = prio,
+	};
 	int ret;
 
 	_main = kmm_malloc(sizeof(*_main));
@@ -214,6 +221,7 @@ k_tid_t k_thread_create(struct k_thread *new_thread,
 
 	pthread_attr_init(&pattr);
 	pthread_attr_setstack(&pattr, stack, stack_size);
+	pthread_attr_setschedparam(&pattr, &param);
 
 	ret = pthread_create(&pid, &pattr, k_thread_main, _main);
 	pthread_attr_destroy(&pattr);

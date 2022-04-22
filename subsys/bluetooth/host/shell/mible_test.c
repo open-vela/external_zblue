@@ -63,7 +63,7 @@ static uint8_t bd_name[] =				BD_NAME_PREFIX"-00";
 
 static uint16_t write_cmd_handle = 0x21;
 static void central_handler(struct k_work *work);
-static k_timeout_t central_throughput_interval = K_FOREVER;
+static k_timeout_t central_throughput_interval;
 static K_WORK_DELAYABLE_DEFINE(central_work, central_handler);
 
 static uint32_t cmd_cen_disc_timeout;
@@ -72,7 +72,7 @@ static K_WORK_DELAYABLE_DEFINE(cmd_c_disc, cmd_cen_disc_handler);
 
 static void peripheral_handler(struct k_work *work);
 static K_WORK_DELAYABLE_DEFINE(peripheral_work, peripheral_handler);
-static k_timeout_t peripheral_throughput_interval = K_FOREVER;
+static k_timeout_t peripheral_throughput_interval;
 const struct bt_gatt_attr *notify_attr;
 
 static struct {
@@ -344,6 +344,10 @@ static void le_disconnected(struct bt_conn *conn, uint8_t reason)
 	};
 
 	bt_conn_get_info(conn, &info);
+
+	shell_print(ctx_shell, "%s disconnected (reason 0x%02x)",
+		    info.role == BT_CONN_ROLE_PERIPHERAL ? "Peripheral" : "Central", reason);
+
 	if (info.role == BT_CONN_ROLE_PERIPHERAL) {
 		if (!IS_ENABLED(CONFIG_BT_PERIPHERAL)) {
 			return;
@@ -425,6 +429,9 @@ static int cmd_init(const struct shell *shell, size_t argc, char *argv[])
 	}
 
 	ctx_shell = shell;
+
+	central_throughput_interval = K_FOREVER;
+	peripheral_throughput_interval = K_FOREVER;
 
 #if defined(CONFIG_BT_EXT_ADV)
 	static const struct bt_le_ext_adv_cb adv_cb = {

@@ -127,9 +127,9 @@ const struct bt_gatt_service_static * const _bt_gatt_service_static_list[] =
 	&mible_svc,
 #endif /*CONFIG_BT_MIBLE_TEST*/
 #endif /* CONFIG_BT_SAMPLE */
-#if defined(CONFIG_MI_MESH_APP)
+#if defined(CONFIG_MIBLE_SDK)
 	&mible_lib_svc,
-#endif /* CONFIG_MI_MESH_APP */
+#endif /* CONFIG_MIBLE_SDK */
 	NULL
 };
 /* bt_gatt_service_static END */
@@ -457,10 +457,10 @@ struct k_mem_slab * const _k_mem_slab_list[] =
 #if defined(CONFIG_ZTEST_MEMSLAB)
 	&mslab1,
 #endif /* CONFIG_ZTEST_MEMSLAB */
-#if defined(CONFIG_MI_MESH_APP)
+#if defined(CONFIG_MIBLE_SDK)
 	&mible_tasks,
 	&mible_timers,
-#endif /* CONFIG_MI_MESH_APP */
+#endif /* CONFIG_MIBLE_SDK */
 	NULL,
 };
 /* k_mem_slab END */
@@ -564,6 +564,7 @@ const struct bt_mesh_lpn_cb * const _bt_mesh_lpn_cb_list[] =
 extern const struct init_entry __init_sys_init_init_mem_slab_module;
 extern const struct init_entry __init_sys_init_bt_uart_init;
 extern const struct init_entry __init_sys_init_bt_userchan_init;
+extern const struct init_entry __init_sys_init_bt_native_init;
 extern const struct init_entry __init_sys_init_k_sys_work_q_init;
 const struct init_entry * const _init_entry_list[] =
 {
@@ -574,6 +575,9 @@ const struct init_entry * const _init_entry_list[] =
 #endif
 #if defined(CONFIG_ARCH_SIM)
 	&__init_sys_init_bt_userchan_init,
+#endif
+#if defined(CONFIG_BT_NATIVE)
+	&__init_sys_init_bt_native_init,
 #endif
 #endif /* CONFIG_BT_HCI */
 #if defined(CONFIG_ZEPHYR_WORK_QUEUE)
@@ -624,9 +628,9 @@ const struct bt_conn_cb * const _bt_conn_cb_list[] =
 	&bt_conn_cb_l2cap,
 #endif /* CONFIG_BT_L2CAP_DYNAMIC_CHANNEL */
 #endif /* CONFIG_BT_SHELL */
-#if defined(CONFIG_MI_MESH_APP)
+#if defined(CONFIG_MIBLE_SDK)
 	&bt_conn_cb_mible_api,
-#endif /* CONFIG_MI_MESH_APP */
+#endif /* CONFIG_MIBLE_SDK */
 	NULL,
 };
 /* bt_conn_cb END */

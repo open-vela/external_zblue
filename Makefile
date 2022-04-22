@@ -150,6 +150,12 @@ ifeq ($(CONFIG_SETTINGS),y)
   ifeq ($(CONFIG_SETTINGS_FS),y)
     CSRCS += subsys/settings/src/settings_file.c
   endif
+  ifeq ($(CONFIG_SETTINGS_NVS),y)
+    CSRCS += lib/os/crc8_sw.c
+    CSRCS += subsys/fs/nvs/nvs.c
+    CSRCS += port/subsys/flash/flash.c
+    CSRCS += subsys/settings/src/settings_nvs.c
+  endif
   CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" subsys/settings/include}
 endif
 
@@ -252,6 +258,11 @@ CSRCS += port/kernel/thread.c
 CSRCS += port/subsys/net/buf.c
 CSRCS += port/common/defines.c
 
+ifeq ($(CONFIG_ZTEST_NVM),y)
+  MAINSRC  += port/tests/fs/test_nvm.c
+  PROGNAME += test_nvm
+endif
+
 CSRCS += lib/os/dec.c
 CSRCS += lib/os/hex.c
 
@@ -280,6 +291,19 @@ CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" subsys/bluetooth/common}
 CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" $(APPDIR)/external/tinycrypt/lib/include}
 
 ifneq ($(CONFIG_BT_SAMPLE),)
+  ifneq ($(CONFIG_BT_SAMPLE_BROADCASTER),)
+    PROGNAME += broadcaster
+    MAINSRC += samples/bluetooth/broadcaster/src/main.c
+    CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" samples/bluetooth/broadcaster/src}
+  endif
+
+  ifneq ($(CONFIG_BT_SAMPLE_OBSERVER),)
+    PROGNAME += observer
+    MAINSRC += samples/bluetooth/observer/src/main.c
+    CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" samples/bluetooth/observer/src}
+  endif
+
+
   ifneq ($(CONFIG_BT_SAMPLE_PERIPHERAL),)
     PROGNAME += peripheral
     CSRCS += samples/bluetooth/peripheral/src/cts.c

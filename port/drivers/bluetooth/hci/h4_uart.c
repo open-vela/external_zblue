@@ -57,6 +57,8 @@
 
 static K_THREAD_STACK_DEFINE(tx_thread_stack, CONFIG_BT_UART_H4_TX_STACK_SIZE);
 static struct k_thread        tx_thread_data;
+static K_THREAD_STACK_DEFINE(thread_stack, CONFIG_BT_UART_H4_TX_STACK_SIZE);
+static struct k_thread        thread_data;
 static struct file            g_filep;
 
 #ifdef CONFIG_BT_H4_DEBUG
@@ -203,6 +205,8 @@ static void h4_tx_thread(void *p1, void *p2, void *p3)
 			LOG_ERR("Unable to send (err %d)", ret);
 			break;
 		}
+
+		k_yield();
 	}
 
 	BT_ASSERT(false);
@@ -238,6 +242,7 @@ static int h4_send(struct net_buf *buf)
 	int ret;
 
 #ifdef CONFIG_BT_H4_DEBUG
+if (buf->data[1] != 0x3e)
 	h4_data_dump("BT H4 TX", buf->data[0], buf->data + 1, buf->len - 1);
 #endif
 
@@ -251,7 +256,7 @@ static int h4_send(struct net_buf *buf)
 	return ret < 0 ? ret : 0;
 }
 
-int main(int argc, char *argv[])
+static void rx_thread(void *p1, void *p2, void *p3)
 {
 	static K_FIFO_DEFINE(rx_queue);
 	int err;
@@ -272,7 +277,21 @@ int main(int argc, char *argv[])
 
 		err = h4_send(buf);
 		__ASSERT_NO_MSG(err == 0);
+
+		k_yield();
 	}
 
     	return 0;
+}
+
+int main(int argc, char *argv[])
+{
+	k_thread_create(&thread_data, thread_stack,
+			K_THREAD_STACK_SIZEOF(thread_stack),
+			rx_thread, NULL, NULL, NULL,
+			K_PRIO_COOP(CONFIG_BT_RX_PRIO), 0, K_NO_WAIT);
+
+	k_thread_name_set(&thread_data, "BT Thread");
+
+	return 0;
 }

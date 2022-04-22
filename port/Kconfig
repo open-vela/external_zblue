@@ -37,6 +37,13 @@ config SYSTEM_WORKQUEUE_NO_YIELD
 
 endif
 
+config BT_THREAD_NO_PREEM
+	bool "Cooperative thread is used"
+	default n
+	help
+	  A cooperative thread remains the current thread until it performs
+	  an action that makes it unready.
+
 config NET_BUF
 	bool "Network buffer support"
 	help
@@ -170,7 +177,18 @@ config BT_HCI_DEVID
     Attached the local bluetooth device use specific
     Bluetooth HCI number id.
 
-if BT_H4
+config BT_NATIVE
+  bool "HCI over Native"
+  default y
+  help
+    Attach local controller with direct call method.
+
+config BT_NATIVE_THREAD_STACK_SIZE
+  int "Bluetooth HCI Driver Thread Stack Size"
+  default 768
+  depends on BT_NATIVE && !BT_THREAD_NO_PREEM
+  help
+    None.
 
 config BT_H4_DEBUG
   bool "H:4 Debug"
@@ -178,7 +196,6 @@ config BT_H4_DEBUG
   help
     Debug HCI ACL Command information.
 
-endif
 
 config BT_QUIRK_NO_RESET
   bool "The host should never send HCI_Reset"
@@ -278,6 +295,11 @@ config FILE_SYSTEM_MAX_FILE_NAME
     violations.
 endif
 
+config NVS
+	bool "Non-volatile Storage"
+	help
+	  Enable support of Non-volatile Storage.
+
 config ZTEST
   bool "Test zblue subsystem"
   help
@@ -315,9 +337,10 @@ config ZTEST_MEMSLAB
   help
     Enables to zblue kernel mem slab
 
-config ZTEST_ATOMIC
-  bool "Test zblue kernel atomic"
+config ZTEST_NVM
+  bool "Test NVM"
+  depends on SETTINGS_NVS
   help
-    Enables to zblue kernel atomic
+    Enables to test NVM
 
 endif

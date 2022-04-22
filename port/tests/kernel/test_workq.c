@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
 
 		k_work_schedule(&work1, K_MSEC(100 + i));
 
-		err = k_sem_take(&sem, K_MSEC(10));
+		err = k_sem_take(&sem, K_MSEC(50));
 		printk("#take timeout %d time:%lums \n", err, k_uptime_get_32());
 		__ASSERT_NO_MSG(err != 0);
 
@@ -91,9 +91,9 @@ int main(int argc, char *argv[])
 	for (int i = 1; i <= count; i++) {
 		printk("#%d time:%lums \n", i, k_uptime_get_32());
 
-		k_work_schedule(&work1, K_MSEC(10));
+		k_work_schedule(&work1, K_MSEC(100));
 
-		k_sleep(K_MSEC(2));
+		k_sleep(K_MSEC(50));
 
 		k_work_cancel_delayable(&work1);
 
@@ -109,13 +109,13 @@ int main(int argc, char *argv[])
 	for (int i = 1; i <= count; i++) {
 		printk("#%d time:%lums \n", i, k_uptime_get_32());
 
-		k_work_schedule(&work1, K_MSEC(10));
+		k_work_schedule(&work1, K_MSEC(100));
 
-		k_sleep(K_MSEC(2));
+		k_sleep(K_MSEC(50));
 
 		k_work_reschedule(&work1, K_MSEC(100));
 
-		err = k_sem_take(&sem, K_MSEC(20));
+		err = k_sem_take(&sem, K_MSEC(50));
 
 		printk("#take timeout %d time:%lums \n", err, k_uptime_get_32());
 		__ASSERT_NO_MSG(err != 0);
@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
 
 		k_work_schedule(&work1, K_MSEC(200));
 
-		k_sleep(K_MSEC(10));
+		k_sleep(K_MSEC(50));
 
 		printk("#remaining after sleep %lu time:%lums \n",
 		       k_work_delayable_remaining_get(&work1), k_uptime_get_32());
