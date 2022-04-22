@@ -47,12 +47,12 @@ void k_sched_unlock(void)
 unsigned int arch_irq_lock(void)
 {
 	sched_lock();
-
-	return 0;
+	return enter_critical_section();
 }
 
 void arch_irq_unlock(unsigned int key)
 {
+	leave_critical_section(key);
 	sched_unlock();
 }
 
@@ -63,17 +63,23 @@ bool arch_irq_unlocked(unsigned int key)
 
 void z_fatal_error(unsigned int reason, const z_arch_esf_t *esf)
 {
-	assert(false);
+	ASSERT(false);
 }
 
 void assert_post_action(const char *file, unsigned int line)
 {
-	assert(false);
+	ASSERT(false);
 }
 
 void k_yield(void)
 {
+#if CONFIG_BT_THREAD_NO_PREEM
+	sched_unlock();
+#endif /* CONFIG_BT_THREAD_NO_PREEM */
 	sched_yield();
+#if CONFIG_BT_THREAD_NO_PREEM
+	sched_lock();
+#endif /* CONFIG_BT_THREAD_NO_PREEM */
 }
 
 int32_t k_sleep(k_timeout_t timeout)
