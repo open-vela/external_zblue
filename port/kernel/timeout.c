@@ -37,7 +37,21 @@
 
 int64_t z_tick_get(void)
 {
+#if defined(CONFIG_SYSTEM_TIME64)
 	return clock_systime_ticks();
+#else
+	static int64_t g_tick;
+
+	unsigned int state = enter_critical_section();
+
+	uint32_t tick = clock_systime_ticks();
+
+	g_tick += (uint32_t)(tick - (uint32_t)g_tick);
+
+	leave_critical_section(state);
+
+	return g_tick;
+#endif
 }
 
 int64_t k_uptime_ticks(void)
