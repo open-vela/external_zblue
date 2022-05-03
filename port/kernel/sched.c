@@ -84,8 +84,7 @@ void k_yield(void)
 
 int32_t k_sleep(k_timeout_t timeout)
 {
-	usleep(k_ticks_to_us_ceil32(timeout.ticks));
-	return 0;
+	return nxsig_usleep(k_ticks_to_us_ceil32(timeout.ticks));
 }
 
 struct wait_sync{
