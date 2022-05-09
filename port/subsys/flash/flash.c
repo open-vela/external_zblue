@@ -26,7 +26,7 @@ static const struct flash_parameters flash_param = {
 
 static struct flash_area flash_map = {
         .pad16		= 0xffff,
-        .fa_dev_name	= "/dev/mtd",
+        .fa_dev_name	= CONFIG_NVS_PATH,
 };
 
 static struct mtd_geometry_s geo;

@@ -300,6 +300,12 @@ config NVS
 	help
 	  Enable support of Non-volatile Storage.
 
+config NVS_PATH
+  string "Non-volatile Storage Path"
+  depends on NVS
+  help
+    Enable support of Non-volatile Storage Path.
+
 config ZTEST
   bool "Test zblue subsystem"
   help
