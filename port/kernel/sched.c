@@ -66,9 +66,17 @@ void z_fatal_error(unsigned int reason, const z_arch_esf_t *esf)
 	ASSERT(false);
 }
 
+#if defined(CONFIG_ASSERT_NO_FILE_INFO)
+void assert_post_action(void)
+#else
 void assert_post_action(const char *file, unsigned int line)
+#endif
 {
+#if defined(CONFIG_ASSERT_NO_FILE_INFO)
 	ASSERT(false);
+#else
+	_assert(file, line);
+#endif
 }
 
 void k_yield(void)
