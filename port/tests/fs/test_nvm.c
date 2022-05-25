@@ -67,6 +67,12 @@ void test_nvs_full_sector(void)
 
 	filling_id = 0;
 
+	err = nvs_clear(&fs);
+	__ASSERT(err == 0,  "nvs_clear call failure: %d", err);
+
+	err = nvs_mount(&fs);
+	__ASSERT(err == 0,  "nvs_mount call failure: %d", err);
+
 	while (1) {
 		if (delay_ms) {
 			k_sleep(K_MSEC(delay_ms));
@@ -133,7 +139,7 @@ void test_nvs_full_sector(void)
 				 value[0], val);
 		}
 
-		printk("Read id 0x%04x\n len %d", i, len);
+		printk("Read id 0x%04x len %d\n", i, len);
 	}
 }
 
