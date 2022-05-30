@@ -369,6 +369,11 @@ do_update:
 		bt_mesh_cdb_iv_update(iv_index, iv_update);
 	}
 
+	if (IS_ENABLED(CONFIG_MIBLE_SDK)) {
+		extern void mible_iv_update(uint32_t iv_index, bool iv_update);
+		mible_iv_update(iv_index, iv_update);
+	}
+
 	if (IS_ENABLED(CONFIG_BT_SETTINGS)) {
 		store_iv(false);
 	}
