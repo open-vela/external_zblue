@@ -107,8 +107,7 @@ static struct bt_uuid_128 vnd_ntf_uuid = BT_UUID_INIT_128(
 #define VND_MAX_LEN (MIN(BT_L2CAP_RX_MTU, BT_L2CAP_TX_MTU) - 4)
 
 static uint8_t vnd_value[] = { 'V', 'e', 'n', 'd', 'o', 'r', '\0'};
-static uint8_t vnd_wwr_value[VND_MAX_LEN + 1] = { 'V', 'e', 'n', 'd', 'o', 'r' };
-
+static uint8_t vnd_wwr_value[VND_MAX_LEN + 1 + 1] = { 'V', 'e', 'n', 'd', 'o', 'r' };
 static void adv_timeout_handler(struct k_work *work);
 static K_WORK_DELAYABLE_DEFINE(adv_timeout, adv_timeout_handler);
 
