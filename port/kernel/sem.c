@@ -42,17 +42,17 @@ int k_sem_init(struct k_sem *sem,
 		unsigned int initial_count, unsigned int limit)
 {
 	sem->limit = limit;
-	return sem_init(&sem->sem, 0, initial_count);
+	return nxsem_init(&sem->sem, 0, initial_count);
 }
 
 void k_sem_give(struct k_sem *sem)
 {
 	int semcount;
 
-	sem_getvalue(&sem->sem, &semcount);
+	nxsem_get_value(&sem->sem, &semcount);
 
 	if (semcount < (int)sem->limit)
-		sem_post(&sem->sem);
+		nxsem_post(&sem->sem);
 }
 
 int k_sem_take(struct k_sem *sem, k_timeout_t timeout)
@@ -62,9 +62,9 @@ int k_sem_take(struct k_sem *sem, k_timeout_t timeout)
 	struct timespec abstime;
 
 	if (K_TIMEOUT_EQ(timeout, K_FOREVER))
-		return sem_wait(&sem->sem);
+		return nxsem_wait_uninterruptible(&sem->sem);
 	else if (K_TIMEOUT_EQ(timeout, K_NO_WAIT)) {
-		ret = sem_trywait(&sem->sem);
+		ret = nxsem_trywait(&sem->sem);
 		if (ret) {
 			return -EBUSY;
 		}
@@ -83,7 +83,7 @@ int k_sem_take(struct k_sem *sem, k_timeout_t timeout)
 		abstime.tv_nsec -= NSEC_PER_SEC;
 	}
 
-	ret = sem_timedwait(&sem->sem, &abstime);
+	ret = nxsem_timedwait_uninterruptible(&sem->sem, &abstime);
 	if (ret) {
 		return -EAGAIN;
 	}
@@ -96,7 +96,7 @@ unsigned int k_sem_count_get(struct k_sem *sem)
 	int val;
 	int ret;
 
-	ret = sem_getvalue(&sem->sem, &val);
+	ret = nxsem_get_value(&sem->sem, &val);
 	if (ret)
 		val = ret;
 
