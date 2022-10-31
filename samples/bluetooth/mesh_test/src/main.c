@@ -74,12 +74,6 @@ static int gen_onoff_get(struct bt_mesh_model *model,
 	return 0;
 }
 
-#define REG_BASE_ADDR           0x00800000
-#define getreg8(a)     (*(volatile uint8_t *)(a))
-#define REG_ADDR8(a)            getreg8(REG_BASE_ADDR + (a))
-#define GPIO_SET_PA_OUT_REG            REG_ADDR8(0x583)
-#define BM_SET(x, m)            ((x) |= (m))
-#define BM_CLR(x, m)            ((x) &= ~(m))
 static int gen_onoff_set_unack(struct bt_mesh_model *model,
 			       struct bt_mesh_msg_ctx *ctx,
 			       struct net_buf_simple *buf)
@@ -90,11 +84,7 @@ static int gen_onoff_set_unack(struct bt_mesh_model *model,
 	onoff.tid = tid;
 	onoff.val = val;
 
-	if (val) {
-		BM_SET(GPIO_SET_PA_OUT_REG, BIT(2));
-	} else {
-		BM_CLR(GPIO_SET_PA_OUT_REG, BIT(2));
-	}
+	printk("OnOff status: %s\n", onoff_str[!!val]);
 
 	return 0;
 }
