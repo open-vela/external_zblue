@@ -229,6 +229,33 @@ enum bt_mesh_feat_state bt_mesh_relay_get(void);
  */
 uint8_t bt_mesh_relay_retransmit_get(void);
 
+/** Bluetooth mesh network priority relay request callback
+ *
+ *  Support for the priority relay feature must be enabled through the
+ *  @c CONFIG_BT_MESH_RELAY_PRIORITY configuration option.
+ *
+ *  @param local_match The Bluetooth mesh message is local match.
+ *  @param ctx The Bluetooth mesh message context.
+ *  @param xmit The Bluetooth mesh message xmit.
+ *
+ *  @note High priority messages will preempt low priority messages if the
+ *        relay buffer @c CONFIG_BT_MESH_RELAY_BUF_COUNT is insufficient.
+ *
+ *  @return The priority of the relay message. The higher the value, the higher
+ *          the priority, and the faster the relay.
+ */
+typedef uint8_t (*bt_mesh_relay_prio_req_cb_t)(bool local_match,
+					       const struct bt_mesh_msg_ctx *ctx, uint8_t *xmit);
+
+/** @brief Register the priority relay callback function.
+ *
+ *  Support for the priority relay feature must be enabled through the
+ *  @c CONFIG_BT_MESH_RELAY_PRIORITY configuration option.
+ *
+ *  @param cb The priority request callback function.
+ */
+void bt_mesh_relay_priority_cb_reg(bt_mesh_relay_prio_req_cb_t cb);
+
 /** @brief Enable or disable the GATT Proxy feature.
  *
  *  Support for the GATT Proxy feature must be enabled through the
