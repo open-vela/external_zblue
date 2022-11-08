@@ -692,6 +692,7 @@ static void bt_mesh_net_relay(struct net_buf_simple *sbuf, struct bt_mesh_net_rx
 	const struct bt_mesh_net_cred *cred;
 	struct bt_mesh_adv *adv;
 	uint8_t transmit;
+	uint8_t prio = 0;
 
 	if (rx->ctx.recv_ttl <= 1U) {
 		return;

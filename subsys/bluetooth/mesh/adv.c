@@ -240,7 +240,7 @@ void bt_mesh_adv_get_cancel(void)
 {
 	LOG_DBG("");
 
-	k_fifo_cancel_wait(&bt_mesh_adv_queue);
+	k_queue_cancel_wait(&bt_mesh_adv_queue);
 
 	if (IS_ENABLED(CONFIG_BT_MESH_RELAY)) {
 		k_fifo_cancel_wait(&bt_mesh_relay_queue);
