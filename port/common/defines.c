@@ -142,6 +142,7 @@ extern struct net_buf_pool acl_in_pool;
 extern struct net_buf_pool acl_tx_pool;
 extern struct net_buf_pool dummy_pool;
 extern struct net_buf_pool adv_buf_pool;
+extern struct net_buf_pool relay_buf_pool;
 extern struct net_buf_pool br_sig_pool;
 extern struct net_buf_pool discardable_pool;
 extern struct net_buf_pool evt_pool;
@@ -264,6 +265,9 @@ struct net_buf_pool * const _net_buf_pool_list[] =
 #endif /* CONFIG_BT_HCI */
 #if defined(CONFIG_BT_MESH)
 	&adv_buf_pool,
+#if defined(CONFIG_BT_MESH_RELAY)
+	&relay_buf_pool,
+#endif /* CONFIG_BT_MESH_RELAY */
 #if defined(CONFIG_BT_MESH_FRIEND)
 	&friend_buf_pool,
 #endif /* CONFIG_BT_MESH_FRIEND */
