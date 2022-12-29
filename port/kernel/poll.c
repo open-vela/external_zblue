@@ -35,15 +35,6 @@
 #include <kernel.h>
 #include <kernel_structs.h>
 
-typedef struct {
-	sys_dnode_t         next;
-	struct k_poll_event *events;
-	int                 num_events;
-	struct k_sem        sem;
-} poll_event_cb_t;
-
-static sys_dlist_t poll_list = SYS_DLIST_STATIC_INIT(&poll_list);
-
 void k_poll_event_init(struct k_poll_event *event, uint32_t type, int mode, void *obj)
 {
 	event->type  = type;
@@ -70,36 +61,21 @@ static bool event_match(struct k_poll_event *event, uint32_t state)
 void z_handle_obj_poll_events(sys_dlist_t *events, uint32_t state)
 {
 	struct k_poll_event *event;
-	poll_event_cb_t *cb, *cb_next;
 	unsigned int key;
-	int i;
 
 	key = irq_lock();
 
 	event = (struct k_poll_event *)sys_dlist_get(events);
-	if (!event) {
-		goto skip;
+	if (!event || !event->poller) {
+		irq_unlock(key);
+		return;
 	}
 
-	SYS_DLIST_FOR_EACH_CONTAINER_SAFE(&poll_list, cb, cb_next, next) {
-		for (i = 0; i < cb->num_events; i++) {
-			if (event != &cb->events[i]) {
-				continue;
-			}
-
-			if (state == K_POLL_STATE_CANCELLED) {
-				k_sem_give(&cb->sem);
-				break;
-			}
-
-			if (event_match(event, state)) {
-				k_sem_give(&cb->sem);
-				break;
-			}
-		}
+	if (state == K_POLL_STATE_CANCELLED ||
+	    event_match(event, state)) {
+		k_sem_give((struct k_sem *)event->poller);
 	}
 
-skip:
 	irq_unlock(key);
 }
 
@@ -176,7 +152,7 @@ static bool poll_event_pending(struct k_poll_event *events, int num_events)
 
 int k_poll(struct k_poll_event *events, int num_events, k_timeout_t timeout)
 {
-	poll_event_cb_t cb;
+	struct k_sem poller;
 	int key, i, err = 0;
 
 	key = irq_lock();
@@ -186,25 +162,24 @@ int k_poll(struct k_poll_event *events, int num_events, k_timeout_t timeout)
 		goto end;
 	}
 
+	k_sem_init(&poller, 0, 1);
+
 	for (i = 0; i < num_events; i++) {
 		poll_event_add(&events[i]);
+		events[i].poller = (void *)&poller;
 	}
 
-	cb.events     = events;
-	cb.num_events = num_events;
-
-	k_sem_init(&cb.sem, 0, 1);
-	sys_dlist_append(&poll_list, &cb.next);
 	irq_unlock(key);
 
-	err = k_sem_take(&cb.sem, timeout);
+	err = k_sem_take(&poller, timeout);
+
 	key = irq_lock();
-	sys_dlist_remove(&cb.next);
 
 	poll_event_pending(events, num_events);
 
 	for (i = 0; i < num_events; i++) {
 		poll_event_remove(&events[i]);
+		events[i].poller = NULL;
 	}
 
 end:
