@@ -947,10 +947,6 @@ static int nvs_startup(struct nvs_fs *fs)
 		fs->data_wra = fs->ate_wra & ADDR_SECT_MASK;
 	}
 
-#ifdef CONFIG_NVS_LOOKUP_CACHE
-	rc = nvs_lookup_cache_rebuild(fs);
-#endif
-
 end:
 
 #ifdef CONFIG_NVS_LOOKUP_CACHE
