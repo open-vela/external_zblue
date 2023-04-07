@@ -267,7 +267,7 @@ static void rx_thread(void *p1, void *p2, void *p3)
 	err = h4_open();
 	if (err) {
 		LOG_ERR("bt tx open failed (err %d)", err);
-		return err;
+		return;
     	}
 
 	while(true) {
@@ -281,7 +281,7 @@ static void rx_thread(void *p1, void *p2, void *p3)
 		k_yield();
 	}
 
-    	return 0;
+    	return;
 }
 
 int main(int argc, char *argv[])
