@@ -161,7 +161,7 @@ k_tid_t k_thread_create(struct k_thread *new_thread,
 	argv[2] = NULL;
 
 	ret = nxthread_create("zephyr", TCB_FLAG_TTYPE_KERNEL, prio,
-			      stack, stack_size, k_thread_main, (FAR char * const *)argv, NULL);
+			      stack, stack_size, k_thread_main, (FAR char * const *)argv);
 	if (ret < 0) {
 		kmm_free(_main);
 		return (k_tid_t)-1;
