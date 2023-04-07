@@ -126,6 +126,10 @@ static int k_thread_main(int argc, FAR char *argv[])
 	sched_getparam(0, &param);
 	sched_setscheduler(0, SCHED_FIFO, &param);
 
+#if CONFIG_BT_THREAD_NO_PREEM
+	sched_lock();
+#endif /* CONFIG_BT_THREAD_NO_PREEM */
+
 	((k_thread_entry_t)_argv[0])(_argv[1], _argv[2], _argv[3]);
 	return 0;
 }
