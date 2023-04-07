@@ -72,11 +72,7 @@ void assert_post_action(void)
 void assert_post_action(const char *file, unsigned int line)
 #endif
 {
-#if defined(CONFIG_ASSERT_NO_FILE_INFO)
 	ASSERT(false);
-#else
-	_assert(file, line);
-#endif
 }
 
 void k_yield(void)
