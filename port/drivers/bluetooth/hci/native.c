@@ -86,7 +86,8 @@ int bt_vadapter_recv(uint8_t type, uint16_t hdr, const uint8_t *data, uint16_t l
 		k_timeout_t timeout = K_FOREVER;
 
 		if (evt == BT_HCI_EVT_LE_META_EVENT &&
-		    data[0] == BT_HCI_EVT_LE_ADVERTISING_REPORT) {
+		    (data[0] == BT_HCI_EVT_LE_ADVERTISING_REPORT ||
+		     data[0] == BT_HCI_EVT_LE_EXT_ADVERTISING_REPORT)) {
 			discardable = true;
 			timeout = K_NO_WAIT;
 		}
