@@ -286,6 +286,8 @@ static void rx_thread(void *p1, void *p2, void *p3)
 
 int main(int argc, char *argv[])
 {
+	K_SEM_DEFINE(wait, 0, 1);
+
 	k_thread_create(&thread_data, thread_stack,
 			K_THREAD_STACK_SIZEOF(thread_stack),
 			rx_thread, NULL, NULL, NULL,
@@ -293,5 +295,5 @@ int main(int argc, char *argv[])
 
 	k_thread_name_set(&thread_data, "BT Thread");
 
-	return 0;
+	return k_sem_take(&wait, K_FOREVER);
 }
