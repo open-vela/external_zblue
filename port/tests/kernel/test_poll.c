@@ -164,6 +164,8 @@ static void thread2(void *p1, void *p2, void *p3)
 
 int main(int argc, char *argv[])
 {
+	K_SEM_DEFINE(wait, 0, 1);
+
 	if (argc == 2) {
 		count = atoi(argv[1]);
 	}
@@ -180,5 +182,5 @@ int main(int argc, char *argv[])
 			(k_thread_entry_t)thread2, NULL, NULL, NULL, K_PRIO_COOP(0), 0, K_NO_WAIT);
 	k_thread_name_set(&thread2_data, "thread2");
 
-	return 0;
+	return k_sem_take(&wait, K_FOREVER);
 }
