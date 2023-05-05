@@ -304,6 +304,7 @@ if NVS
 
 config NVS_PATH
   string "Non-volatile Storage Path"
+  depends on NVS
   help
     Enable support of Non-volatile Storage Path.
 
@@ -313,7 +314,7 @@ config NVS_LOOKUP_CACHE
     Enable Non-volatile Storage cache, used to reduce the NVS data lookup
     time. Each cache entry holds an address of the most recent allocation
     table entry (ATE) for all NVS IDs that fall into that cache position.
-  
+
 config NVS_LOOKUP_CACHE_SIZE
   int "Non-volatile Storage lookup cache size"
   default 128
@@ -324,6 +325,56 @@ config NVS_LOOKUP_CACHE_SIZE
     It is recommended that it be a power of 2.
 
 endif # NVS
+
+config FLASH_MAP
+  int "Flash maps"
+  default 1 if NVS
+  range 0 8
+  help
+    Enable support flash maps
+
+if FLASH_MAP > 0
+
+config FLASH_MAP_0_NAME
+  string "Flash map 0 name"
+  default NVS_PATH
+
+if FLASH_MAP > 1
+config FLASH_MAP_1_NAME
+  string "Flash map 1 name"
+endif # FLASH_MAP > 1
+
+if FLASH_MAP > 2
+config FLASH_MAP_2_NAME
+  string "Flash map 2 name"
+endif # FLASH_MAP > 2
+
+if FLASH_MAP > 3
+config FLASH_MAP_3_NAME
+  string "Flash map 3 name"
+endif # FLASH_MAP > 3
+
+if FLASH_MAP > 4
+config FLASH_MAP_4_NAME
+  string "Flash map 4 name"
+endif # FLASH_MAP > 4
+
+if FLASH_MAP > 5
+config FLASH_MAP_5_NAME
+  string "Flash map 5 name"
+endif # FLASH_MAP > 5
+
+if FLASH_MAP > 6
+config FLASH_MAP_6_NAME
+  string "Flash map 6 name"
+endif # FLASH_MAP > 6
+
+if FLASH_MAP > 7
+config FLASH_MAP_7_NAME
+  string "Flash map 7 name"
+endif # FLASH_MAP > 7
+
+endif # FLASH_MAP > 0
 
 config ZTEST
   bool "Test zblue subsystem"
