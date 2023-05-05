@@ -17,29 +17,35 @@
 
 #include <logging/log.h>
 
-static const struct device dev;
+static const struct device devs[CONFIG_FLASH_MAP];
 
 static const struct flash_parameters flash_param = {
 	.write_block_size	= 0x04,
 	.erase_value		= 0xff,
 };
 
-static struct flash_area flash_map = {
-        .pad16		= 0xffff,
-        .fa_dev_name	= CONFIG_NVS_PATH,
-};
+#define  FLASH_MAP_INIT(i, _) [i] = { .fa_dev_name = CONFIG_FLASH_MAP_##i##_NAME, }
+static struct flash_area flash_maps[] = { LISTIFY(CONFIG_FLASH_MAP, FLASH_MAP_INIT, (,)) };
 
-static struct mtd_geometry_s geo;
-static struct mtd_dev_s *mtd_dev;
+static struct {
+	struct mtd_dev_s *mtd;
+	size_t erase_size;
+	size_t neraseblocks;
+} geos[CONFIG_FLASH_MAP];
 
 extern int find_mtddriver(const char *pathname, struct inode **ppinode);
 
 int flash_area_open(uint8_t id, const struct flash_area **fap)
 {
-	int ret;
+	struct mtd_geometry_s geo;
 	struct inode *node;
+	int ret;
+
+	if (id > ARRAY_SIZE(flash_maps)) {
+		return -E2BIG;
+	}
 	
-	ret = find_mtddriver(flash_map.fa_dev_name, &node);
+	ret = find_mtddriver(flash_maps[id].fa_dev_name, &node);
 	if (ret) {
 		return ret;
 	}
@@ -54,11 +60,14 @@ int flash_area_open(uint8_t id, const struct flash_area **fap)
 		return -EINVAL;
 	}
 
-	mtd_dev = node->u.i_mtd;
+	geos[id].erase_size = geo.erasesize;
+	geos[id].neraseblocks = geo.neraseblocks;
+	geos[id].mtd = node->u.i_mtd;
 
-	flash_map.fa_size = geo.erasesize * geo.neraseblocks;
+	flash_maps[id].fa_id = id;
+	flash_maps[id].fa_size = geo.erasesize * geo.neraseblocks;
 
-	*fap = &flash_map;
+	*fap = &flash_maps[id];
 
 	return 0;
 }
@@ -66,7 +75,10 @@ int flash_area_open(uint8_t id, const struct flash_area **fap)
 int flash_area_get_sectors(int fa_id, uint32_t *count,
 			   struct flash_sector *sectors)
 {
-	sectors->fs_size = geo.erasesize;
+	sectors->fs_size = geos[fa_id].erase_size;
+	if (count) {
+		*count = geos[fa_id].neraseblocks;
+	}
 
 	return 0;
 }
@@ -94,17 +106,29 @@ int flash_get_page_info_by_offs(const struct device *dev,
 
 const struct device *device_get_binding(const char *name)
 {
-	return &dev;
+	for (int i = 0; i < ARRAY_SIZE(flash_maps); i++) {
+		if (!strcmp(flash_maps[i].fa_dev_name, name)) {
+			return &devs[i];
+		}
+	}
+
+	return NULL;
 }
 
 int flash_read(const struct device *dev, off_t offset, void *data,
 	       size_t len)
 {
-	if (!mtd_dev || !mtd_dev->read) {
+	size_t id = dev - devs;
+
+	if (id > ARRAY_SIZE(geos)) {
+		return -ENOTSUP;
+	}
+
+	if (!geos[id].mtd || !geos[id].mtd->read) {
 		return -ENODEV;
 	}
 
-	(void)mtd_dev->read(mtd_dev, offset, len, data);
+	(void)geos[id].mtd->read(geos[id].mtd, offset, len, data);
 
 	return 0;
 }
@@ -112,30 +136,40 @@ int flash_read(const struct device *dev, off_t offset, void *data,
 int flash_write(const struct device *dev, off_t offset,
 		const void *data, size_t len)
 {
-	ssize_t ret;
+	size_t id = dev - devs;
 
-	if (!mtd_dev || !mtd_dev->write) {
+	if (id > ARRAY_SIZE(geos)) {
+		return -ENOTSUP;
+	}
+
+	if (!geos[id].mtd || !geos[id].mtd->write) {
 		return -ENODEV;
 	}
 
-	(void)mtd_dev->write(mtd_dev, offset, len, data);
+	(void)geos[id].mtd->write(geos[id].mtd, offset, len, data);
 
 	return 0;
 }
 
 int flash_erase(const struct device *dev, off_t offset, size_t size)
 {
-	if (!mtd_dev || !mtd_dev->erase) {
+	size_t id = dev - devs;
+
+	if (id > ARRAY_SIZE(geos)) {
+		return -ENOTSUP;
+	}
+
+	if (!geos[id].mtd || !geos[id].mtd->erase) {
 		return -ENODEV;
 	}
 
-	if ((offset % geo.erasesize) ||
-	    (size % geo.erasesize)) {
+	if ((offset % geos[id].erase_size) ||
+	    (size % geos[id].erase_size)) {
 		return -EINVAL;
 	}
 
-	(void)mtd_dev->erase(mtd_dev, offset / geo.erasesize,
-			     size / geo.erasesize);
+	(void)geos[id].mtd->erase(geos[id].mtd, offset / geos[id].erase_size,
+				  size / geos[id].erase_size);
 
 	return 0;
 }
