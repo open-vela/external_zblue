@@ -148,7 +148,7 @@ static void cmds_show(void)
 	}
 }
 
-int main(int argc, char *argv[])
+int cmd_zblue(FAR struct nsh_vtbl_s *vtbl, int argc, char *argv[])
 {
 	struct shell_ctx ctx;
 	struct shell sh = { .ctx = &ctx };

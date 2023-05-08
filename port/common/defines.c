@@ -349,6 +349,7 @@ const struct settings_handler_static * const _settings_handler_static_list[] =
 
 /* shell_cmd_entry START */
 extern const struct shell_cmd_entry shell_cmd_bt;
+extern const struct shell_cmd_entry shell_cmd_init;
 extern const struct shell_cmd_entry shell_cmd_mesh;
 extern const struct shell_cmd_entry shell_cmd_audio;
 extern const struct shell_cmd_entry shell_cmd_br;
@@ -371,6 +372,7 @@ const struct shell_cmd_entry * const _shell_cmd_entry_list[] =
 {
 #if defined(CONFIG_BT_SHELL)
 	&shell_cmd_bt,
+	&shell_cmd_init,
 #if defined(CONFIG_BT_BREDR)
 	&shell_cmd_br,
 #endif /* CONFIG_BT_BREDR */

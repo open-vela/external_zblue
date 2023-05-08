@@ -236,10 +236,11 @@ static void bt_ready(int err)
 	printk("Mesh initialized\n");
 }
 
-extern void zblue_main(void);
+extern int zblue_main(void);
 
 void main(void)
 {
+	K_SEM_DEFINE(wait, 0, 1);
 	int err;
 
 	zblue_main();
@@ -251,4 +252,6 @@ void main(void)
 	if (err) {
 		printk("Bluetooth init failed (err %d)\n", err);
 	}
+
+	k_sem_take(&wait, K_FOREVER);
 }

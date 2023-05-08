@@ -36,10 +36,12 @@
 #include <unistd.h>
 #include <common/log.h>
 
+#include <shell/shell.h>
+
 #include "bluetooth/bluetooth.h"
 #include "drivers/bluetooth/hci_driver.h"
 
-int main(int argc, char *argv[])
+static int zblue_init(int argc, char *argv[])
 {
 	int ret;
 
@@ -52,3 +54,11 @@ int main(int argc, char *argv[])
 
 	return 0;
 }
+
+int zblue_main(void)
+{
+	return zblue_init(0, NULL);
+}
+
+SHELL_CMD_ARG_REGISTER(init, NULL, "Zephyr Bluetooth init",
+		       zblue_init, 1, 0);
