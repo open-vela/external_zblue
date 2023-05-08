@@ -359,6 +359,25 @@ context::
 	$(Q) ln -sf shell.c port/subsys/bluetooth/shell/ticker.c
 	$(Q) ln -sf shell.c port/subsys/bluetooth/shell/iso.c
 
+NSH_FILE		= $(APPDIR)/nshlib/nsh_command.c
+NSH_CMD_END_MARK	= '  { NULL,       NULL,         1, 1, NULL }'
+NSH_ZBLUE_HEADER	= '\#ifdef CONFIG_BT_SHELL\n'
+NSH_ZBLUE_CMD		= '  { \"zblue\",    cmd_zblue,    1, CONFIG_NSH_MAXARGUMENTS, \"zblue\" },\n'
+NSH_ZBLUE_END		= '\#endif'
+NSH_ZBLUE		= '\n'$(NSH_ZBLUE_HEADER)$(NSH_ZBLUE_CMD)$(NSH_ZBLUE_END)
+NSH_CMD_END_MARK1	= '  { NULL,       NULL,         0, 0, NULL }'
+
+NSH_EXTERN_ZBLUE	= 'extern int cmd_zblue(FAR struct nsh_vtbl_s *vtbl, int argc, char *argv[]);\n'
+NSH_ZBLUE_EXTERN	= $(NSH_ZBLUE_HEADER)$(NSH_EXTERN_ZBLUE)$(NSH_ZBLUE_END)
+NSH_POS1		= 'static int cmd_unrecognized'
+NSH_POS			= 'static int  cmd_unrecognized'
+
+depend::
+ifeq ($(CONFIG_BT_SHELL),y)
+	$(Q) sed 's/'$(NSH_POS)'/'$(NSH_ZBLUE_EXTERN)'\n\n'$(NSH_POS1)'/g' -i $(NSH_FILE)
+	$(Q) sed 's/'$(NSH_CMD_END_MARK)'/'$(NSH_ZBLUE)'\n\n'$(NSH_CMD_END_MARK1)'/g' -i $(NSH_FILE)
+endif
+
 clean::
 	$(call DELFILE, .built)
 	$(call DELFILE, port/include/bluetooth)
