@@ -16,6 +16,10 @@
 
 include $(APPDIR)/Make.defs
 
+CSRCS += lib/os/crc8_sw.c
+CSRCS += lib/os/crc16_sw.c
+CSRCS += lib/os/crc32_sw.c
+
 SUBDIR = subsys/bluetooth
 
 ifeq ($(CONFIG_BT_HCI_RAW),y)
@@ -151,7 +155,6 @@ ifeq ($(CONFIG_SETTINGS),y)
     CSRCS += subsys/settings/src/settings_file.c
   endif
   ifeq ($(CONFIG_SETTINGS_NVS),y)
-    CSRCS += lib/os/crc8_sw.c
     CSRCS += subsys/fs/nvs/nvs.c
     CSRCS += port/subsys/flash/flash.c
     CSRCS += subsys/settings/src/settings_nvs.c

@@ -445,8 +445,6 @@ extern struct k_mem_slab chan_slab;
 extern struct k_mem_slab loopback_buf_pool;
 extern struct k_mem_slab segs;
 extern struct k_mem_slab mslab1;
-extern struct k_mem_slab mible_tasks;
-extern struct k_mem_slab mible_timers;
 struct k_mem_slab * const _k_mem_slab_list[] =
 {
 #if defined(CONFIG_BT_HCI_HOST)
@@ -463,10 +461,6 @@ struct k_mem_slab * const _k_mem_slab_list[] =
 #if defined(CONFIG_ZTEST_MEMSLAB)
 	&mslab1,
 #endif /* CONFIG_ZTEST_MEMSLAB */
-#if defined(CONFIG_MIBLE_SDK)
-	&mible_tasks,
-	&mible_timers,
-#endif /* CONFIG_MIBLE_SDK */
 	NULL,
 };
 /* k_mem_slab END */
