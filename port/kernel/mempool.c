@@ -4,9 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <kernel.h>
 #include <string.h>
-#include <sys/math_extras.h>
+#include <stdlib.h>
 #include <sys/util.h>
 
 void k_free(void *ptr)
