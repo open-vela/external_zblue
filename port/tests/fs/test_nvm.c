@@ -60,7 +60,7 @@ void test_nvs_full_sector(void)
 	uint8_t value[49];
 
 	fs.sector_size = 4096;
-	fs.sector_count = 3;
+	fs.sector_count = CONFIG_SETTINGS_NVS_SECTOR_COUNT;
 
 	err = nvs_mount(&fs);
 	__ASSERT(err == 0,  "nvs_mount call failure: %d", err);
@@ -150,7 +150,7 @@ void test_delete(void)
 	uint16_t data_read;
 	uint32_t ate_wra, data_wra;
 
-	fs.sector_count = 3;
+	fs.sector_count = CONFIG_SETTINGS_NVS_SECTOR_COUNT;
 
 	err = nvs_mount(&fs);
 	__ASSERT(err == 0,  "nvs_mount call failure: %d", err);
@@ -196,8 +196,8 @@ void test_delete(void)
 
 int main(int argc, char *argv[])
 {
-	int count = 1;
 	const struct flash_area *map;
+	int count = 1, err;
 
 	if (argc >= 2) {
 		count = atoi(argv[1]);
@@ -210,7 +210,11 @@ int main(int argc, char *argv[])
 	printk("#Test NVM with cycles %d delay %d\n",
 		count, delay_ms);
 
-	flash_area_open(0, &map);
+	err = flash_area_open(0, &map);
+	__ASSERT(err == 0,  "flash_area_open %d failed", err);
+
+	fs.flash_device = device_get_binding(CONFIG_FLASH_MAP_0_NAME);
+	__ASSERT(fs.flash_device != 0,  "fs.flash_device %s not found", CONFIG_FLASH_MAP_0_NAME);
 
 	for (int i = 0; i < count; i++) {
 		printk("#test_nvs_full_sector count:%d\n", i);
