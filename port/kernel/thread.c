@@ -1,5 +1,5 @@
 /****************************************************************************
- * apps/external/zblue/port/kernel/thread.c
+ * apps/external/zblue/zblue/port/kernel/thread.c
  *
  *   Copyright (C) 2020 Xiaomi InC. All rights reserved.
  *

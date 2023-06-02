@@ -1,5 +1,5 @@
 /****************************************************************************
- * apps/external/zblue/port/common/defines.c
+ * apps/external/zblue/zblue/port/common/defines.c
  *
  *   Copyright (C) 2020 Xiaomi InC. All rights reserved.
  *

@@ -1,5 +1,5 @@
 /****************************************************************************
- * apps/external/zblue/port/kernel/mem_slab.c
+ * apps/external/zblue/zblue/port/kernel/mem_slab.c
  *
  *   Copyright (C) 2020 Xiaomi InC. All rights reserved.
  *
