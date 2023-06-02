@@ -1,5 +1,5 @@
 /****************************************************************************
- * apps/external/zblue/port/kernel/sched.c
+ * apps/external/zblue/zblue/port/kernel/sched.c
  *
  *   Copyright (C) 2020 Xiaomi InC. All rights reserved.
  *

@@ -1,5 +1,5 @@
 /****************************************************************************
- * apps/external/zblue/port/kernel/sem.c
+ * apps/external/zblue/zblue/port/kernel/sem.c
  *
  *   Copyright (C) 2020 Xiaomi InC. All rights reserved.
  *

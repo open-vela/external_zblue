@@ -1,5 +1,5 @@
 /****************************************************************************
- * apps/external/zblue/port/subsys/bluetooth/shell/bt_shell.c
+ * apps/external/zblue/zblue/port/subsys/bluetooth/shell/bt_shell.c
  *
  *   Copyright (C) 2020 Xiaomi InC. All rights reserved.
  *
