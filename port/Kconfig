@@ -3,7 +3,7 @@
 # see kconfig-language at https://www.kernel.org/doc/Documentation/kbuild/kconfig-language.txt
 #
 
-source "$APPSDIR/external/zblue/port/Kconfig.zephyr"
+source "$APPSDIR/external/zblue/zblue/port/Kconfig.zephyr"
 
 config ZEPHYR_WORK_QUEUE
 	bool "Use zephyr system work queue"

@@ -1,5 +1,5 @@
 /****************************************************************************
- * apps/external/zblue/port/kernel/work_q.c
+ * apps/external/zblue/zblue/port/kernel/work_q.c
  *
  *   Copyright (C) 2020 Xiaomi InC. All rights reserved.
  *

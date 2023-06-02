@@ -1,5 +1,5 @@
 /****************************************************************************
- * apps/external/zblue/port/kernel/timeout.c
+ * apps/external/zblue/zblue/port/kernel/timeout.c
  *
  *   Copyright (C) 2020 Xiaomi InC. All rights reserved.
  *

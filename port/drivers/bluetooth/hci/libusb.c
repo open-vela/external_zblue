@@ -1,5 +1,5 @@
 /****************************************************************************
- * apps/external/zblue/port/drivers/bluetooth/hci/libusb.c
+ * apps/external/zblue/zblue/port/drivers/bluetooth/hci/libusb.c
  *
  *   Copyright (C) 2020 Xiaomi InC. All rights reserved.
  *
