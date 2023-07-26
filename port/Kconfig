@@ -14,6 +14,13 @@ config ZEPHYR_WORK_QUEUE
 
 if ZEPHYR_WORK_QUEUE
 
+config SHELL_CMD_BUFF_SIZE
+	int "Shell command buffer size"
+	default 0
+	range 0 256
+	help
+	  Maximum command size in bytes. One byte is reserved for the string
+	  terminator character.
 config SYSTEM_WORKQUEUE_STACK_SIZE
 	int "System workqueue stack size"
 	default 4096

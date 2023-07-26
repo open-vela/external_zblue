@@ -148,7 +148,7 @@ static void cmds_show(void)
 	}
 }
 
-int cmd_zblue(FAR struct nsh_vtbl_s *vtbl, int argc, char *argv[])
+int cmd_zblue(void *vtbl, int argc, char *argv[])
 {
 	struct shell_ctx ctx;
 	struct shell sh = { .ctx = &ctx };
@@ -193,7 +193,7 @@ int cmd_zblue(FAR struct nsh_vtbl_s *vtbl, int argc, char *argv[])
 		return cmd->handler(&sh, argc - 2, &argv[2]);
 	}
 
-	return 0;	
+	return 0;
 
 end:
 	cmds_show();
