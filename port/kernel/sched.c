@@ -56,6 +56,18 @@ void arch_irq_unlock(unsigned int key)
 	sched_unlock();
 }
 
+unsigned int z_smp_global_lock(void)
+{
+	sched_lock();
+	return enter_critical_section();
+}
+
+void z_smp_global_unlock(unsigned int key)
+{
+	leave_critical_section(key);
+	sched_unlock();
+}
+
 bool arch_irq_unlocked(unsigned int key)
 {
 	return false;
