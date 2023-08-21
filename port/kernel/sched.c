@@ -139,15 +139,3 @@ bool z_sched_wake(_wait_q_t *wait_q, int swap_retval, void *swap_data)
 	return true;
 }
 
-bool z_sched_wake_all(_wait_q_t *wait_q, int swap_retval,
-				      void *swap_data)
-{
-	bool woken = false;
-
-	while (z_sched_wake(wait_q, swap_retval, swap_data)) {
-		woken = true;
-	}
-
-	/* True if we woke at least one thread up */
-	return woken;
-}
