@@ -38,6 +38,7 @@
 #include <kernel.h>
 #include <sys/check.h>
 #include <kernel_structs.h>
+#include <ksched.h>
 
 static struct k_spinlock lock;
 
