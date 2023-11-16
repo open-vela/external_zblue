@@ -242,6 +242,11 @@ bail:
 
 	return ret;
 }
+static int h4_close(void)
+{
+    file_close(&g_filep);
+    return 0;
+}
 
 static int h4_send(struct net_buf *buf)
 {
@@ -288,6 +293,7 @@ static struct bt_hci_driver driver = {
 	.bus    = BT_HCI_DRIVER_BUS_UART,
 	.open   = h4_open,
 	.send   = h4_send,
+	.close  = h4_close,
 #if defined(CONFIG_BT_QUIRK_NO_RESET)
 	.quirks = BT_QUIRK_NO_RESET,
 #endif
