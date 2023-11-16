@@ -72,6 +72,17 @@ static int nxthread_create(FAR const char *name, uint8_t ttype, int priority,
 	return (int)pid;
 }
 
+static int nxthread_delete(pid_t pid)
+{
+	int ret = nxtask_delete(pid);
+	if (ret < 0){
+		set_errno(-ret);
+		ret = ERROR;
+	}
+	return ret;
+}
+
+
 extern struct k_work_q k_sys_work_q;
 
 k_tid_t z_current_get(void)
@@ -172,6 +183,12 @@ k_tid_t k_thread_create(struct k_thread *new_thread,
 	sys_slist_append(&task_list, &new_thread->node);
 
 	return (k_tid_t)ret;
+}
+
+void k_thread_abort(k_tid_t thread)
+{
+	//nxthread_delete((int)thread->init_data);
+	return ;
 }
 
 #else /* !CONFIG_SCHED_WAITPID */
