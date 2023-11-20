@@ -59,7 +59,7 @@ static int nxthread_create(FAR const char *name, uint8_t ttype, int priority,
 
 	ttcb->cmn.flags = ttype;
 
-	ret = nxtask_init(ttcb, name, priority, stack, stack_size, entry, argv, NULL);
+	ret = nxtask_init(ttcb, name, priority, stack, stack_size, entry, argv, NULL, NULL);
 	if (ret < OK) {
 		kmm_free(ttcb);
 		return ret;
