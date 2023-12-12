@@ -33,39 +33,44 @@
  ****************************************************************************/
 #include <assert.h>
 #include <kernel.h>
+#include <arch/irq.h>
 
 void k_sched_lock(void)
 {
-	sched_lock();
+	if (!up_interrupt_context()) {
+		sched_lock();
+	}
 }
 
 void k_sched_unlock(void)
 {
-	sched_unlock();
+	if (!up_interrupt_context()) {
+		sched_unlock();
+	}
 }
 
 unsigned int arch_irq_lock(void)
 {
-	sched_lock();
+	k_sched_lock();
 	return enter_critical_section();
 }
 
 void arch_irq_unlock(unsigned int key)
 {
 	leave_critical_section(key);
-	sched_unlock();
+	k_sched_unlock();
 }
 
 unsigned int z_smp_global_lock(void)
 {
-	sched_lock();
+	k_sched_lock();
 	return enter_critical_section();
 }
 
 void z_smp_global_unlock(unsigned int key)
 {
 	leave_critical_section(key);
-	sched_unlock();
+	k_sched_unlock();
 }
 
 bool arch_irq_unlocked(unsigned int key)
