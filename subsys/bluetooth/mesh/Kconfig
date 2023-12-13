@@ -364,6 +364,20 @@ config BT_MESH_PROVISIONER
 	help
 	  Enable this option to have support for provisioning remote devices.
 
+config BT_MESH_SCAN_INTERVAL
+	hex "Bt mesh scan interval"
+	default 0x0030
+	range 0x0004 0x4000
+	help
+	  This value can modify bt mesh scan interval
+
+config BT_MESH_SCAN_WINDOW
+	hex "Bt mesh scan window"
+	default 0x0030
+	range 0x0004 0x4000
+	help
+	  This value can modify bt mesh scan window
+
 menuconfig BT_MESH_CDB
 	bool "Mesh Configuration Database"
 
