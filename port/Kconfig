@@ -331,8 +331,6 @@ config NVS_LOOKUP_CACHE_SIZE
     Number of entries in Non-volatile Storage lookup cache.
     It is recommended that it be a power of 2.
 
-endif # NVS
-
 config FLASH_MAP
   int "Flash maps"
   default 1 if NVS
@@ -382,6 +380,8 @@ config FLASH_MAP_7_NAME
 endif # FLASH_MAP > 7
 
 endif # FLASH_MAP > 0
+
+endif # NVS
 
 config ZTEST
   bool "Test zblue subsystem"
