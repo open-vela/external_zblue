@@ -152,6 +152,7 @@ k_tid_t k_thread_create(struct k_thread *new_thread,
 		int prio, uint32_t options, k_timeout_t delay)
 {
 	k_thread_main_t *_main;
+	cpu_set_t cpuset0;
 	char arg1[16];
 	void *argv[3];
 	int ret;
@@ -177,6 +178,13 @@ k_tid_t k_thread_create(struct k_thread *new_thread,
 		kmm_free(_main);
 		return (k_tid_t)-1;
 	}
+
+#ifdef CONFIG_SMP
+	CPU_ZERO(&cpuset0);
+	CPU_SET(0,&cpuset0);
+
+	sched_setaffinity(ret, sizeof(cpu_set_t), &cpuset0);
+#endif /* CONFIG_SMP */
 
 	new_thread->init_data = (void *)ret;
 
@@ -225,6 +233,7 @@ k_tid_t k_thread_create(struct k_thread *new_thread,
 {
 	k_thread_main_t *_main;
 	pthread_attr_t pattr;
+	cpu_set_t cpuset0;
 	pthread_t pid;
 	struct sched_param param = {
 		.sched_priority = prio,
@@ -250,6 +259,13 @@ k_tid_t k_thread_create(struct k_thread *new_thread,
 		kmm_free(_main);
 		return (k_tid_t)-1;
 	}
+
+#ifdef CONFIG_SMP
+	CPU_ZERO(&cpuset0);
+	CPU_SET(0,&cpuset0);
+
+	pthread_setaffinity_np(pid, sizeof(cpu_set_t), &cpuset0);
+#endif /* CONFIG_SMP */
 
 	new_thread->init_data = (void *)pid;
 
