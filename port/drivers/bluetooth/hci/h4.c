@@ -394,14 +394,22 @@ static int h4_send(struct net_buf *buf)
 	pthread_mutex_lock(&g_mutex);
 #endif
 	ret = h4_send_data(&type, 1);
-	if (ret != 1) {
-		ret = -EINVAL;
-	}
+        if (ret < 0) {
+            goto out;
+        } else if (ret != 1) {
+            ret = -EINVAL;
+            goto out;
+        }
 
-	ret = h4_send_data(buf->data, buf->len);
-	if (ret != buf->len) {
-		ret = -EINVAL;
-	}
+        ret = h4_send_data(buf->data, buf->len);
+        if (ret < 0) {
+            goto out;
+        } else if (ret != 1) {
+            ret = -EINVAL;
+            goto out;
+        }
+
+out:
 #ifdef CONFIG_SMP
 	pthread_mutex_unlock(&g_mutex);
 #endif
