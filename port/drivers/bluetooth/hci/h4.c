@@ -404,7 +404,7 @@ static int h4_send(struct net_buf *buf)
         ret = h4_send_data(buf->data, buf->len);
         if (ret < 0) {
             goto out;
-        } else if (ret != 1) {
+        } else if (ret != buf->len) {
             ret = -EINVAL;
             goto out;
         }
