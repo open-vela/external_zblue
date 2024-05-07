@@ -109,7 +109,10 @@ int fs_stat(const char *abs_path, struct fs_dirent *entry)
 		return ret;
 	}
 
-	strncpy(entry->name, abs_path, sizeof(entry->name));
+    size_t len_to_copy = strnlen(abs_path, sizeof(entry->name) - 1);
+    strncpy(entry->name, abs_path, len_to_copy);
+    entry->name[len_to_copy] = '\0';
+
 	entry->type = S_ISDIR(buf.st_mode) ? FS_DIR_ENTRY_DIR : FS_DIR_ENTRY_FILE;
 	entry->size = buf.st_size;
 
