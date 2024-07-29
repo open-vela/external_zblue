@@ -723,6 +723,29 @@ struct bt_conn *bt_conn_lookup_addr_le(uint8_t id, const bt_addr_le_t *peer);
  */
 const bt_addr_le_t *bt_conn_get_dst(const struct bt_conn *conn);
 
+#if defined(CONFIG_BT_CLASSIC)
+/** @brief Look up an existing BREDR acl connection by address.
+ *
+ *  Look up an existing connection based on the remote address.
+ *
+ *  The caller gets a new reference to the connection object which must be
+ *  released with bt_conn_unref() once done using the object.
+ *
+ *  @param peer Remote address.
+ *
+ *  @return Connection object or NULL if not found.
+ */
+struct bt_conn *bt_conn_lookup_addr_br(const bt_addr_t *peer);
+
+/** @brief Get destination (peer) address of a br or sco connection.
+ *
+ *  @param conn Connection object.
+ *
+ *  @return Destination address.
+ */
+const bt_addr_t *bt_conn_get_dst_br(const struct bt_conn *conn);
+#endif /* CONFIG_BT_CLASSIC */
+
 /** @brief Get array index of a connection
  *
  *  This function is used to map bt_conn to index of an array of
@@ -1615,6 +1638,24 @@ struct bt_conn_le_cs_procedure_enable_complete {
  *  used for that instance.
  */
 struct bt_conn_cb {
+#if !defined(CONFIG_BT_CONN_REQ_AUTO_HANDLE)
+	/** @brief Query to proceed BR/EDR incoming connection or not.
+	 *
+	 *  On any incoming connection req this callback will be called for
+	 *  the application to decide whether to allow for the connection to
+	 *  continue.
+	 *
+	 *  As this callback is asynchronous, the application should call
+	 *  bt_conn_accept_acl_conn/bt_conn_reject_acl_conn to response value.
+	 *
+	 *  @param conn New connection object.
+	 *  @param link_type Link type.
+	 *  @param cod Device class.
+	 *
+	 */
+	void (*connect_req)(struct bt_conn *conn, uint8_t link_type, uint8_t *cod);
+#endif /* !defined(CONFIG_BT_CONN_REQ_AUTO_HANDLE) */
+
 	/** @brief A new connection has been established.
 	 *
 	 *  This callback notifies the application of a new connection.
@@ -2664,6 +2705,23 @@ int bt_conn_set_supervision_timeout(struct bt_conn *conn, uint16_t timeout);
  *  @return  Zero for success, non-zero otherwise.
  */
 int bt_conn_set_link_policy_settings(struct bt_conn* conn, uint16_t policy);
+
+/** @brief Accept the acl connection.
+ *
+ *  @param conn  The connection of peer device to accept.
+ *
+ *  @return Zero for success, non-zero otherwise.
+ */
+int bt_conn_accept_acl_conn(struct bt_conn *conn);
+
+/** @brief Reject the acl connection.
+ *
+ *  @param conn  The connection of peer device to reject.
+ *  @param reason  Reject reason.
+ *
+ *  @return Zero for success, non-zero otherwise.
+ */
+int bt_conn_reject_acl_conn(struct bt_conn *conn, uint8_t reason);
 
 #ifdef __cplusplus
 }
