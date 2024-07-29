@@ -35,7 +35,7 @@ static sys_slist_t discovery_cbs = SYS_SLIST_STATIC_INIT(&discovery_cbs);
 /* remote name request callback */
 static struct bt_br_rnr_cb rnr_cb;
 
-static int reject_conn(const bt_addr_t *bdaddr, uint8_t reason)
+int bt_reject_conn(const bt_addr_t *bdaddr, uint8_t reason)
 {
 	struct bt_hci_cp_reject_conn_req *cp;
 	struct net_buf *buf;
@@ -58,7 +58,7 @@ static int reject_conn(const bt_addr_t *bdaddr, uint8_t reason)
 	return 0;
 }
 
-static int accept_conn(const bt_addr_t *bdaddr)
+int bt_accept_conn(const bt_addr_t *bdaddr)
 {
 	struct bt_hci_cp_accept_conn_req *cp;
 	struct net_buf *buf;
@@ -93,21 +93,31 @@ void bt_hci_conn_req(struct net_buf *buf)
 
 		err = bt_esco_conn_req(evt);
 		if (err != BT_HCI_ERR_SUCCESS) {
-			reject_conn(&evt->bdaddr, err);
+			bt_reject_conn(&evt->bdaddr, err);
 		}
 		return;
 	}
 
 	conn = bt_conn_add_br(&evt->bdaddr);
 	if (!conn) {
-		reject_conn(&evt->bdaddr, BT_HCI_ERR_INSUFFICIENT_RESOURCES);
+		bt_reject_conn(&evt->bdaddr, BT_HCI_ERR_INSUFFICIENT_RESOURCES);
 		return;
 	}
 
-	accept_conn(&evt->bdaddr);
+#if defined(CONFIG_BT_CONN_REQ_AUTO_HANDLE)
+	if (bt_accept_conn(&evt->bdaddr)) {
+		LOG_ERR("Error accepting connection from %s",
+		       bt_addr_str(&evt->bdaddr));
+		bt_conn_unref(conn);
+		return;
+	}
+
 	conn->role = BT_HCI_ROLE_PERIPHERAL;
 	bt_conn_set_state(conn, BT_CONN_INITIATING);
 	bt_conn_unref(conn);
+#else
+	bt_conn_notify_connect_req(conn, evt->link_type, evt->dev_class);
+#endif /* CONFIG_BT_CONN_REQ_AUTO_HANDLE */
 }
 
 static bool br_sufficient_key_size(struct bt_conn *conn)

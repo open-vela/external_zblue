@@ -2498,6 +2498,49 @@ static int bt_hci_connect_br_cancel(struct bt_conn *conn)
 	return err;
 }
 
+#if !defined(CONFIG_BT_CONN_REQ_AUTO_HANDLE)
+int bt_conn_accept_acl_conn(struct bt_conn *conn)
+{
+	int err;
+
+	err = bt_accept_conn(&conn->br.dst);
+	if (err) {
+		bt_conn_unref(conn);
+		return err;
+	}
+
+	conn->role = BT_HCI_ROLE_PERIPHERAL;
+	bt_conn_set_state(conn, BT_CONN_INITIATING);
+	bt_conn_unref(conn);
+
+	return 0;
+}
+
+int bt_conn_reject_acl_conn(struct bt_conn *conn, uint8_t reason)
+{
+	bt_reject_conn(&conn->br.dst, reason);
+	bt_conn_unref(conn);
+
+	return 0;
+}
+
+void bt_conn_notify_connect_req(struct bt_conn *conn, uint8_t link_type, uint8_t *cod)
+{
+	struct bt_conn_cb *callback;
+
+	SYS_SLIST_FOR_EACH_CONTAINER(&conn_cbs, callback, _node) {
+		if (callback->connect_req) {
+			callback->connect_req(conn, link_type, cod);
+		}
+	}
+
+	STRUCT_SECTION_FOREACH(bt_conn_cb, cb) {
+		if (cb->connect_req) {
+			cb->connect_req(conn, link_type, cod);
+		}
+	}
+}
+#endif /* CONFIG_BT_CONN_REQ_AUTO_HANDLE */
 #endif /* CONFIG_BT_CLASSIC */
 
 #if defined(CONFIG_BT_SMP)
@@ -2890,6 +2933,18 @@ const bt_addr_le_t *bt_conn_get_dst(const struct bt_conn *conn)
 {
 	return &conn->le.dst;
 }
+
+#if defined(CONFIG_BT_CLASSIC)
+const bt_addr_t *bt_conn_get_dst_br(const struct bt_conn *conn)
+{
+	if (conn->type == BT_CONN_TYPE_BR)
+		return &conn->br.dst;
+	else if (conn->type == BT_CONN_TYPE_SCO)
+		return &conn->sco.acl->br.dst;
+
+	return NULL;
+}
+#endif
 
 static enum bt_conn_state conn_internal_to_public_state(bt_conn_state_t state)
 {
