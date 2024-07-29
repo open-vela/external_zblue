@@ -676,6 +676,7 @@ void bt_hci_role_change(struct net_buf *buf)
 		conn->role = BT_CONN_ROLE_CENTRAL;
 	}
 
+	bt_conn_notify_role_changed(conn, conn->role);
 	bt_conn_unref(conn);
 }
 
