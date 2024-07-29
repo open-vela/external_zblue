@@ -537,9 +537,13 @@ void bt_conn_security_changed(struct bt_conn *conn, uint8_t hci_err,
 			      enum bt_security_err err);
 #endif /* CONFIG_BT_SMP || CONFIG_BT_CLASSIC */
 
+#if defined(CONFIG_BT_CLASSIC)
 #if defined(CONFIG_BT_POWER_MODE_CONTROL)
 void bt_conn_notify_mode_changed(struct bt_conn *conn, uint8_t mode, uint16_t interval);
 #endif /* CONFIG_BT_POWER_MODE_CONTROL */
+
+void bt_conn_notify_role_changed(struct bt_conn *conn, uint8_t role);
+#endif /* CONFIG_BT_CLASSIC */
 
 /* Prepare a PDU to be sent over a connection */
 #if defined(CONFIG_NET_BUF_LOG)

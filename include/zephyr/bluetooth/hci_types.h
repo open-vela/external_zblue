@@ -565,6 +565,19 @@ struct bt_hci_cp_exit_sniff_mode {
 	uint16_t handle;
 } __packed;
 
+#define BT_HCI_OP_ROLE_DISCOVERY                BT_OP(BT_OGF_LINK_POLICY, 0x0009) /* 0x0809 */
+struct bt_hci_cp_role_discovery {
+	uint8_t  status;
+	uint16_t handle;
+	uint8_t  role;
+} __packed;
+
+#define BT_HCI_OP_SWITCH_ROLE                   BT_OP(BT_OGF_LINK_POLICY, 0x000b) /* 0x080b */
+struct bt_hci_cp_switch_role {
+	bt_addr_t bdaddr;
+	uint8_t   role;
+} __packed;
+
 #define BT_HCI_OP_SET_EVENT_MASK                BT_OP(BT_OGF_BASEBAND, 0x0001) /* 0x0c01 */
 struct bt_hci_cp_set_event_mask {
 	uint8_t  events[8];

@@ -1759,6 +1759,7 @@ struct bt_conn_cb {
 				      struct bt_conn_remote_info *remote_info);
 #endif /* defined(CONFIG_BT_REMOTE_INFO) */
 
+#if defined(CONFIG_BT_CLASSIC)
 #if defined(CONFIG_BT_POWER_MODE_CONTROL)
 	/** @brief The connection mode change
 	 *
@@ -1770,6 +1771,16 @@ struct bt_conn_cb {
 	 */
 	void (*mode_changed)(struct bt_conn *conn, uint8_t mode, uint16_t interval);
 #endif /* CONFIG_BT_POWER_MODE_CONTROL */
+
+	/** @brief The connection role change
+	 *
+	 *  This callback notifies the application controller role change
+	 *
+	 *  @param conn Connection object.
+	 *  @param role New role updated.
+	 */
+	void (*role_changed)(struct bt_conn *conn, uint8_t role);
+#endif /* CONFIG_BT_CLASSIC */
 
 #if defined(CONFIG_BT_USER_PHY_UPDATE)
 	/** @brief The PHY of the connection has changed.
@@ -2604,6 +2615,24 @@ int bt_conn_enter_sniff_mode(struct bt_conn *conn, uint16_t min_interval, uint16
  */
 int bt_conn_exit_sniff_mode(struct bt_conn *conn);
 #endif /* CONFIG_BT_POWER_MODE_CONTROL */
+
+/** @brief Bt role discovery.
+ * 
+ *  @param conn  Connection object.
+ *  @param role  return role.
+ *
+ *  @return  Zero for success, non-zero otherwise.
+ */
+int bt_conn_role_discovery(struct bt_conn *conn, uint8_t *role);
+
+/** @brief Bt switch role.
+ *
+ *  @param conn  Connection object.
+ *  @param role  Switch role.
+ *
+ *  @return  Zero for success, non-zero otherwise.
+ */
+int bt_conn_switch_role(struct bt_conn *conn, uint8_t role);
 
 #ifdef __cplusplus
 }
