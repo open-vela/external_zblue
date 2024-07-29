@@ -419,6 +419,12 @@ struct bt_conn *bt_conn_add_br(const bt_addr_t *peer);
 /* Add a new SCO connection */
 struct bt_conn *bt_conn_add_sco(const bt_addr_t *peer, int link_type);
 
+/* Accept incoming ACL connection */
+int bt_accept_conn(const bt_addr_t *bdaddr);
+
+/* Reject incoming ACL connection */
+int bt_reject_conn(const bt_addr_t *bdaddr, uint8_t reason);
+
 /* Cleanup SCO ACL reference */
 void bt_sco_cleanup_acl(struct bt_conn *sco_conn);
 
@@ -543,6 +549,7 @@ void bt_conn_notify_mode_changed(struct bt_conn *conn, uint8_t mode, uint16_t in
 #endif /* CONFIG_BT_POWER_MODE_CONTROL */
 
 void bt_conn_notify_role_changed(struct bt_conn *conn, uint8_t role);
+void bt_conn_notify_connect_req(struct bt_conn *conn, uint8_t link_type, uint8_t *cod);
 #endif /* CONFIG_BT_CLASSIC */
 
 /* Prepare a PDU to be sent over a connection */

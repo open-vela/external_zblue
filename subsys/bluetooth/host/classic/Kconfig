@@ -26,6 +26,16 @@ config BT_MAX_SCO_CONN
 	  Maximum number of simultaneous Bluetooth synchronous connections
 	  supported. The minimum (and default) number is 1.
 
+config BT_CONN_REQ_AUTO_HANDLE
+	bool "Automatically handle incoming connection requests"
+	default y
+	help
+	  Automatically handle connection requests. If this option is enabled,
+	  the stack will automatically accept incoming connection requests, and
+	  the application will not be notified of the connection request. If this
+	  option is disabled, the application will be notified of incoming connection
+	  requests, and the application must accept or reject the connection.
+
 config BT_RFCOMM
 	bool "Bluetooth RFCOMM protocol support [EXPERIMENTAL]"
 	select EXPERIMENTAL
