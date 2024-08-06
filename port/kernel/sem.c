@@ -51,7 +51,7 @@ void k_sem_give(struct k_sem *sem)
 
 	nxsem_get_value(&sem->sem, &semcount);
 
-	if (semcount < (int)sem->limit)
+	if (semcount < 0 || (uint32_t)semcount < sem->limit)
 		nxsem_post(&sem->sem);
 }
 
