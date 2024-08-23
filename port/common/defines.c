@@ -577,7 +577,7 @@ const struct init_entry * const _init_entry_list[] =
 #if defined(CONFIG_BT_H4)
 	&__init_sys_init_bt_uart_init,
 #endif
-#if defined(CONFIG_ARCH_SIM)
+#if defined(CONFIG_BT_USERCHAN)
 	&__init_sys_init_bt_userchan_init,
 #endif
 #if defined(CONFIG_BT_NATIVE)
