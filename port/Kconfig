@@ -176,7 +176,8 @@ config BT_H4
 
 config BT_USERCHAN
   bool
-  default y if ARCH_SIM
+  default n
+  depends on ARCH_SIM
 
 config BT_HCI_DEVID
   int "Bluetooth Device ID"
