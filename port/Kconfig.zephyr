@@ -65,6 +65,10 @@ config NET_BUF_WARN_ALLOC_INTERVAL
 	int
 	default 0
 
+config NET_BUF_VARIABLE
+	bool
+	default n
+
 config ATOMIC_OPERATIONS_C
 	bool
 	default y
