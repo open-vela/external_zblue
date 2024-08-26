@@ -73,10 +73,6 @@ config SRAM_BASE_ADDRESS
 	int
 	default 0
 
-config SRAM_SIZE
-	int
-	default 0
-
 config NUM_METAIRQ_PRIORITIES
 	int
 	default 0
