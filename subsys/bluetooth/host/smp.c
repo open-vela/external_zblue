@@ -3083,6 +3083,11 @@ static uint8_t sc_send_public_key(struct bt_smp *smp)
 	struct bt_smp_public_key *req;
 	struct net_buf *req_buf;
 
+	if (!sc_public_key) {
+		atomic_set_bit(smp->flags, SMP_FLAG_PKEY_SEND);
+		return 0;
+	}
+
 	req_buf = smp_create_pdu(smp, BT_SMP_CMD_PUBLIC_KEY, sizeof(*req));
 	if (!req_buf) {
 		return BT_SMP_ERR_UNSPECIFIED;
