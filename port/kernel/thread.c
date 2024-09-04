@@ -118,7 +118,7 @@ int k_is_preempt_thread(void)
 	return (sched == SCHED_RR);
 }
 
-#ifdef CONFIG_SCHED_WAITPID
+#if defined(CONFIG_SCHED_WAITPID) && !defined(CONFIG_ZEPHYR_WORK_ON_USERSPACE)
 static int k_thread_main(int argc, FAR char *argv[])
 {
 	struct sched_param param;
@@ -191,12 +191,6 @@ k_tid_t k_thread_create(struct k_thread *new_thread,
 	sys_slist_append(&task_list, &new_thread->node);
 
 	return (k_tid_t)ret;
-}
-
-void k_thread_abort(k_tid_t thread)
-{
-	//nxthread_delete((int)thread->init_data);
-	return ;
 }
 
 #else /* !CONFIG_SCHED_WAITPID */
@@ -276,6 +270,11 @@ k_tid_t k_thread_create(struct k_thread *new_thread,
 #endif /* CONFIG_SCHED_WAITPID */
 
 void k_thread_start(k_tid_t thread)
+{
+	(void)thread;
+}
+
+void k_thread_abort(k_tid_t thread)
 {
 	(void)thread;
 }

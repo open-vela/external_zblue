@@ -7,6 +7,10 @@ if BT
 	source "$APPSDIR/external/zblue/zblue/port/Kconfig.zephyr"
 endif
 
+config ZEPHYR_WORK_ON_USERSPACE
+  bool "zephyr bluetooth work on userspace"
+  default y
+
 config ZEPHYR_WORK_QUEUE
 	bool "Use zephyr system work queue"
 	default y
