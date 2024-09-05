@@ -264,6 +264,15 @@ int bt_br_write_page_scan_type(uint8_t type);
 int bt_br_set_class_of_device(uint32_t local_cod);
 
 /**
+ * @brief Set the local name of the BR/EDR Controller.
+ *
+ * @param name Local name of the BR/EDR Controller.
+ *
+ * @return Negative if fail set to requested state or requested state has been
+ *         already set. Zero if done successfully.
+ */
+int bt_br_write_local_name(const char *name);
+/**
  * @}
  */
 
