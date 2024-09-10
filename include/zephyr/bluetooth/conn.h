@@ -2651,6 +2651,20 @@ int bt_conn_switch_role(struct bt_conn *conn, uint8_t role);
  */
 int bt_conn_set_supervision_timeout(struct bt_conn *conn, uint16_t timeout);
 
+/** @brief Set link policy settings.
+ *
+ *  This function is used to set the link policy settings for a connection.
+ *
+ *  @param conn  Connection object.
+ *  @param policy Link policy settings.
+ *                Bit 0: Enable role switch.
+ *                Bit 1: Enable hold mode.
+ *                Bit 2: Enable sniff mode.
+ *
+ *  @return  Zero for success, non-zero otherwise.
+ */
+int bt_conn_set_link_policy_settings(struct bt_conn* conn, uint16_t policy);
+
 #ifdef __cplusplus
 }
 #endif
