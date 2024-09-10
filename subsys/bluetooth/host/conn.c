@@ -4416,6 +4416,21 @@ int bt_conn_set_supervision_timeout(struct bt_conn *conn, uint16_t timeout)
 	return bt_hci_cmd_send(BT_HCI_OP_WRITE_LINK_SUPERVISION_TIMEOUT, buf);
 }
 
+int bt_conn_set_link_policy_settings(struct bt_conn* conn, uint16_t policy)
+{
+	struct bt_hci_cp_write_link_policy_settings *cp;
+	struct net_buf *buf;
+
+	buf = bt_hci_cmd_create(BT_HCI_OP_WRITE_LINK_POLICY_SETTINGS, sizeof(*cp));
+	if (!buf) {
+		return -ENOMEM;
+	}
+
+	net_buf_add_le16(buf, conn->handle);
+	net_buf_add_le16(buf, policy);
+
+	return bt_hci_cmd_send(BT_HCI_OP_WRITE_LINK_POLICY_SETTINGS, buf);
+}
 #endif /* CONFIG_BT_CLASSIC */
 #endif /* CONFIG_BT_CONN */
 
