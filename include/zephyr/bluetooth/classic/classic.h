@@ -272,6 +272,44 @@ int bt_br_set_class_of_device(uint32_t local_cod);
  *         already set. Zero if done successfully.
  */
 int bt_br_write_local_name(const char *name);
+
+/** Information about a br/edr bond with a remote device. */
+struct bt_bond_info_br {
+	bt_addr_t addr;
+	uint8_t   key_type;
+	uint8_t   key[16];
+};
+
+/**
+ * @brief Callback for iterating over all BR/EDR bond information.
+ *
+ * @param info Bond information.
+ * @param user_data Data passed to the iterator.
+ */
+void bt_foreach_bond_br(void (*func)(const struct bt_bond_info_br *info, void *user_data),
+			void *user_data);
+
+/**
+ * @brief Set BR/EDR bond information.
+ *
+ * @param info Bond information.
+ *
+ * @return Zero on success or error code otherwise, positive in case
+ * of protocol error or negative (POSIX) in case of stack internal error.
+ */
+int bt_set_bond_info_br(const struct bt_bond_info_br *info);
+
+/**
+ * @brief Get BR/EDR bond information.
+ *
+ * @param bdaddr Address of the remote device.
+ * @param info Bond information.
+ *
+ * @return Zero on success or error code otherwise, positive in case
+ * of protocol error or negative (POSIX) in case of stack internal error.
+ */
+int bt_get_bond_info_br(const bt_addr_t* bdaddr, struct bt_bond_info_br *info);
+
 /**
  * @brief Request remote device name callback.
  *
