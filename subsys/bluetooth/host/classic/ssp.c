@@ -243,6 +243,18 @@ static void ssp_pairing_complete(struct bt_conn *conn, uint8_t status)
 	}
 }
 
+static void ssp_link_key_notify(struct bt_conn *conn, uint8_t *key, uint8_t key_type)
+{
+	struct bt_conn_auth_info_cb *listener, *next;
+
+	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&bt_auth_info_cbs, listener,
+						next, node) {
+		if (listener->link_key_notify) {
+			listener->link_key_notify(conn, key, key_type);
+		}
+	}
+}
+
 static void ssp_auth(struct bt_conn *conn, uint32_t passkey)
 {
 	conn->br.pairing_method = ssp_pair_method(conn);
@@ -458,6 +470,7 @@ void bt_hci_link_key_notify(struct net_buf *buf)
 
 	/* clear any old Link Key flags */
 	conn->br.link_key->flags = 0U;
+	conn->br.link_key->key_type = evt->key_type;
 
 	switch (evt->key_type) {
 	case BT_LK_COMBINATION:
@@ -492,9 +505,11 @@ void bt_hci_link_key_notify(struct net_buf *buf)
 		break;
 	}
 
-	if (IS_ENABLED(CONFIG_BT_SETTINGS) &&
-	    !atomic_test_bit(conn->flags, BT_CONN_BR_NOBOND)) {
-		bt_keys_link_key_store(conn->br.link_key);
+	if (!atomic_test_bit(conn->flags, BT_CONN_BR_NOBOND)) {
+		ssp_link_key_notify(conn, conn->br.link_key->val, evt->key_type);
+		if (IS_ENABLED(CONFIG_BT_SETTINGS)) {
+			bt_keys_link_key_store(conn->br.link_key);
+		}
 	}
 
 	bt_conn_unref(conn);

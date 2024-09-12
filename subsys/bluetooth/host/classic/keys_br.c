@@ -146,22 +146,71 @@ void bt_keys_link_key_store(struct bt_keys_link_key *link_key)
 	}
 }
 
-void bt_foreach_bond_br(void (*func)(const struct bt_bond_info *info, void *user_data),
+void bt_foreach_bond_br(void (*func)(const struct bt_bond_info_br *info, void *user_data),
 			void *user_data)
 {
 	__ASSERT_NO_MSG(func != NULL);
 
 	for (size_t i = 0; i < ARRAY_SIZE(key_pool); i++) {
-		const struct bt_keys_link_key *key = &key_pool[i];
+		struct bt_keys_link_key *key = &key_pool[i];
 
-		if (!bt_addr_eq(&key->addr, BT_ADDR_ANY)) {
-			struct bt_bond_info info;
+		if (bt_addr_cmp(&key->addr, BT_ADDR_ANY)) {
+			struct bt_bond_info_br info;
 
-			info.addr.type = BT_ADDR_LE_PUBLIC;
-			bt_addr_copy(&info.addr.a, &key->addr);
+			bt_addr_copy(&info.addr, &key->addr);
+			info.key_type = key->key_type;
+			memcpy(info.key, key->val, 16);
 			func(&info, user_data);
 		}
 	}
+}
+
+int bt_set_bond_info_br(const struct bt_bond_info_br *info)
+{
+	struct bt_keys_link_key *key;
+
+	key = bt_keys_get_link_key(&info->addr);
+	if (!key) {
+		LOG_ERR("Unable to create keys for %s", bt_addr_str(&info->addr));
+		return -ENOMEM;
+	}
+
+	memcpy(key->val, info->key, 16);
+	key->key_type = info->key_type;
+	key->flags = 0;
+
+	switch (key->key_type) {
+	case BT_LK_COMBINATION:
+	case BT_LK_AUTH_COMBINATION_P192:
+		key->flags |= BT_LINK_KEY_AUTHENTICATED;
+		break;
+	case BT_LK_AUTH_COMBINATION_P256:
+		key->flags |= BT_LINK_KEY_AUTHENTICATED | BT_LINK_KEY_SC;
+		break;
+	default:
+		break;
+	}
+
+	bt_keys_link_key_store(key);
+
+	return 0;
+}
+
+int bt_get_bond_info_br(const bt_addr_t* bdaddr, struct bt_bond_info_br *info)
+{
+	struct bt_keys_link_key *key;
+
+	key = bt_keys_find_link_key(bdaddr);
+	if (!key) {
+		LOG_DBG("No keys for %s", bt_addr_str(bdaddr));
+		return -ENODATA;
+	}
+
+	memcpy(&info->addr, &key->addr, 6);
+	memcpy(info->key, key->val, 16);
+	info->key_type = key->key_type;
+
+	return 0;
 }
 
 #if defined(CONFIG_BT_SETTINGS)
