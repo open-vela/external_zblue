@@ -22,10 +22,18 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(bt_br);
 
+struct bt_br_rnr_cb {
+	bt_addr_t addr;
+	bt_br_remote_name_req_cb_t cb;
+} __packed;
+
 struct bt_br_discovery_result *discovery_results;
 static size_t discovery_results_size;
 static size_t discovery_results_count;
 static sys_slist_t discovery_cbs = SYS_SLIST_STATIC_INIT(&discovery_cbs);
+
+/* remote name request callback */
+static struct bt_br_rnr_cb rnr_cb;
 
 static int reject_conn(const bt_addr_t *bdaddr, uint8_t reason)
 {
@@ -422,6 +430,20 @@ static struct bt_br_discovery_result *get_result_slot(const bt_addr_t *addr, int
 	return result;
 }
 
+static struct bt_br_discovery_result *find_discovery_result(const bt_addr_t *addr)
+{
+	size_t i;
+
+	/* check if already present in results */
+	for (i = 0; i < discovery_results_count; i++) {
+		if (!bt_addr_cmp(addr, &discovery_results[i].addr)) {
+			return &discovery_results[i];
+		}
+	}
+
+	return NULL;
+}
+
 void bt_hci_inquiry_result_with_rssi(struct net_buf *buf)
 {
 	uint8_t num_reports = net_buf_pull_u8(buf);
@@ -511,6 +533,12 @@ void bt_hci_remote_name_request_complete(struct net_buf *buf)
 	uint8_t *eir;
 	int i;
 	struct bt_br_discovery_cb *listener, *next;
+
+	if (rnr_cb.cb && !bt_addr_cmp(&evt->bdaddr, &rnr_cb.addr)) {
+		LOG_DBG("status 0x%02x", evt->status);
+		rnr_cb.cb(&evt->bdaddr, evt->name, evt->status);
+		memset(&rnr_cb, 0, sizeof(rnr_cb));
+	}
 
 	result = get_result_slot(&evt->bdaddr, 0xff);
 	if (!result) {
@@ -1213,4 +1241,46 @@ int bt_br_write_local_name(const char *name)
 		sizeof(name_cp->local_name));
 
 	return bt_hci_cmd_send_sync(BT_HCI_OP_WRITE_LOCAL_NAME, buf, NULL);
+}
+
+int bt_br_remote_name_request(const bt_addr_t *bdaddr, bt_br_remote_name_req_cb_t cb)
+{
+	struct bt_br_discovery_result *result;
+	struct bt_br_discovery_priv *priv;
+	int err;
+
+	if (rnr_cb.cb) {
+		return -EBUSY;
+	}
+
+	/* save remote name request control block */
+	rnr_cb.cb = cb;
+	bt_addr_copy(&rnr_cb.addr, bdaddr);
+
+	/* check if we have a cached result */
+	result = find_discovery_result(bdaddr);
+	if (result) {
+		/* check is resolving, just return if resolving */
+		priv = (struct bt_br_discovery_priv *)&result->_priv;
+		if (priv->resolving) {
+			return 0;
+		}
+
+		priv->resolving = 1;
+		err = request_name(bdaddr, priv->pscan_rep_mode, priv->clock_offset);
+	} else {
+		/* start discovery to resolve name by default param */
+		err = request_name(bdaddr, BT_HCI_PAGE_SCAN_REP_MODE_R2, 0);
+	}
+
+	if (err) {
+		LOG_ERR("Unable to request name for %s (err %d)", bt_addr_str(bdaddr), err);
+		rnr_cb.cb(bdaddr, NULL, BT_HCI_ERR_UNSPECIFIED);
+
+		/* clear control block */
+		memset(&rnr_cb, 0, sizeof(rnr_cb));
+		return err;
+	}
+
+	return 0;
 }
