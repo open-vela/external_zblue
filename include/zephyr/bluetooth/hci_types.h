@@ -483,6 +483,10 @@ struct bt_hci_cp_set_conn_encrypt {
 	uint8_t  encrypt;
 } __packed;
 
+#define BT_HCI_PAGE_SCAN_REP_MODE_R0 0x00
+#define BT_HCI_PAGE_SCAN_REP_MODE_R1 0x01
+#define BT_HCI_PAGE_SCAN_REP_MODE_R2 0x02
+
 #define BT_HCI_OP_REMOTE_NAME_REQUEST           BT_OP(BT_OGF_LINK_CTRL, 0x0019) /* 0x0419 */
 struct bt_hci_cp_remote_name_request {
 	bt_addr_t bdaddr;
