@@ -273,6 +273,28 @@ int bt_br_set_class_of_device(uint32_t local_cod);
  */
 int bt_br_write_local_name(const char *name);
 /**
+ * @brief Request remote device name callback.
+ *
+ * @param bdaddr Remote device address.
+ * @param name Remote device name.
+ * @param status Status of the request.
+ */
+typedef void (*bt_br_remote_name_req_cb_t)(const bt_addr_t *bdaddr, const char *name, uint8_t status);
+
+/**
+ * @brief Request remote device name.
+ *
+ * Remote Name Request is used to find out the name of the remote
+ * device without requiring an explicit ACL connection
+ *
+ * @param addr Remote device address.
+ * @param cb Callback to notify about remote device name.
+ *
+ * @return 0 on success or negative error value on failure.
+ */
+int bt_br_remote_name_request(const bt_addr_t *addr, bt_br_remote_name_req_cb_t cb);
+
+/**
  * @}
  */
 
