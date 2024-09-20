@@ -2482,6 +2482,21 @@ struct bt_conn_auth_info_cb {
 	sys_snode_t node;
 };
 
+/**
+ * @brief Initiate pairing with a remote device.
+ *
+ * This function is used to initiate pairing with a remote device.
+ * The pairing process is asynchronous and the result of the pairing
+ * process is reported through the pairing_complete, if the connection
+ * not exists, setup the connection first.
+ *
+ * @param bdaddr Remote device address.
+ * @param security Security level to use.
+ *
+ * @return Valid connection object on success or NULL otherwise.
+ */
+struct bt_conn *bt_conn_pair_br(bt_addr_t *bdaddr, bt_security_t security);
+
 /** @brief Register authentication callbacks.
  *
  *  Register callbacks to handle authenticated pairing. Passing NULL

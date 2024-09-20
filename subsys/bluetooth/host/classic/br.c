@@ -241,6 +241,12 @@ void bt_hci_conn_complete(struct net_buf *buf)
 	}
 
 	if (evt->status) {
+		if (atomic_test_bit(conn->flags, BT_CONN_BR_PAIRING_CONN_PEND)) {
+			atomic_clear_bit(conn->flags, BT_CONN_BR_PAIRING_CONN_PEND);
+			bt_conn_security_changed(conn, evt->status,
+						bt_security_err_get(evt->status));
+		}
+
 		conn->err = evt->status;
 		bt_conn_set_state(conn, BT_CONN_DISCONNECTED);
 		bt_conn_unref(conn);
@@ -261,6 +267,17 @@ void bt_hci_conn_complete(struct net_buf *buf)
 	atomic_set_bit_to(conn->flags, BT_CONN_BR_BONDABLE, bt_get_bondable());
 
 	bt_conn_connected(conn);
+
+	if (atomic_test_bit(conn->flags, BT_CONN_BR_PAIRING_CONN_PEND)) {
+		atomic_clear_bit(conn->flags, BT_CONN_BR_PAIRING_CONN_PEND);
+		if (bt_conn_set_security(conn, conn->attempt_sec_level)) {
+			bt_conn_security_changed(conn, BT_HCI_ERR_AUTH_FAIL,
+						BT_SECURITY_ERR_AUTH_FAIL);
+			bt_conn_disconnect(conn, BT_HCI_ERR_AUTH_FAIL);
+			bt_conn_unref(conn);
+			return;
+		}
+	}
 
 	bt_conn_unref(conn);
 
@@ -1290,6 +1307,60 @@ int bt_br_remote_name_request(const bt_addr_t *bdaddr, bt_br_remote_name_req_cb_
 		/* clear control block */
 		memset(&rnr_cb, 0, sizeof(rnr_cb));
 		return err;
+	}
+
+	return 0;
+}
+
+int bt_br_delete_stored_link_key(const bt_addr_t *bdaddr, bool delete_all)
+{
+	struct net_buf *buf;
+	struct bt_hci_delete_stored_link_key *cp;
+
+	buf = bt_hci_cmd_create(BT_HCI_OP_DELETE_STORED_LINK_KEY, sizeof(*cp));
+	if (!buf) {
+		return -ENOBUFS;
+	}
+
+	cp = net_buf_add(buf, sizeof(*cp));
+	memset(cp, 0, sizeof(*cp));
+	bt_addr_copy(&cp->bdaddr, bdaddr);
+	cp->delete_all = delete_all;
+
+	return bt_hci_cmd_send_sync(BT_HCI_OP_DELETE_STORED_LINK_KEY, buf, NULL);
+}
+
+int bt_br_unpair(bt_addr_t *bdaddr)
+{
+	struct bt_conn_auth_info_cb *listener, *next;
+	bt_addr_le_t addr;
+	struct bt_conn *conn;
+
+	if (!IS_ENABLED(CONFIG_BT_CLASSIC)) {
+		return -ENOTSUP;
+	}
+
+	/* Disconnect acl connection if connection is existed */
+	conn = bt_conn_lookup_addr_br(bdaddr);
+	if (conn) {
+		bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+		bt_conn_unref(conn);
+	}
+
+	/* Delete stored link key from settings */
+	bt_keys_link_key_clear_addr(bdaddr);
+
+	/* Delete stored link key from controller */
+	bt_br_delete_stored_link_key(bdaddr, true);
+
+	addr.type = BT_ADDR_LE_PUBLIC;
+	memcpy(&addr, bdaddr, sizeof(addr));
+
+	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&bt_auth_info_cbs, listener,
+					  next, node) {
+		if (listener->bond_deleted) {
+			listener->bond_deleted(0, &addr);
+		}
 	}
 
 	return 0;

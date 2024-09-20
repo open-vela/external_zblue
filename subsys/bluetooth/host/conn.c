@@ -2780,6 +2780,64 @@ bt_security_t bt_conn_get_security(const struct bt_conn *conn)
 }
 #endif /* CONFIG_BT_SMP */
 
+#if defined(CONFIG_BT_CLASSIC)
+struct bt_conn *bt_conn_pair_br(bt_addr_t *bdaddr, bt_security_t security)
+{
+	struct bt_conn *conn;
+	int err;
+
+	LOG_DBG("");
+
+	/* Tell controller to delete the link key if it has one stored */
+	err = bt_br_delete_stored_link_key(bdaddr, 1);
+	if (err) {
+		return NULL;
+	}
+
+	if (!BT_FEAT_SSP(bt_dev.features)) {
+		/* pin type */
+		LOG_DBG("pin type");
+	}
+
+	/* Check if connection is existed */
+	conn = bt_conn_lookup_addr_br(bdaddr);
+	if (conn) {
+		/* Check pairing process is onging */
+		if (atomic_test_bit(conn->flags, BT_CONN_BR_PAIRING_INITIATOR) ||
+			atomic_test_bit(conn->flags, BT_CONN_BR_PAIRING_CONN_PEND) ||
+			atomic_test_bit(conn->flags, BT_CONN_BR_PAIRING)) {
+			bt_conn_unref(conn);
+			return NULL;
+		}
+
+		if (conn->state == BT_CONN_CONNECTED) {
+			err = bt_conn_set_security(conn, security);
+			if (!err) {
+				return conn;
+			}
+		} else if (conn->state == BT_CONN_INITIATING) {
+			conn->attempt_sec_level = security;
+			atomic_set_bit(conn->flags, BT_CONN_BR_PAIRING_CONN_PEND);
+			return conn;
+		}
+
+		bt_conn_unref(conn);
+		return NULL;
+	} else {
+		/* Try to create a br connection */
+		conn = bt_conn_create_br(bdaddr, BT_BR_CONN_PARAM_DEFAULT);
+		if (!conn) {
+			return NULL;
+		}
+
+		conn->attempt_sec_level = security;
+		atomic_set_bit(conn->flags, BT_CONN_BR_PAIRING_CONN_PEND);
+	}
+
+	return conn;
+}
+#endif /* CONFIG_BT_CLASSIC */
+
 int bt_conn_cb_register(struct bt_conn_cb *cb)
 {
 	if (sys_slist_find(&conn_cbs, &cb->_node, NULL)) {
