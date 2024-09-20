@@ -333,6 +333,18 @@ typedef void (*bt_br_remote_name_req_cb_t)(const bt_addr_t *bdaddr, const char *
 int bt_br_remote_name_request(const bt_addr_t *addr, bt_br_remote_name_req_cb_t cb);
 
 /**
+ * @brief Unpair with a br remote device.
+ *
+ * remove the bond information with the remote device in controller
+ * or settings.
+ *
+ * @param bdaddr Remote device address.
+ *
+ * @return 0 on success or negative error value on failure.
+ */
+int bt_br_unpair(bt_addr_t *bdaddr);
+
+/**
  * @}
  */
 

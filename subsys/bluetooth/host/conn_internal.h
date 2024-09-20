@@ -64,6 +64,7 @@ enum {
 	BT_CONN_BR_NOBOND,                    /* SSP no bond pairing tracker */
 	BT_CONN_BR_GENERAL_BONDING,           /* BR general bonding */
 	BT_CONN_BR_PAIRING_INITIATOR,         /* local host starts authentication */
+	BT_CONN_BR_PAIRING_CONN_PEND,         /* local host starts authentication waiting for connection setup */
 	BT_CONN_CLEANUP,                      /* Disconnected, pending cleanup */
 	BT_CONN_AUTO_INIT_PROCEDURES_DONE,    /* Auto-initiated procedures have run */
 	BT_CONN_PERIPHERAL_PARAM_UPDATE,      /* If periph param update timer fired */
@@ -229,6 +230,7 @@ struct bt_conn {
 #if defined(CONFIG_BT_SMP) || defined(CONFIG_BT_CLASSIC)
 	bt_security_t		sec_level;
 	bt_security_t		required_sec_level;
+	bt_security_t		attempt_sec_level;
 	uint8_t			encrypt;
 #endif /* CONFIG_BT_SMP || CONFIG_BT_CLASSIC */
 
