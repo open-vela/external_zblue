@@ -321,8 +321,8 @@ int bt_send(struct bt_dev *hdev, struct net_buf *buf)
 		}
 	}
 
-	if (IS_ENABLED(CONFIG_BT_TINYCRYPT_ECC)) {
-		return bt_hci_ecc_send(hdev, buf);
+	if (IS_ENABLED(CONFIG_BT_SEND_ECC_EMULATION)) {
+		return bt_hci_ecc_send(buf);
 	}
 
 #if DT_HAS_CHOSEN(zephyr_bt_hci)
