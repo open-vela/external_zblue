@@ -10,71 +10,37 @@
 #ifndef ZEPHYR_INCLUDE_BLUETOOTH_A2DP_H_
 #define ZEPHYR_INCLUDE_BLUETOOTH_A2DP_H_
 
-#include <bluetooth/avdtp.h>
+#include <acts_bluetooth/a2dp-codec.h>
+#include <acts_bluetooth/avdtp.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/** @brief Stream Structure */
-struct bt_a2dp_stream {
-	/* TODO */
-};
-
-/** @brief Codec ID */
-enum bt_a2dp_codec_id {
-	/** Codec SBC */
-	BT_A2DP_SBC = 0x00,
-	/** Codec MPEG-1 */
-	BT_A2DP_MPEG1 = 0x01,
-	/** Codec MPEG-2 */
-	BT_A2DP_MPEG2 = 0x02,
-	/** Codec ATRAC */
-	BT_A2DP_ATRAC = 0x04,
-	/** Codec Non-A2DP */
-	BT_A2DP_VENDOR = 0xff
-};
-
-/** @brief Preset for the endpoint */
-struct bt_a2dp_preset {
-	/** Length of preset */
-	uint8_t len;
-	/** Preset */
-	uint8_t preset[0];
-};
 
 /** @brief Stream End Point */
 struct bt_a2dp_endpoint {
-	/** Code ID */
-	uint8_t codec_id;
 	/** Stream End Point Information */
 	struct bt_avdtp_seid_lsep info;
-	/** Pointer to preset codec chosen */
-	struct bt_a2dp_preset *preset;
-	/** Capabilities */
-	struct bt_a2dp_preset *caps;
 };
 
-/** @brief Stream End Point Media Type */
-enum MEDIA_TYPE {
-	/** Audio Media Type */
-	BT_A2DP_AUDIO = 0x00,
-	/** Video Media Type */
-	BT_A2DP_VIDEO = 0x01,
-	/** Multimedia Media Type */
-	BT_A2DP_MULTIMEDIA = 0x02
+enum {
+	BT_A2DP_MEDIA_STATE_OPEN	= 0x06,
+	BT_A2DP_MEDIA_STATE_START	= 0x07,
+	BT_A2DP_MEDIA_STATE_CLOSE	= 0x08,
+	BT_A2DP_MEDIA_STATE_SUSPEND	= 0x09,
+	BT_A2DP_MEDIA_STATE_PENDING_AHEAD_START = 0x80,
 };
 
-/** @brief Stream End Point Role */
-enum ROLE_TYPE {
-	/** Source Role */
-	BT_A2DP_SOURCE = 0,
-	/** Sink Role */
-	BT_A2DP_SINK = 1
-};
+struct bt_a2dp_app_cb {
+	void (*connected)(struct bt_conn *conn);
+	void (*disconnected)(struct bt_conn *conn);
+	void (*media_handler)(struct bt_conn *conn, uint8_t *data, uint16_t len);
 
-/** @brief A2DP structure */
-struct bt_a2dp;
+	/* Return 0: accepte state request, other: reject state request */
+	int (*media_state_req)(struct bt_conn *conn, uint8_t state);
+	void (*seted_codec)(struct bt_conn *conn, struct bt_a2dp_media_codec *codec, uint8_t cp_type);
+};
 
 /** @brief A2DP Connect.
  *
@@ -83,11 +49,15 @@ struct bt_a2dp;
  *  connection between devices.
  *
  *  @param conn Pointer to bt_conn structure.
+ *  @param role a2dp as source or sink role
  *
- *  @return pointer to struct bt_a2dp in case of success or NULL in case
+ *  @return 0 in case of success and error code in case of error.
  *  of error.
  */
-struct bt_a2dp *bt_a2dp_connect(struct bt_conn *conn);
+int bt_a2dp_connect(struct bt_conn *conn, uint8_t role);
+
+/* Disconnect a2dp session */
+int bt_a2dp_disconnect(struct bt_conn *conn);
 
 /** @brief Endpoint Registration.
  *
@@ -103,6 +73,61 @@ struct bt_a2dp *bt_a2dp_connect(struct bt_conn *conn);
  */
 int bt_a2dp_register_endpoint(struct bt_a2dp_endpoint *endpoint,
 			      uint8_t media_type, uint8_t role);
+
+/** @brief halt/resume registed endpoint.
+ *
+ *  This function is used for halt/resume registed endpoint
+ *
+ *  @param endpoint Pointer to bt_a2dp_endpoint structure.
+ *  @param halt true: halt , false: resume;
+ *
+ *  @return 0 in case of success and error code in case of error.
+ */
+int bt_a2dp_halt_endpoint(struct bt_a2dp_endpoint *endpoint, bool halt);
+
+/* Register app callback */
+int bt_a2dp_register_cb(struct bt_a2dp_app_cb *cb);
+
+/* Start a2dp play */
+int bt_a2dp_start(struct bt_conn *conn);
+
+/* Suspend a2dp play */
+int bt_a2dp_suspend(struct bt_conn *conn);
+
+/* Reconfig a2dp codec config */
+int bt_a2dp_reconfig(struct bt_conn *conn, struct bt_a2dp_media_codec *codec);
+
+/* Send delay report to source */
+int bt_a2dp_send_delay_report(struct bt_conn *conn, uint16_t delay_time);
+
+/* Send a2dp audio data */
+int bt_a2dp_send_audio_data(struct bt_conn *conn, uint8_t *data, uint16_t len);
+
+/* Get a2dp seted codec */
+struct bt_a2dp_media_codec *bt_a2dp_get_seted_codec(struct bt_conn *conn);
+
+/* Get a2dp role(source or sink) */
+uint8_t bt_a2dp_get_a2dp_role(struct bt_conn *conn);
+
+/* Get a2dp media tx mtu */
+uint16_t bt_a2dp_get_a2dp_media_tx_mtu(struct bt_conn *conn);
+
+/* Send a2dp audio data with callback */
+int bt_a2dp_send_audio_data_with_cb(struct bt_conn *conn, u8_t *data, u16_t len, void(*cb)(struct bt_conn *, void *));
+
+/* Start a2dp discover */
+int bt_a2dp_discover(struct bt_conn *conn, uint8_t role);
+
+/* A2dp pts interface */
+int bt_pts_a2dp_discover(struct bt_conn *conn);
+int bt_pts_a2dp_get_capabilities(struct bt_conn *conn);
+int bt_pts_a2dp_get_all_capabilities(struct bt_conn *conn);
+int bt_pts_a2dp_set_configuration(struct bt_conn *conn);
+int bt_pts_a2dp_open(struct bt_conn *conn);
+int bt_pts_a2dp_close(struct bt_conn *conn);
+int bt_pts_a2dp_abort(struct bt_conn *conn);
+int bt_pts_a2dp_disconnect_media_session(struct bt_conn *conn);
+void bt_pts_a2dp_set_err_code(uint8_t err_code);
 
 #ifdef __cplusplus
 }

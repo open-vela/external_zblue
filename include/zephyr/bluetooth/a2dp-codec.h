@@ -24,47 +24,112 @@
 extern "C" {
 #endif
 
-/* Sampling Frequency */
-#define A2DP_SBC_SAMP_FREQ_16000 BIT(7)
-#define A2DP_SBC_SAMP_FREQ_32000 BIT(6)
-#define A2DP_SBC_SAMP_FREQ_44100 BIT(5)
-#define A2DP_SBC_SAMP_FREQ_48000 BIT(4)
+/** @brief A2dp connect channel Role */
+enum A2DP_ROLE_TYPE {
+	/** Unkown role  */
+	BT_A2DP_CH_UNKOWN = 0x00,
+	/** Source Role */
+	BT_A2DP_CH_SOURCE = 0x01,
+	/** Sink Role */
+	BT_A2DP_CH_SINK = 0x02,
+	/** For a2dp media session connect  */
+	BT_A2DP_CH_MEDIA = 0x03
+};
 
-/* Channel Mode */
-#define A2DP_SBC_CH_MODE_MONO  BIT(3)
-#define A2DP_SBC_CH_MODE_DUAL  BIT(2)
-#define A2DP_SBC_CH_MODE_STREO BIT(1)
-#define A2DP_SBC_CH_MODE_JOINT BIT(0)
+/** @brief Stream End Point Media Type */
+enum MEDIA_TYPE {
+	/** Audio Media Type */
+	BT_A2DP_AUDIO = 0x00,
+	/** Video Media Type */
+	BT_A2DP_VIDEO = 0x01,
+	/** Multimedia Media Type */
+	BT_A2DP_MULTIMEDIA = 0x02
+};
 
-/* Block Length */
-#define A2DP_SBC_BLK_LEN_4  BIT(7)
-#define A2DP_SBC_BLK_LEN_8  BIT(6)
-#define A2DP_SBC_BLK_LEN_12 BIT(5)
-#define A2DP_SBC_BLK_LEN_16 BIT(4)
+/** @brief Stream End Point Role */
+enum A2DP_EP_ROLE_TYPE {
+	/** Source Role */
+	BT_A2DP_EP_SOURCE = 0x00,
+	/** Sink Role */
+	BT_A2DP_EP_SINK = 0x01
+};
 
-/* Subbands */
-#define A2DP_SBC_SUBBAND_4 BIT(3)
-#define A2DP_SBC_SUBBAND_8 BIT(2)
+/** @brief Codec ID */
+enum bt_a2dp_codec_id {
+	/** Codec SBC */
+	BT_A2DP_SBC = 0x00,
+	/** Codec MPEG-1 */
+	BT_A2DP_MPEG1 = 0x01,
+	/** Codec MPEG-2 */
+	BT_A2DP_MPEG2 = 0x02,
+	/** Codec ATRAC */
+	BT_A2DP_ATRAC = 0x04,
+	/** Codec Non-A2DP */
+	BT_A2DP_VENDOR = 0xff
+};
 
-/* Allocation Method */
-#define A2DP_SBC_ALLOC_MTHD_SNR      BIT(1)
-#define A2DP_SBC_ALLOC_MTHD_LOUDNESS BIT(0)
+enum{
+	BT_A2DP_SBC_48000 = 1,
+	BT_A2DP_SBC_44100 = 2,
+	BT_A2DP_SBC_32000 = 4,
+	BT_A2DP_SBC_16000 = 8,
+	BT_A2DP_SBC_FREQ_MASK = 0xF,
+};
 
-#define BT_A2DP_SBC_SAMP_FREQ(preset)    ((preset->config[0] >> 4) & 0x0f)
-#define BT_A2DP_SBC_CHAN_MODE(preset)    ((preset->config[0]) & 0x0f)
-#define BT_A2DP_SBC_BLK_LEN(preset)      ((preset->config[1] >> 4) & 0x0f)
-#define BT_A2DP_SBC_SUB_BAND(preset)     ((preset->config[1] >> 2) & 0x03)
-#define BT_A2DP_SBC_ALLOC_MTHD(preset)   ((preset->config[1]) & 0x03)
+enum{
+	BT_A2DP_SBC_JOINT_STEREO  = 1,
+	BT_A2DP_SBC_STEREO        = 2,
+	BT_A2DP_SBC_DUAL_CHANNEL  = 4,
+	BT_A2DP_SBC_MONO          = 8,
+	BT_A2DP_SBC_CHANNEL_MODE_MASK = 0xF,
+};
 
-/** @brief SBC Codec */
-struct bt_a2dp_codec_sbc_params {
-	/** First two octets of configuration */
-	uint8_t config[2];
-	/** Minimum Bitpool Value */
-	uint8_t min_bitpool;
-	/** Maximum Bitpool Value */
-	uint8_t max_bitpool;
-} __packed;
+enum{
+	BT_A2DP_SBC_BLOCK_LENGTH_16 = 1,
+	BT_A2DP_SBC_BLOCK_LENGTH_12 = 2,
+	BT_A2DP_SBC_BLOCK_LENGTH_8  = 4,
+	BT_A2DP_SBC_BLOCK_LENGTH_4  = 8,
+	BT_A2DP_SBC_BLOCK_LENGTH_MASK = 0xF,
+};
+
+enum{
+	BT_A2DP_SBC_SUBBANDS_8 = 1,
+	BT_A2DP_SBC_SUBBANDS_4 = 2,
+	BT_A2DP_SBC_SUBBANDS_MASK = 0x3,
+};
+
+enum{
+	BT_A2DP_SBC_ALLOCATION_METHOD_LOUDNESS = 1,
+	BT_A2DP_SBC_ALLOCATION_METHOD_SNR      = 2,
+	BT_A2DP_SBC_ALLOCATION_METHOD_MASK		= 0x3,
+};
+
+enum{
+	BT_A2DP_AAC_OBJ_MPEG2_AAC_LC = (0x1 << 7),
+	BT_A2DP_AAC_OBJ_MPEG4_AAC_LC = (0x1 << 6),
+	BT_A2DP_AAC_OBJ_MPEG4_AAC_LTP = (0x1 << 5),
+	BT_A2DP_AAC_OBJ_MPEG4_AAC_SCALABLE = (0x1 << 4),
+};
+
+enum{
+	BT_A2DP_AAC_8000 = (0x1 << 11),
+	BT_A2DP_AAC_11025 = (0x1 << 10),
+	BT_A2DP_AAC_12000 = (0x1 << 9),
+	BT_A2DP_AAC_16000 = (0x1 << 8),
+	BT_A2DP_AAC_22050 = (0x1 << 7),
+	BT_A2DP_AAC_24000 = (0x1 << 6),
+	BT_A2DP_AAC_32000 = (0x1 << 5),
+	BT_A2DP_AAC_44100 = (0x1 << 4),
+	BT_A2DP_AAC_48000 = (0x1 << 3),
+	BT_A2DP_AAC_64000 = (0x1 << 2),
+	BT_A2DP_AAC_88200 = (0x1 << 1),
+	BT_A2DP_AAC_96000 = (0x1 << 0),
+};
+
+enum {
+	BT_A2DP_AAC_CHANNELS_1 = (0x1 << 1),
+	BT_A2DP_AAC_CHANNELS_2 = (0x1 << 0),
+};
 
 #ifdef __cplusplus
 }
