@@ -14,7 +14,7 @@
 extern "C" {
 #endif
 
-#include <acts_bluetooth/avrcp.h>
+#include <bluetooth/avrcp.h>
 
 
 struct bt_avrcp_app_cb {

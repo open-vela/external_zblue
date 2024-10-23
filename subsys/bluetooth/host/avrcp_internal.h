@@ -5,10 +5,10 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-#include <acts_bluetooth/avrcp.h>
+#include <bluetooth/avrcp.h>
 
 
-#define BT_AVRCP_MAX_MTU						CONFIG_BT_L2CAP_RX_MTU
+#define BT_AVRCP_MAX_MTU						BT_L2CAP_RX_MTU
 #define BT_L2CAP_PSM_AVCTP_CONTROL				0x0017
 
 #define BT_SIG_COMPANY_ID						0x001958
@@ -86,7 +86,7 @@ enum {
 #define BT_AVRCP_EVENT_BIT_MAP(x)		(0x01 << (x))
 #define BT_AVRCP_EVENT_SUPPORT(bitmap, event)	((bitmap)&(0x01 << (event)))
 
-#define AVRCP_LOCAL_TG_SUPPORT_EVENT (0)
+#define AVRCP_LOCAL_TG_SUPPORT_EVENT BT_AVRCP_EVENT_BIT_MAP(BT_AVRCP_EVENT_VOLUME_CHANGED)
 
 enum {
 	BT_AVRCP_STATE_IDLE,

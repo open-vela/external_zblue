@@ -17,23 +17,21 @@
 #include <sys/printk.h>
 #include <assert.h>
 
-#include <acts_bluetooth/bluetooth.h>
-#include <acts_bluetooth/l2cap.h>
-#include <acts_bluetooth/avdtp.h>
-#include <acts_bluetooth/a2dp.h>
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/l2cap.h>
+#include <bluetooth/avdtp.h>
+#include <bluetooth/a2dp.h>
 
 #define BT_DBG_ENABLED IS_ENABLED(CONFIG_BT_DEBUG_A2DP)
 #define LOG_MODULE_NAME bt_a2dp
 #include "common/log.h"
 
 #include "hci_core.h"
+#include "avdtp_internal.h"
 #include "conn_internal.h"
 #include "l2cap_internal.h"
-#include "avdtp_internal.h"
-#include "a2dp_internal.h"
-#include "common_internal.h"
 
-extern struct bt_avdtp_conn avdtp_conn[];
+struct bt_avdtp_conn avdtp_conn[CONFIG_BT_MAX_CONN];
 
 /* A2dp app register call back handler */
 static struct bt_a2dp_app_cb *reg_a2dp_app_cb;
@@ -49,10 +47,10 @@ static struct bt_avdtp *a2dp_get_new_connection(struct bt_conn *conn)
 		return NULL;
 	}
 
-	find = bt_inner_value.br_max_conn;
-	free = bt_inner_value.br_max_conn;
+	find = CONFIG_BT_MAX_CONN;
+	free = CONFIG_BT_MAX_CONN;
 
-	for (i = 0; i < bt_inner_value.br_max_conn; i++) {
+	for (i = 0; i < CONFIG_BT_MAX_CONN; i++) {
 		if (avdtp_conn[i].signal_session.br_chan.chan.conn == conn) {
 			BT_DBG("Conn:%p already connected signal_session: %p", conn, &avdtp_conn[i]);
 			session_priority++;
@@ -71,12 +69,12 @@ static struct bt_avdtp *a2dp_get_new_connection(struct bt_conn *conn)
 		}
 	}
 
-	if ((free == bt_inner_value.br_max_conn) && (find == bt_inner_value.br_max_conn)) {
+	if ((free == CONFIG_BT_MAX_CONN) && (find == CONFIG_BT_MAX_CONN)) {
 		BT_DBG("More connection cannot be supported");
 		return NULL;
 	}
 
-	if (find != bt_inner_value.br_max_conn) {
+	if (find != CONFIG_BT_MAX_CONN) {
 		index = find;
 	} else {
 		index = free;
@@ -109,7 +107,7 @@ static struct bt_avdtp_conn *a2dp_lookup_by_conn(struct bt_conn *conn)
 		return NULL;
 	}
 
-	for (i = 0; i < bt_inner_value.br_max_conn; i++) {
+	for (i = 0; i < CONFIG_BT_MAX_CONN; i++) {
 		if (avdtp_conn[i].signal_session.br_chan.chan.conn == conn) {
 			return &avdtp_conn[i];
 		}
@@ -152,10 +150,6 @@ static void a2dp_avdtp_connected_cb(struct bt_avdtp *session)
 			reg_a2dp_app_cb->connected(session->br_chan.chan.conn);
 		}
 	}
-
-	if (bt_internal_is_pts_test()) {
-		printk("%s, type:%d\n", __func__, session->session_priority);
-	}
 }
 
 static void a2dp_avdtp_disconnected_cb(struct bt_avdtp *session)
@@ -164,10 +158,6 @@ static void a2dp_avdtp_disconnected_cb(struct bt_avdtp *session)
 		(session->session_priority == BT_AVDTP_SIGNALING_SESSION) &&
 		session->connected) {
 		reg_a2dp_app_cb->disconnected(session->br_chan.chan.conn);
-	}
-
-	if (bt_internal_is_pts_test()) {
-		printk("%s, type:%d\n", __func__, session->session_priority);
 	}
 }
 
@@ -232,7 +222,7 @@ static const struct bt_avdtp_event_cb avdtp_cb = {
 
 static void bt_a2dp_env_init(void)
 {
-	memset(avdtp_conn, 0, sizeof(struct bt_avdtp_conn)*bt_inner_value.br_max_conn);
+	memset(avdtp_conn, 0, sizeof(struct bt_avdtp_conn)*CONFIG_BT_MAX_CONN);
 	reg_a2dp_app_cb = NULL;
 }
 
@@ -261,7 +251,7 @@ static struct bt_avdtp_conn *a2dp_lookup_by_media_conn(struct bt_conn *conn)
 		return NULL;
 	}
 
-	for (i = 0; i < bt_inner_value.br_max_conn; i++) {
+	for (i = 0; i < CONFIG_BT_MAX_CONN; i++) {
 		if ((avdtp_conn[i].signal_session.br_chan.chan.conn == NULL) &&
 			(avdtp_conn[i].media_session.br_chan.chan.conn == conn)) {
 			return &avdtp_conn[i];
@@ -380,8 +370,7 @@ int bt_a2dp_start(struct bt_conn *conn)
 	pAvdtp_conn = a2dp_lookup_by_conn(conn);
 	if (!pAvdtp_conn ||
 		(pAvdtp_conn->signal_session.connected == 0) ||
-		(pAvdtp_conn->media_session.connected == 0) ||
-		bt_conn_is_br_acl_send_block(conn)) {
+		(pAvdtp_conn->media_session.connected == 0)) {
 		return -EIO;
 	}
 
@@ -395,8 +384,7 @@ int bt_a2dp_suspend(struct bt_conn *conn)
 	pAvdtp_conn = a2dp_lookup_by_conn(conn);
 	if (!pAvdtp_conn ||
 		(pAvdtp_conn->signal_session.connected == 0) ||
-		(pAvdtp_conn->media_session.connected == 0) ||
-		bt_conn_is_br_acl_send_block(conn)) {
+		(pAvdtp_conn->media_session.connected == 0)) {
 		return -EIO;
 	}
 
@@ -410,8 +398,7 @@ int bt_a2dp_reconfig(struct bt_conn *conn, struct bt_a2dp_media_codec *codec)
 	pAvdtp_conn = a2dp_lookup_by_conn(conn);
 	if (!pAvdtp_conn ||
 		(pAvdtp_conn->signal_session.connected == 0) ||
-		(pAvdtp_conn->media_session.connected == 0) ||
-		bt_conn_is_br_acl_send_block(conn)) {
+		(pAvdtp_conn->media_session.connected == 0)) {
 		return -EIO;
 	}
 
@@ -442,12 +429,11 @@ int bt_a2dp_send_audio_data(struct bt_conn *conn, uint8_t *data, uint16_t len)
 	}
 
 	/* if (len > bt_inner_value.l2cap_tx_mtu) { */
-	if (len > L2CAP_BR_MAX_MTU_A2DP) {
+	if (len > BT_L2CAP_TX_MTU) {
 		return -EFBIG;
 	}
 
-	/* buf = bt_l2cap_create_pdu(NULL, 0); */
-	buf = bt_l2cap_create_pdu_len(NULL, 0, len);
+	buf = bt_l2cap_create_pdu(NULL, 0);
 	if (!buf) {
 		return -ENOMEM;
 	}
@@ -491,7 +477,7 @@ bool bt_a2dp_is_media_rx_channel(uint16_t handle, uint16_t cid)
 	int i;
 	struct bt_conn *conn;
 
-	for (i = 0; i < bt_inner_value.br_max_conn; i++) {
+	for (i = 0; i < CONFIG_BT_MAX_CONN; i++) {
 		if (avdtp_conn[i].signal_session.br_chan.chan.conn &&
 			avdtp_conn[i].media_session.br_chan.chan.conn) {
 			conn = avdtp_conn[i].media_session.br_chan.chan.conn;
@@ -510,7 +496,7 @@ bool bt_a2dp_is_media_tx_channel(uint16_t handle, uint16_t cid)
 	int i;
 	struct bt_conn *conn;
 
-	for (i = 0; i < bt_inner_value.br_max_conn; i++) {
+	for (i = 0; i < CONFIG_BT_MAX_CONN; i++) {
 		if (avdtp_conn[i].signal_session.br_chan.chan.conn &&
 			avdtp_conn[i].media_session.br_chan.chan.conn) {
 			conn = avdtp_conn[i].media_session.br_chan.chan.conn;
@@ -537,7 +523,8 @@ uint16_t bt_a2dp_get_a2dp_media_tx_mtu(struct bt_conn *conn)
 	return pAvdtp_conn->media_session.br_chan.tx.mtu;
 }
 
-int bt_a2dp_send_audio_data_with_cb(struct bt_conn *conn, u8_t *data, u16_t len, void(*cb)(struct bt_conn *, void *))
+int bt_a2dp_send_audio_data_with_cb(struct bt_conn *conn, uint8_t *data, uint16_t len,
+				    void (*cb)(struct bt_conn *, void *))
 {
 	struct net_buf *buf;
 	struct bt_avdtp_conn *pAvdtp_conn;
@@ -549,12 +536,11 @@ int bt_a2dp_send_audio_data_with_cb(struct bt_conn *conn, u8_t *data, u16_t len,
 	}
 
 	/* if (len > bt_inner_value.l2cap_tx_mtu) { */
-	if (len > L2CAP_BR_MAX_MTU_A2DP) {
+	if (len > BT_L2CAP_TX_MTU) {
 		return -EFBIG;
 	}
 
-	/* buf = bt_l2cap_create_pdu(NULL, 0); */
-	buf = bt_l2cap_create_pdu_len(NULL, 0, len);
+	buf = bt_l2cap_create_pdu(NULL, 0);
 	if (!buf) {
 		return -ENOMEM;
 	}

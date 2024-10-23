@@ -10,6 +10,8 @@
 #ifndef ZEPHYR_INCLUDE_BLUETOOTH_AVDTP_H_
 #define ZEPHYR_INCLUDE_BLUETOOTH_AVDTP_H_
 
+#include <toolchain.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -13,30 +13,26 @@
 #include <sys/byteorder.h>
 #include <sys/util.h>
 
-#include <acts_bluetooth/hci.h>
-#include <acts_bluetooth/bluetooth.h>
-#include <acts_bluetooth/l2cap.h>
-#include <acts_bluetooth/avdtp.h>
+#include <bluetooth/a2dp-codec.h>
+#include <bluetooth/avdtp.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/l2cap.h>
 
 #define BT_DBG_ENABLED IS_ENABLED(CONFIG_BT_DEBUG_AVDTP)
 #define LOG_MODULE_NAME bt_avdtp
 #include "common/log.h"
 
 #include "hci_core.h"
+#include "avdtp_internal.h"
 #include "conn_internal.h"
 #include "l2cap_internal.h"
-#include "avdtp_internal.h"
-#include "common_internal.h"
-
-#include <acts_bluetooth/a2dp-codec.h>
-#include <acts_bluetooth/avdtp.h>
 
 #define AVDTP_DEBUG_LOG		1
 #if AVDTP_DEBUG_LOG
 #define avdtp_log(fmt, ...) \
 		do {	\
-			if (bt_internal_debug_log())	\
-				printk(fmt, ##__VA_ARGS__);	\
+			printk(fmt, ##__VA_ARGS__);	\
 		} while (0)
 #else
 #define avdtp_log(fmt, ...)
@@ -480,12 +476,7 @@ static int avdtp_setreset_configuration_cmd_handle(struct bt_avdtp *session,
 	ret = bt_avdtp_ep_check_set_codec_cp(session, buf, *acp_seid, sig_id);
 	if (ret) {
 		rej.category = BT_AVDTP_SERVICE_CAT_MEDIA_CODEC;
-		if (bti_is_pts_test() && (a2dp_test_pts_err_code != 0xFF)) {
-			rej.error = a2dp_test_pts_err_code;
-			a2dp_test_pts_err_code = 0xFF;
-		} else {
-			rej.error = (uint8_t)(-ret);
-		}
+		rej.error = (uint8_t)(-ret);
 		goto out;
 	}
 
@@ -779,7 +770,7 @@ static int avdtp_send(struct bt_avdtp *session, struct net_buf *buf)
 		pAvdtp_conn->req.func = bt_avdtp_send_timeout_handler;
 
 		/* Send command, Start timeout work */
-		k_delayed_work_submit(&pAvdtp_conn->req.timeout_work, AVDTP_TIMEOUT);
+		k_work_schedule(&pAvdtp_conn->req.timeout_work.work, AVDTP_TIMEOUT);
 		pAvdtp_conn->stream.int_state = BT_AVDTP_SIG_ID_TO_STATE_ING(pAvdtp_conn->req.sig);
 	}
 
@@ -862,7 +853,7 @@ void bt_avdtp_l2cap_connected(struct bt_l2cap_chan *chan)
 		}
 
 		/* Init the timer */
-		k_delayed_work_init(&pAvdtp_conn->req.timeout_work, avdtp_timeout);
+		k_work_init_delayable(&pAvdtp_conn->req.timeout_work.work, avdtp_timeout);
 
 		pAvdtp_conn->req.state_sm_func = bt_avdtp_state_sm;
 	}
@@ -904,7 +895,7 @@ void bt_avdtp_l2cap_disconnected(struct bt_l2cap_chan *chan)
 		lsep_set_seid_free(pAvdtp_conn->stream.lsid.id);
 
 		/* Clear the Pending req if set*/
-		k_delayed_work_cancel(&pAvdtp_conn->req.timeout_work);
+		k_work_cancel_delayable(&pAvdtp_conn->req.timeout_work.work);
 		pAvdtp_conn->req.state_sm_func = NULL;
 
 		pAvdtp_conn->pending_ahead_start = 0;
@@ -960,7 +951,7 @@ static int bt_avdtp_l2cap_recv(struct bt_l2cap_chan *chan, struct net_buf *buf)
 		}
 
 		/* Get responed, cancel delay work */
-		k_delayed_work_cancel(&pAvdtp_conn->req.timeout_work);
+		k_work_cancel_delayable(&pAvdtp_conn->req.timeout_work.work);
 		pAvdtp_conn->req.msg_type = msgtype;
 	}
 
@@ -1036,13 +1027,7 @@ int bt_avdtp_connect(struct bt_conn *conn, struct bt_avdtp *session, uint8_t rol
 	session->role = role;
 	session->intacp_role = BT_AVDTP_INT;
 	session->br_chan.chan.ops = (struct bt_l2cap_chan_ops *)&ops;
-	if (bt_avdtp_is_media_aac_codec(session)) {
-		session->br_chan.rx.mtu = L2CAP_BR_MAX_MTU_A2DP;
-	} else {
-		session->br_chan.rx.mtu = bt_inner_value.avdtp_rx_mtu;
-	}
-	session->br_chan.chan.required_sec_level = BT_SECURITY_L2;
-
+	session->br_chan.rx.mtu = BT_L2CAP_RX_MTU;
 	return bt_l2cap_chan_connect(conn, &session->br_chan.chan,
 				     BT_L2CAP_PSM_AVDTP);
 }
@@ -1074,11 +1059,7 @@ int bt_avdtp_l2cap_accept(struct bt_conn *conn, struct bt_l2cap_chan **chan)
 		return result;
 	}
 	session->br_chan.chan.ops = (struct bt_l2cap_chan_ops *)&ops;
-	if (bt_avdtp_is_media_aac_codec(session)) {
-		session->br_chan.rx.mtu = L2CAP_BR_MAX_MTU_A2DP;
-	} else {
-		session->br_chan.rx.mtu = bt_inner_value.avdtp_rx_mtu;
-	}
+	session->br_chan.rx.mtu = BT_L2CAP_RX_MTU;
 	*chan = &session->br_chan.chan;
 	return 0;
 }
@@ -1341,7 +1322,7 @@ int bt_avdtp_delayreport(struct bt_avdtp *session, uint16_t delay_time)
 		return -EINVAL;
 	}
 
-	if (!pAvdtp_conn->stream.delay_report && !bt_internal_is_pts_test()) {
+	if (!pAvdtp_conn->stream.delay_report) {
 		return -EIO;
 	}
 
@@ -1368,10 +1349,6 @@ static int bt_avdtp_send_timeout_handler(struct bt_avdtp *session,
 {
 	struct bt_avdtp_conn *pAvdtp_conn = AVDTP_CONN_BY_SIGNAL(session);
 
-	if (bt_internal_is_pts_test()) {
-		return 0;
-	}
-
 	avdtp_log("avdtp send timeout state:0x%x, sig:0x%x\n", pAvdtp_conn->stream.int_state, req->sig);
 	if (BT_AVDTP_IS_ACPINT_STATE_ING(pAvdtp_conn->stream.int_state) &&
 		(pAvdtp_conn->stream.stream_state < BT_AVDTP_STREAM_STATE_OPEN)) {
@@ -1386,10 +1363,6 @@ static int bt_avdtp_send_timeout_handler(struct bt_avdtp *session,
 static int bt_avdtp_state_sm(struct bt_avdtp *session, struct bt_avdtp_req *req)
 {
 	struct bt_avdtp_conn *pAvdtp_conn = AVDTP_CONN_BY_SIGNAL(session);
-
-	if (bt_internal_is_pts_test()) {
-		return 0;
-	}
 
 	if ((pAvdtp_conn->stream.int_state != BT_AVDTP_ACPINT_STATE_OPENED) &&
 		(pAvdtp_conn->stream.int_state != BT_AVDTP_ACPINT_STATE_RECFGED) &&

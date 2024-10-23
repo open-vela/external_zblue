@@ -25,8 +25,6 @@
 #include "hci_core.h"
 #include "conn_internal.h"
 #include "l2cap_internal.h"
-#include "avdtp_internal.h"
-#include "a2dp_internal.h"
 #include "rfcomm_internal.h"
 #include "sdp_internal.h"
 

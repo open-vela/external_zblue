@@ -13,9 +13,9 @@
 #include <sys/byteorder.h>
 #include <sys/util.h>
 
-#include <acts_bluetooth/hci.h>
-#include <acts_bluetooth/bluetooth.h>
-#include <acts_bluetooth/l2cap.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/l2cap.h>
 
 #define BT_DBG_ENABLED IS_ENABLED(CONFIG_BT_DEBUG_AVDTP)
 #define LOG_MODULE_NAME bt_avdtp_ep
@@ -25,10 +25,9 @@
 #include "conn_internal.h"
 #include "l2cap_internal.h"
 #include "avdtp_internal.h"
-#include "common_internal.h"
 
-#include <acts_bluetooth/a2dp-codec.h>
-#include <acts_bluetooth/avdtp.h>
+#include <bluetooth/a2dp-codec.h>
+#include <bluetooth/avdtp.h>
 
 #define AVDTP_EP_DEBUG_LOG		1
 #if AVDTP_EP_DEBUG_LOG
@@ -306,15 +305,8 @@ static int check_local_remote_codec_aac(struct bt_a2dp_media_codec *lcodec,
 		check_freq = (cal_bitmap_bits(Rfreq, 16) == 1) ? check_freq : 0;
 	}
 
-	if (bt_internal_is_pts_test()) {
-		/* AAC PTS TEST set bitrate 0 */
-		if (!(check_obj && check_channels && check_freq)) {
-			return -BT_AVDTP_ERR_UNSUPPORTED_CONFIGURAION;
-		}
-	} else {
-		if (!(check_obj && check_channels && check_freq && check_bitrate)) {
-			return -BT_AVDTP_ERR_UNSUPPORTED_CONFIGURAION;
-		}
+	if (!(check_obj && check_channels && check_freq && check_bitrate)) {
+		return -BT_AVDTP_ERR_UNSUPPORTED_CONFIGURAION;
 	}
 
 	if (!setcodec) {

@@ -13,11 +13,11 @@
 #include <sys/byteorder.h>
 #include <sys/util.h>
 
-#include <acts_bluetooth/hci.h>
-#include <acts_bluetooth/bluetooth.h>
-#include <acts_bluetooth/sdp.h>
-#include <acts_bluetooth/l2cap.h>
-#include <acts_bluetooth/avrcp.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/l2cap.h>
+#include <bluetooth/avrcp.h>
 
 #define BT_DBG_ENABLED IS_ENABLED(CONFIG_BT_DEBUG_AVRCP)
 #define LOG_MODULE_NAME bt_avrcp
@@ -27,14 +27,12 @@
 #include "conn_internal.h"
 #include "l2cap_internal.h"
 #include "avrcp_internal.h"
-#include "common_internal.h"
 
 #define AVRCP_DEBUG_LOG		0
 #if AVRCP_DEBUG_LOG
 #define avrcp_log(fmt, ...) \
 		do {	\
-			if (bt_internal_debug_log())	\
-				printk(fmt, ##__VA_ARGS__);	\
+			printk(fmt, ##__VA_ARGS__);	\
 		} while (0)
 #else
 #define avrcp_log(fmt, ...)
@@ -173,7 +171,7 @@ static int avrcp_send(struct bt_avrcp *session, struct net_buf *buf)
 		session->req.timeout_func = bt_avrcp_send_timeout_handler;
 
 		/* Send command, Start timeout work */
-		k_delayed_work_submit(&session->req.timeout_work, AVRCP_TIMEOUT);
+		k_work_schedule(&session->req.timeout_work.work, AVRCP_TIMEOUT);
 	}
 
 	return 0;
@@ -213,17 +211,13 @@ static void bt_avrcp_l2cap_connected(struct bt_l2cap_chan *chan)
 	session = AVRCP_CHAN(chan);
 	BT_DBG("chan %p session %p", chan, session);
 
-	if (bti_avrcp_vol_sync()) {
-		session->l_tg_ebitmap = AVRCP_LOCAL_TG_SUPPORT_EVENT | BT_AVRCP_EVENT_BIT_MAP(BT_AVRCP_EVENT_VOLUME_CHANGED);
-	} else {
-		session->l_tg_ebitmap = AVRCP_LOCAL_TG_SUPPORT_EVENT;
-	}
+	session->l_tg_ebitmap = AVRCP_LOCAL_TG_SUPPORT_EVENT;
 	session->r_tg_ebitmap = 0;
 	session->l_reg_notify_event = BT_AVRCP_EVENT_BIT_MAP(BT_AVRCP_EVENT_PLAYBACK_STATUS_CHANGED) |
 		BT_AVRCP_EVENT_BIT_MAP(BT_AVRCP_EVENT_TRACK_CHANGED);
 	session->r_reg_notify_event = 0;
 	session->req.state_sm_func = bt_avrcp_state_sm;
-	k_delayed_work_init(&session->req.timeout_work, avrcp_timeout);
+	k_work_init_delayable(&session->req.timeout_work.work, avrcp_timeout);
 
 	avrcp_ctrl_event_cb->connected(session);
 
@@ -244,7 +238,7 @@ void bt_avrcp_l2cap_disconnected(struct bt_l2cap_chan *chan)
 	session->r_tg_ebitmap = 0;
 
 	/* Cancel timer */
-	k_delayed_work_cancel(&session->req.timeout_work);
+	k_work_cancel_delayable(&session->req.timeout_work.work);
 	session->req.state_sm_func = NULL;
 }
 
@@ -560,7 +554,7 @@ static void avrcp_verdor_notify_rsp_handle(struct bt_avrcp *session,
 			/* Spec: If no track currently selected, then return 0xFFFFFFFF in the INTERIM response */
 			avrcp_ctrl_event_cb->playback_pos(session, pos);
 			return;		/* Get playback pos not need auto register again */
-		} else if (bt_internal_is_pts_test() && rsp->event_id == BT_AVRCP_EVENT_VOLUME_CHANGED) {
+		} else if (rsp->event_id == BT_AVRCP_EVENT_VOLUME_CHANGED) {
 			BT_INFO("Notify volume change, value %d\n", rsp->status);
 		}
 
@@ -771,7 +765,7 @@ static int bt_avrcp_l2cap_recv(struct bt_l2cap_chan *chan, struct net_buf *buf)
 						session->req.tid,avctphdr->tid);
 				//return;
 			}else{
-				k_delayed_work_cancel(&session->req.timeout_work);
+				k_work_cancel_delayable(&session->req.timeout_work.work);
 			}
 		}
 	}
@@ -829,7 +823,6 @@ int bt_avrcp_connect(struct bt_conn *conn, struct bt_avrcp *session)
 
 	session->br_chan.chan.ops = (struct bt_l2cap_chan_ops *)&ops;
 	session->br_chan.rx.mtu = BT_AVRCP_MAX_MTU;
-	session->br_chan.chan.required_sec_level = BT_SECURITY_L2;
 
 	return bt_l2cap_chan_connect(conn, &session->br_chan.chan,
 				     BT_L2CAP_PSM_AVCTP_CONTROL);
@@ -1079,10 +1072,6 @@ static int bt_avrcp_send_timeout_handler(struct bt_avrcp *session,
 
 static int bt_avrcp_state_sm(struct bt_avrcp *session, struct bt_avrcp_req *req)
 {
-	if (bt_internal_is_pts_test()) {
-		return 0;
-	}
-
 	avrcp_log("avrcp sm state:%d\n", session->CT_state);
 	switch (session->CT_state) {
 	case BT_AVRCP_STATE_CONNECTED:

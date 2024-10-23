@@ -17,11 +17,11 @@
 #include <sys/printk.h>
 #include <assert.h>
 
-#include <acts_bluetooth/bluetooth.h>
-#include <acts_bluetooth/l2cap.h>
-#include <acts_bluetooth/avrcp_cttg.h>
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/l2cap.h>
+#include <bluetooth/avrcp_cttg.h>
 
-#include <acts_bluetooth/sdp.h>
+#include <bluetooth/sdp.h>
 
 #define BT_DBG_ENABLED IS_ENABLED(CONFIG_BT_DEBUG_AVRCP)
 #define LOG_MODULE_NAME bt_avrcp_cttg
@@ -30,9 +30,8 @@
 #include "hci_core.h"
 #include "conn_internal.h"
 #include "avrcp_internal.h"
-#include "common_internal.h"
 
-extern struct bt_avrcp avrcp_connection[];
+struct bt_avrcp avrcp_connection[CONFIG_BT_MAX_CONN];
 
 static struct bt_avrcp_app_cb *reg_avrcp_app_cb;
 
@@ -45,7 +44,7 @@ static struct bt_avrcp *avrcp_get_new_connection(struct bt_conn *conn)
 		return NULL;
 	}
 
-	for (i = 0; i < bt_inner_value.br_max_conn; i++) {
+	for (i = 0; i < CONFIG_BT_MAX_CONN; i++) {
 		if (!avrcp_connection[i].br_chan.chan.conn) {
 			memset(&avrcp_connection[i], 0, sizeof(struct bt_avrcp));
 			return &avrcp_connection[i];
@@ -64,7 +63,7 @@ static struct bt_avrcp *avrcp_lookup_by_conn(struct bt_conn *conn)
 		return NULL;
 	}
 
-	for (i = 0; i < bt_inner_value.br_max_conn; i++) {
+	for (i = 0; i < CONFIG_BT_MAX_CONN; i++) {
 		if (avrcp_connection[i].br_chan.chan.conn == conn) {
 			return &avrcp_connection[i];
 		}
@@ -164,7 +163,7 @@ static const struct bt_avrcp_event_cb avrcp_cb = {
 static void bt_avrcp_cttg_env_init(void)
 {
 	reg_avrcp_app_cb = NULL;
-	memset(avrcp_connection, 0, sizeof(struct bt_avrcp)*bt_inner_value.br_max_conn);
+	memset(avrcp_connection, 0, sizeof(struct bt_avrcp)*CONFIG_BT_MAX_CONN);
 }
 
 int bt_avrcp_cttg_init(void)

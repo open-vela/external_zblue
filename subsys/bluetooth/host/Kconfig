@@ -930,6 +930,19 @@ config BT_A2DP
 	help
 	  This option enables the A2DP profile
 
+config BT_AVRCP
+	bool "Bluetooth AVRCP protocol support [EXPERIMENTAL]"
+	select EXPERIMENTAL
+	help
+	  This option enables Bluetooth AVRCP support
+
+config BT_AVRCP_CTTG
+	bool "Bluetooth AVRCP Profile CT & TG [EXPERIMENTAL]"
+	select BT_AVRCP
+	select EXPERIMENTAL
+	help
+	  This option enables Bluetooth AVRCP profile
+
 config BT_PAGE_TIMEOUT
 	hex "Bluetooth Page Timeout"
 	default 0x2000

@@ -41,6 +41,13 @@ ifeq ($(CONFIG_BT_HCI),y)
   endif
   ifeq ($(CONFIG_BT_AVDTP),y)
     CSRCS += $(SUBDIR)/host/avdtp.c
+    CSRCS += $(SUBDIR)/host/avdtp_ep.c
+  endif
+  ifeq ($(CONFIG_BT_AVRCP_CTTG),y)
+    CSRCS += $(SUBDIR)/host/avrcp_cttg.c
+  endif
+  ifeq ($(CONFIG_BT_AVRCP),y)
+    CSRCS += $(SUBDIR)/host/avrcp.c
   endif
   ifeq ($(CONFIG_BT_RFCOMM),y)
     CSRCS += $(SUBDIR)/host/rfcomm.c

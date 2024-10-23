@@ -10,8 +10,9 @@
 #ifndef ZEPHYR_INCLUDE_BLUETOOTH_A2DP_H_
 #define ZEPHYR_INCLUDE_BLUETOOTH_A2DP_H_
 
-#include <acts_bluetooth/a2dp-codec.h>
-#include <acts_bluetooth/avdtp.h>
+#include <bluetooth/a2dp-codec.h>
+#include <bluetooth/avdtp.h>
+#include <bluetooth/conn.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -113,7 +114,8 @@ uint8_t bt_a2dp_get_a2dp_role(struct bt_conn *conn);
 uint16_t bt_a2dp_get_a2dp_media_tx_mtu(struct bt_conn *conn);
 
 /* Send a2dp audio data with callback */
-int bt_a2dp_send_audio_data_with_cb(struct bt_conn *conn, u8_t *data, u16_t len, void(*cb)(struct bt_conn *, void *));
+int bt_a2dp_send_audio_data_with_cb(struct bt_conn *conn, uint8_t *data, uint16_t len,
+				    void (*cb)(struct bt_conn *, void *));
 
 /* Start a2dp discover */
 int bt_a2dp_discover(struct bt_conn *conn, uint8_t role);
