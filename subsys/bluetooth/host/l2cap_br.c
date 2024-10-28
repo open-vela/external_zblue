@@ -1638,9 +1638,17 @@ void bt_l2cap_br_init(void)
 		bt_avdtp_init();
 	}
 
+	if (IS_ENABLED(CONFIG_BT_AVRCP)) {
+		bt_avrcp_init();
+	}
+
 	bt_sdp_init();
 
 	if (IS_ENABLED(CONFIG_BT_A2DP)) {
 		bt_a2dp_init();
+	}
+
+	if (IS_ENABLED(CONFIG_BT_AVRCP_CTTG)) {
+		bt_avrcp_cttg_init();
 	}
 }
