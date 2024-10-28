@@ -151,7 +151,7 @@
 #define BT_AVDTP_MAX_BITPOOL         53
 
 #define BT_AVDTP_MAX_MTU CONFIG_BT_L2CAP_RX_MTU
-#define BT_AVDTP_GET_SEID_MAX                   10
+#define BT_AVDTP_GET_SEID_MAX                   20
 
 enum {
 	BT_AVDTP_STATE_CLOSE = 0,
