@@ -33,6 +33,12 @@ enum {
 	BT_RFCOMM_CHAN_SPP,
 };
 
+#ifdef CONFIG_BT_RFCOMM_DLC_STACK_SIZE
+#define BT_RFCOMM_DLC_STACK_SIZE CONFIG_BT_RFCOMM_DLC_STACK_SIZE
+#else
+#define BT_RFCOMM_DLC_STACK_SIZE 256
+#endif
+
 struct bt_rfcomm_dlc;
 
 /** @brief RFCOMM DLC operations structure. */
@@ -96,7 +102,7 @@ struct bt_rfcomm_dlc {
 
 	/* Stack & kernel data for TX thread */
 	struct k_thread            tx_thread;
-	K_KERNEL_STACK_MEMBER(stack, 256);
+	K_KERNEL_STACK_MEMBER(stack, BT_RFCOMM_DLC_STACK_SIZE);
 };
 
 struct bt_rfcomm_server {

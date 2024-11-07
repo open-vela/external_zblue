@@ -902,6 +902,13 @@ config BT_RFCOMM_L2CAP_MTU
 	help
 	  Maximum size of L2CAP PDU for RFCOMM frames.
 
+config BT_RFCOMM_DLC_STACK_SIZE
+	int "RFCOMM DLC task stack size"
+	depends on BT_RFCOMM
+	default 256
+	help
+	  RFCOMM DLC task stack size.
+
 config BT_HFP_HF
 	bool "Bluetooth Handsfree profile HF Role support [EXPERIMENTAL]"
 	depends on PRINTK
