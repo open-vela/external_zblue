@@ -39,24 +39,24 @@ config BT_AUDIO_NOTIFY_RETRY_DELAY
 	  retry to send notification that failed due to lack of TX buffers
 	  available.
 
-rsource "Kconfig.bap"
-rsource "Kconfig.vocs"
-rsource "Kconfig.aics"
-rsource "Kconfig.vcp"
-rsource "Kconfig.micp"
-rsource "Kconfig.csip"
-rsource "Kconfig.tbs"
-rsource "Kconfig.mcs"
-rsource "Kconfig.has"
-rsource "Kconfig.mpl"
-rsource "Kconfig.mctl"
-rsource "Kconfig.cap"
-rsource "Kconfig.tmap"
-rsource "Kconfig.gmap"
-rsource "Kconfig.pbp"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/audio/Kconfig.bap"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/audio/Kconfig.vocs"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/audio/Kconfig.aics"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/audio/Kconfig.vcp"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/audio/Kconfig.micp"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/audio/Kconfig.csip"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/audio/Kconfig.tbs"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/audio/Kconfig.mcs"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/audio/Kconfig.has"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/audio/Kconfig.mpl"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/audio/Kconfig.mctl"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/audio/Kconfig.cap"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/audio/Kconfig.tmap"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/audio/Kconfig.gmap"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/audio/Kconfig.pbp"
 
 module = BT_AUDIO
 module-str = "Bluetooth Audio"
-source "subsys/logging/Kconfig.template.log_config"
+# source "$APPSDIR/external/zblue/zblue/subsys/logging/Kconfig.template.log_config"
 
 endif # BT_AUDIO

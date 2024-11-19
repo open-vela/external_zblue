@@ -1926,7 +1926,7 @@ endif # BT_MESH_SETTINGS_WORKQ
 
 endmenu # Persistent storage
 
-rsource "shell/Kconfig"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/mesh/shell/Kconfig"
 
 if BT_CONN
 

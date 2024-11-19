@@ -13,7 +13,7 @@ if SETTINGS
 
 module = SETTINGS
 module-str = settings
-source "subsys/logging/Kconfig.template.log_config"
+# source "subsys/logging/Kconfig.template.log_config"
 
 config SETTINGS_RUNTIME
 	bool "runtime storage back-end"
