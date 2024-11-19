@@ -6,20 +6,20 @@
 menu "GATT Services"
 	depends on BT_CONN
 
-rsource "Kconfig.dis"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/services/Kconfig.dis"
 
-rsource "Kconfig.cts"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/services/Kconfig.cts"
 
-rsource "Kconfig.hrs"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/services/Kconfig.hrs"
 
-rsource "Kconfig.tps"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/services/Kconfig.tps"
 
-rsource "nus/Kconfig.nus"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/services/nus/Kconfig.nus"
 
-rsource "ias/Kconfig.ias"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/services/ias/Kconfig.ias"
 
-rsource "ots/Kconfig"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/services/ots/Kconfig"
 
-rsource "bas/Kconfig.bas"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/services/bas/Kconfig.bas"
 
 endmenu

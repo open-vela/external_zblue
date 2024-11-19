@@ -162,8 +162,8 @@ menu "Bluetooth Host"
 
 if BT_HCI_HOST
 
-rsource "../mesh/Kconfig"
-rsource "../audio/Kconfig"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/mesh/Kconfig"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/audio/Kconfig"
 
 config BT_HOST_CRYPTO
 	bool "Use crypto functionality implemented in the Bluetooth host"
@@ -750,9 +750,9 @@ config BT_SMP_MIN_ENC_KEY_SIZE
 
 endif # BT_SMP
 
-rsource "Kconfig.l2cap"
-rsource "Kconfig.gatt"
-rsource "../services/Kconfig"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/host/Kconfig.l2cap"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/host/Kconfig.gatt"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/services/Kconfig"
 
 config BT_MAX_PAIRED
 	int "Maximum number of paired devices"
@@ -1086,7 +1086,7 @@ config BT_CONN_DISABLE_SECURITY
 	  WARNING: This option enables anyone to snoop on-air traffic.
 	  Use of this feature in production is strongly discouraged.
 
-rsource "./classic/Kconfig"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/host/classic/Kconfig"
 
 config BT_HCI_VS_EVT_USER
 	bool "User Vendor-Specific event handling"

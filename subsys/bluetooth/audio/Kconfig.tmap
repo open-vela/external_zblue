@@ -14,4 +14,4 @@ config BT_TMAP
 parent-module = BT
 module = BT_TMAP
 module-str = "Telephony and Media Audio Profile"
-source "subsys/logging/Kconfig.template.log_config_inherit"
+# source "$APPSDIR/external/zblue/zblue/subsys/logging/Kconfig.template.log_config_inherit"
