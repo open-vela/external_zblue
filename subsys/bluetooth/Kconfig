@@ -94,7 +94,7 @@ config BT_OBSERVER
 	help
 	  Select this for LE Observer role support.
 
-rsource "Kconfig.adv"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/Kconfig.adv"
 
 config BT_CONN
 	bool
@@ -225,13 +225,13 @@ config BT_CHANNEL_SOUNDING_REASSEMBLY_BUFFER_CNT
 
 endif # BT_CONN
 
-rsource "Kconfig.iso"
-rsource "common/Kconfig"
-rsource "host/Kconfig"
-rsource "controller/Kconfig"
-rsource "crypto/Kconfig"
-rsource "lib/Kconfig"
-rsource "Kconfig.logging"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/Kconfig.iso"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/common/Kconfig"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/host/Kconfig"
+# source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/controller/Kconfig"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/crypto/Kconfig"
+source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/lib/Kconfig"
+# source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/Kconfig.logging"
 
 config BT_SHELL
 	bool "Bluetooth shell"
