@@ -2101,7 +2101,7 @@ static int set_flow_control(struct bt_dev *hdev)
 	hbs = net_buf_add(buf, sizeof(*hbs));
 	(void)memset(hbs, 0, sizeof(*hbs));
 	hbs->acl_mtu = sys_cpu_to_le16(CONFIG_BT_BUF_ACL_RX_SIZE);
-	hbs->acl_pkts = sys_cpu_to_le16(CONFIG_BT_BUF_ACL_RX_COUNT);
+	hbs->acl_pkts = sys_cpu_to_le16(BT_BUF_ACL_RX_COUNT);
 
 	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_HOST_BUFFER_SIZE, buf, NULL);
 	if (err) {
