@@ -1246,6 +1246,13 @@ int bt_conn_le_phy_update(struct bt_conn *conn,
  */
 int bt_conn_disconnect(struct bt_conn *conn, uint8_t reason);
 
+/** @brief Read the RSSI of a connection.
+ *
+ *  @param conn Connection object.
+ *  @param rssi RSSI value.
+ */
+int bt_conn_le_read_rssi(struct bt_conn *conn, int8_t *rssi);
+
 enum {
 	/** Convenience value when no options are specified. */
 	BT_CONN_LE_OPT_NONE = 0,
