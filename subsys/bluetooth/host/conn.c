@@ -3645,6 +3645,11 @@ int bt_conn_le_phy_update(struct bt_conn *conn,
 }
 #endif
 
+int bt_conn_le_read_rssi(struct bt_conn *conn, int8_t *rssi)
+{
+	return bt_le_read_conn_rssi(conn, rssi);
+}
+
 #if defined(CONFIG_BT_CENTRAL)
 static void bt_conn_set_param_le(struct bt_conn *conn,
 				 const struct bt_le_conn_param *param)
