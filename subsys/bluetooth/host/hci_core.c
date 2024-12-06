@@ -3362,7 +3362,7 @@ static int hci_init(void)
 		}
 	} else if (IS_ENABLED(CONFIG_BT_BREDR)) {
 		BT_ERR("Non-BR/EDR controller detected");
-		return -EIO;
+		/* return -EIO; */
 	}
 #if defined(CONFIG_BT_CONN)
 	else if (!bt_dev.le.acl_mtu) {
