@@ -38,7 +38,6 @@ enum {
 	BT_DEV_READY,
 	BT_DEV_PRESET_ID,
 	BT_DEV_HAS_PUB_KEY,
-	BT_DEV_PUB_KEY_BUSY,
 
 	/** The application either explicitly or implicitly instructed the stack to scan
 	 * for advertisers.
@@ -517,6 +516,7 @@ struct bt_dev {
 	struct bt_dev_smp_ctx *smp_ctx;
 
 #if defined(CONFIG_BT_ECC)
+	struct bt_ecc ecc;
 	uint8_t pub_key[BT_PUB_KEY_LEN];
 	sys_slist_t pub_key_cb_slist;
 	bt_dh_key_cb_t dh_key_cb;
@@ -617,10 +617,6 @@ void bt_hci_user_confirm_req(struct bt_dev *hdev, struct net_buf *buf);
 void bt_hci_user_passkey_notify(struct bt_dev *hdev, struct net_buf *buf);
 void bt_hci_user_passkey_req(struct bt_dev *hdev, struct net_buf *buf);
 void bt_hci_auth_complete(struct bt_dev *hdev, struct net_buf *buf);
-
-/* ECC HCI event handlers */
-void bt_hci_evt_le_pkey_complete(struct bt_dev *hdev, struct net_buf *buf);
-void bt_hci_evt_le_dhkey_complete(struct bt_dev *hdev, struct net_buf *buf);
 
 /* Common HCI event handlers */
 void bt_hci_le_enh_conn_complete(struct bt_dev *hdev, struct bt_hci_evt_le_enh_conn_complete *evt);

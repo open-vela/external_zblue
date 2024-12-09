@@ -301,17 +301,11 @@ struct bt_dev_smp_ctx {
 
 static bool le_sc_supported(struct bt_dev *hdev)
 {
-	/*
-	 * If controller based ECC is to be used it must support
-	 * "LE Read Local P-256 Public Key" and "LE Generate DH Key" commands.
-	 * Otherwise LE SC are not supported.
-	 */
 	if (IS_ENABLED(CONFIG_BT_SMP_OOB_LEGACY_PAIR_ONLY)) {
 		return false;
 	}
 
-	return BT_CMD_TEST(hdev->supported_commands, 34, 1) &&
-	       BT_CMD_TEST(hdev->supported_commands, 34, 2);
+	return IS_ENABLED(CONFIG_BT_ECC);
 }
 
 static const struct bt_conn_auth_cb *latch_auth_cb(struct bt_smp *smp)
