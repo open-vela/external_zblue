@@ -23,7 +23,6 @@
 
 #include <zephyr/bluetooth/hci.h>
 
-#include "hci_ecc.h"
 #include "monitor.h"
 #include "hci_raw_internal.h"
 
@@ -321,15 +320,7 @@ int bt_send(struct bt_dev *hdev, struct net_buf *buf)
 		}
 	}
 
-	if (IS_ENABLED(CONFIG_BT_SEND_ECC_EMULATION)) {
-		return bt_hci_ecc_send(buf);
-	}
-
-#if DT_HAS_CHOSEN(zephyr_bt_hci)
-	return bt_hci_send(hdev->hci, buf);
-#else
-	return hdev->drv->send(buf);
-#endif
+	return bt_hci_send(bt_dev.hci, buf);
 }
 
 int bt_hci_raw_set_mode(struct bt_dev *hdev, uint8_t mode)

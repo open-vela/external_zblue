@@ -19,6 +19,27 @@
 /** Length of a Bluetooth Diffie-Hellman key. */
 #define BT_DH_KEY_LEN              (BT_ECC_KEY_SIZE)
 
+enum {
+	PENDING_PUB_KEY,
+	PENDING_DHKEY,
+
+	/* Total number of flags - must be at the end of the enum */
+	NUM_FLAGS,
+};
+
+struct bt_ecc {
+	uint8_t private_key_be[BT_PRIV_KEY_LEN];
+
+	union {
+		uint8_t public_key_be[BT_PUB_KEY_LEN];
+		uint8_t dhkey_be[BT_DH_KEY_LEN];
+	};
+
+	ATOMIC_DEFINE(flags, NUM_FLAGS);
+	struct k_work pub_key_work;
+	struct k_work dh_key_work;
+};
+
 /*  @brief Container for public key callback */
 struct bt_pub_key_cb {
 	/** @brief Callback type for Public Key generation.
@@ -34,6 +55,8 @@ struct bt_pub_key_cb {
 	/* Internal */
 	sys_snode_t node;
 };
+
+void bt_ecc_init(struct bt_dev *hdev);
 
 /*  @brief Check if public key is equal to the debug public key.
  *
