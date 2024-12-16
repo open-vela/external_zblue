@@ -1,95 +1,36 @@
-/****************************************************************************
- * apps/external/zblue/zblue/port/kernel/sched.c
+/******************************************************************************
  *
- *   Copyright (C) 2020 Xiaomi InC. All rights reserved.
+ * Copyright (C) 2024 Xiaomi Corporation
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- * 3. Neither the name NuttX nor the names of its contributors may be
- *    used to endorse or promote products derived from this software
- *    without specific prior written permission.
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
- * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
- * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  *
- ****************************************************************************/
-#include <assert.h>
-#include <kernel.h>
-#include <arch/irq.h>
+ *****************************************************************************/
 
-void k_sched_lock(void)
+#include <zephyr/kernel.h>
+
+int32_t k_sleep(k_timeout_t timeout)
 {
-	if (!up_interrupt_context()) {
-		sched_lock();
+#if 0
+	/* in case of K_FOREVER, we suspend */
+	if (K_TIMEOUT_EQ(timeout, K_FOREVER)) {
+
+        k_thread_suspend(k_sched_current_thread_query());
+
+		return (int32_t) K_TICKS_FOREVER;
 	}
-}
-
-void k_sched_unlock(void)
-{
-	if (!up_interrupt_context()) {
-		sched_unlock();
-	}
-}
-
-unsigned int arch_irq_lock(void)
-{
-	k_sched_lock();
-	return enter_critical_section();
-}
-
-void arch_irq_unlock(unsigned int key)
-{
-	leave_critical_section(key);
-	k_sched_unlock();
-}
-
-unsigned int z_smp_global_lock(void)
-{
-	k_sched_lock();
-	return enter_critical_section();
-}
-
-void z_smp_global_unlock(unsigned int key)
-{
-	leave_critical_section(key);
-	k_sched_unlock();
-}
-
-bool arch_irq_unlocked(unsigned int key)
-{
-	return false;
-}
-
-void z_fatal_error(unsigned int reason, const z_arch_esf_t *esf)
-{
-	ASSERT(false);
-}
-
-#if defined(CONFIG_ASSERT_NO_FILE_INFO)
-void assert_post_action(void)
-#else
-void assert_post_action(const char *file, unsigned int line)
 #endif
-{
-	ASSERT(false);
+
+	return nxsig_usleep(k_ticks_to_us_ceil32(timeout.ticks));
 }
 
 void k_yield(void)
@@ -103,9 +44,37 @@ void k_yield(void)
 #endif /* CONFIG_BT_THREAD_NO_PREEM */
 }
 
-int32_t k_sleep(k_timeout_t timeout)
+k_tid_t k_sched_current_thread_query(void)
 {
-	return nxsig_usleep(k_ticks_to_us_ceil32(timeout.ticks));
+extern k_tid_t k_thread_current(void);
+#ifdef CONFIG_SMP
+	/* In SMP, _current is a field read from _current_cpu, which
+	 * can race with preemption before it is read.  We must lock
+	 * local interrupts when reading it.
+	 */
+	unsigned int k = arch_irq_lock();
+#endif /* CONFIG_SMP */
+
+    k_tid_t ret = k_thread_current();
+
+#ifdef CONFIG_SMP
+	arch_irq_unlock(k);
+#endif /* CONFIG_SMP */
+	return ret;
+}
+
+void k_sched_lock(void)
+{
+	if (!up_interrupt_context()) {
+		sched_lock();
+	}
+}
+
+void k_sched_unlock(void)
+{
+	if (!up_interrupt_context()) {
+		sched_unlock();
+	}
 }
 
 struct wait_sync{
@@ -143,4 +112,3 @@ bool z_sched_wake(_wait_q_t *wait_q, int swap_retval, void *swap_data)
 
 	return true;
 }
-

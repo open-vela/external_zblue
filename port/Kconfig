@@ -1,175 +1,20 @@
 #
-# For a description of the syntax of this configuration file,
-# see kconfig-language at https://www.kernel.org/doc/Documentation/kbuild/kconfig-language.txt
+#  Copyright (C) 2024 Xiaomi Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 
-if BT
-	source "$APPSDIR/external/zblue/zblue/port/Kconfig.zephyr"
-endif
-
-config ZEPHYR_WORK_ON_USERSPACE
-  bool "zephyr bluetooth work on userspace"
-  default y
-
-config ZEPHYR_WORK_QUEUE
-	bool "Use zephyr system work queue"
-	default y
-	help
-	  This option enables support for generic system work
-	  queue.
-
-if ZEPHYR_WORK_QUEUE
-
-config SHELL_CMD_BUFF_SIZE
-	int "Shell command buffer size"
-	default 0
-	range 0 256
-	help
-	  Maximum command size in bytes. One byte is reserved for the string
-	  terminator character.
-config SYSTEM_WORKQUEUE_STACK_SIZE
-	int "System workqueue stack size"
-	default 4096
-
-config SYSTEM_WORKQUEUE_PRIORITY
-	int "System workqueue priority"
-	default 110
-	help
-	  By default, system work queue priority is the lowest cooperative
-	  priority. This means that any work handler, once started, won't
-	  be preempted by any other thread until finished.
-
-config SYSTEM_WORKQUEUE_NO_YIELD
-	bool "Select whether system work queue yields"
-	help
-	  By default, the system work queue yields between each work item, to
-	  prevent other threads from being starved.  Selecting this removes
-	  this yield, which may be useful if the work queue thread is
-	  cooperative and a sequence of work items is expected to complete
-	  without yielding.
-
-endif
-
-config BT_THREAD_NO_PREEM
-	bool "Cooperative thread is used"
-	default n
-	help
-	  A cooperative thread remains the current thread until it performs
-	  an action that makes it unready.
-
-config NET_BUF
-	bool "Network buffer support"
-	help
-	  This option enables support for generic network protocol
-	  buffers.
-
-config POLL
-	bool "Async I/O Framework"
-	help
-	  Asynchronous notification framework. Enable the k_poll() and
-	  k_poll_signal_raise() APIs.  The former can wait on multiple events
-	  concurrently, which can be either directly triggered or triggered by
-	  the availability of some kernel objects (semaphores and fifos).
-
-config NET_L2_BT
-  bool "Enable Bluetooth 6Lowpan support"
-  help
-    Enable Bluetooth driver that send and receives IPv6 packets,
-    does header compression on it and writes it to the
-    Bluetooth stack via L2CAP channel.
-
-config NET_BUF_RX_COUNT
-  int "How many network buffers are allocated for receiving data"
-  default 16
-  help
-    Each data buffer will occupy CONFIG_NET_BUF_DATA_SIZE + smallish
-    header (sizeof(struct net_buf)) amount of data.
-
-config NET_BUF_TX_COUNT
-  int "How many network buffers are allocated for sending data"
-  default 16
-  help
-    Each data buffer will occupy CONFIG_NET_BUF_DATA_SIZE + smallish
-    header (sizeof(struct net_buf)) amount of data.
-
-config NET_BUF_USER_DATA_SIZE
-  int "Size of user_data available in every network buffer"
-  default 4
-  help
-    Amount of memory reserved in each network buffer for user data. In
-    most cases this can be left as the default value.
-
-config NUM_COOP_PRIORITIES
-  int "Number of coop priorities"
-  default 103
-  help
-    Number of cooperative priorities configured in the system.
-
-config BT_UART_ON_DEV_NAME
-  string "Device Name of UART Device for Bluetooth"
-  default "/dev/ttyBT"
-  help
-    This option specifies the name of UART device to be used
-    for Bluetooth.
-
-
-config BT_H4_ENABLE
-  bool "Enable used with Bluetooth HCI UART"
-  depends on BT_HCI_RAW
-  help
-    Enable used with Bluetooth HCI UART
-
-if BT_H4_ENABLE
-
-config BT_UART_H4_ON_DEV_NAME
-  string "Device Name of UART Device for Bluetooth H4"
-  default "/dev/ttyS1"
-  help
-    This option specifies the name of UART device to be used
-    for Bluetooth H4.
-
-config BT_UART_H4_TX_STACK_SIZE
-  int "Size of TX Thread Stack for Bluetooth H4"
-  default 4096
-  help
-    This option specifies the size of stack to be used
-    for Bluetooth H4.
-
-config BT_RX_STACK_SIZE
-  int "Size of the receiving thread stack"
-  default 4096
-  help
-    Size of the receiving thread stack. This is the context from
-    which all event callbacks to the application occur. The
-    default value is sufficient for basic operation, but if the
-    application needs to do advanced things in its callbacks that
-    require extra stack space, this value can be increased to
-    accommodate for that.
-
-config BT_RX_PRIO
-  # Hidden option for Co-Operative Rx thread priority
-  int
-  default 7
-
-endif
-
-config BT_DEBUG_LOG_LEVEL
-  int "BT Debug Log Level"
-  default 6
-  help
-    Sets log level for the BT stack.
-
-config BT_NO_DRIVER
-  bool "No default HCI driver"
-  help
-    This is intended for unit tests where no internal driver
-    should be selected.
-
-config BT_LIBUSB
-  bool "HCI using LIBUSB"
-  default n
-  help
-    Bluetooth HCI driver for communication with USB driver.
+source "$APPSDIR/external/zblue/zblue/port/Kconfig.zephyr"
 
 config BT_H4
   bool "H:4 UART"
@@ -178,116 +23,13 @@ config BT_H4
     Bluetooth H:4 UART driver. Requires hardware flow control
     lines to be available.
 
-config BT_USERCHAN
-  bool
-  default n
-  depends on ARCH_SIM
-
-config BT_HCI_DEVID
-  int "Bluetooth Device ID"
-  default 0
-  depends on BT_USERCHAN
-  help
-    Attached the local bluetooth device use specific
-    Bluetooth HCI number id.
-
-config BT_NATIVE
-  bool "HCI over Native"
-  default y
-  help
-    Attach local controller with direct call method.
-
-config BT_NATIVE_THREAD_STACK_SIZE
-  int "Bluetooth HCI Driver Thread Stack Size"
-  default 768
-  depends on BT_NATIVE && !BT_THREAD_NO_PREEM
-  help
-    None.
-
-config BT_H4_DEBUG
-  bool "H:4 Debug"
-  default n
-  help
-    Debug HCI ACL Command information.
-
-
-config BT_QUIRK_NO_RESET
-  bool "The host should never send HCI_Reset"
-  default n
-  help
-    The host should never send HCI_Reset
-
-config BT_TESTER
-  bool "Bluetooth Profile Tuning Suite Tester"
-  default n
-  help
-    Bluetooth Profile Tuning Suite Tester.
-
-if BT_TESTER
-
-config UART_PIPE
-  bool
-  default y
-
-config UART_PIPE_ON_DEV_NAME
-  string "Device Name of UART Device for pipe UART"
-  default "/dev/ttyS4"
+config BT_UART_ON_DEV_NAME
+  string "Device Name of UART Device for Bluetooth"
+  default "/dev/ttyHCI0"
+  depends on BT_H4
   help
     This option specifies the name of UART device to be used
-    for pipe UART.
-
-endif
-
-menuconfig BT_SAMPLE
-  tristate "Bluetooth Stack Examples"
-  default n
-  ---help---
-    Enable Bluetooth Stack Examples
-
-if BT_SAMPLE
-
-config BT_MIBLE_TEST
-  bool "mible shell commands"
-  default n
-  depends on BT_SHELL
-  help
-    Select to use mible shell commands.
-
-config BT_SAMPLE_STACKSIZE
-  int "BT sample stack size"
-  default 40960 if ARCH_SIM
-  default DEFAULT_TASK_STACKSIZE
-  help
-    Sets log level for the BT stack.
-
-config BT_SAMPLE_PERIPHERAL
-  bool "Enable Bluetooth peripheral example"
-  default n
-  depends on BT_PERIPHERAL
-  help
-    Enable Bluetooth peripheral example
-
-config BT_SAMPLE_CENTRAL
-  bool "Enable Bluetooth central example"
-  default n
-  depends on BT_CENTRAL
-  help
-    Enable Bluetooth central example
-
-config BT_SAMPLE_MESH
-  bool "Enable Bluetooth mesh example"
-  default n
-  depends on BT_MESH
-  help
-    Enable Bluetooth mesh example
-
-endif
-
-config SHELL_STR_SIZE
-  int "Shell Command String Size"
-  default 32
-  help
-    Shell Command String Size
+    for Bluetooth.
 
 config FILE_SYSTEM
   bool "File system support"
@@ -390,47 +132,74 @@ endif # FLASH_MAP > 0
 
 endif # NVS
 
-config ZTEST
-  bool "Test zblue subsystem"
+menuconfig BT_DEBUG_LOG
+  bool "Enable BT Debug Log"
+  default n
   help
-    Enables to test zblue subsystem
+    Enable BT Debug Log
 
-if ZTEST
-
-config ZTEST_TIMEOUT
-  bool "Test zblue kernel timeout"
+if BT_DEBUG_LOG
+config BT_DEBUG_LOG_LEVEL
+  int "BT Debug Log Level"
+  default 6
   help
-    Enables to zblue kernel timeout
+    Sets log level for the BT stack.
 
-config ZTEST_WORK_Q
-  bool "Test zblue kernel work queue"
+config BT_DEBUG_LOG_FUNCTION_NAME
+  bool "Enable BT Debug Log Function Name"
+  default n
   help
-    Enables to zblue kernel work queue
+    Enable BT Debug Log Function Name
 
-config ZTEST_THREAD
-  bool "Test zblue kernel thread"
+config BT_DEBUG_LOG_LINE_NUMBER
+  bool "Enable BT Debug Log Line Number"
+  default n
   help
-    Enables to zblue kernel thread
+    Enable BT Debug Log Line Number
+endif
 
-config ZTEST_POLL
-  bool "Test zblue kernel poll"
-  help
-    Enables to zblue kernel poll
+menuconfig BT_SAMPLE
+  tristate "Bluetooth Stack Examples"
+  default n
+  ---help---
+    Enable Bluetooth Stack Examples
 
-config ZTEST_QUEUE
-  bool "Test zblue kernel queue"
-  help
-    Enables to zblue kernel queue
+if BT_SAMPLE
 
-config ZTEST_MEMSLAB
-  bool "Test zblue kernel mem slab"
+config BT_SAMPLE_STACKSIZE
+  int "BT sample stack size"
+  default 40960 if ARCH_SIM
+  default DEFAULT_TASK_STACKSIZE
   help
-    Enables to zblue kernel mem slab
+    Sets log level for the BT stack.
 
-config ZTEST_NVM
-  bool "Test NVM"
-  depends on SETTINGS_NVS
+config BT_SAMPLE_PERIPHERAL
+  bool "Enable Bluetooth peripheral example"
+  default n
+  depends on BT_PERIPHERAL
   help
-    Enables to test NVM
+    Enable Bluetooth peripheral example
+
+config BT_SAMPLE_CENTRAL
+  bool "Enable Bluetooth central example"
+  default n
+  depends on BT_CENTRAL
+  help
+    Enable Bluetooth central example
+
+config BT_SAMPLE_MESH
+  bool "Enable Bluetooth mesh example"
+  default n
+  depends on BT_MESH
+  help
+    Enable Bluetooth mesh example
+
+config BT_SAMPLE_HFP_HF
+  bool "Enable Bluetooth hfp-hf example"
+  default n
+  depends on BT_HFP_HF
+  help
+    Enable Bluetooth hfp-hf example
 
 endif
+

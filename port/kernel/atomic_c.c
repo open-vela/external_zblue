@@ -18,11 +18,11 @@
  * (originally from x86's atomic.c)
  */
 
-#include <toolchain.h>
-#include <arch/cpu.h>
-#include <spinlock.h>
-#include <sys/atomic.h>
-#include <kernel_structs.h>
+#include <zephyr/toolchain.h>
+#include <zephyr/arch/cpu.h>
+#include <zephyr/spinlock.h>
+#include <zephyr/sys/atomic.h>
+#include <zephyr/kernel_structs.h>
 
 /* Single global spinlock for atomic operations.  This is fallback
  * code, not performance sensitive.  At least by not using irq_lock()

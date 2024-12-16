@@ -1,41 +1,23 @@
-/****************************************************************************
- * apps/external/zblue/zblue/port/kernel/timeout.c
+/******************************************************************************
  *
- *   Copyright (C) 2020 Xiaomi InC. All rights reserved.
+ * Copyright (C) 2024 Xiaomi Corporation
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- * 3. Neither the name NuttX nor the names of its contributors may be
- *    used to endorse or promote products derived from this software
- *    without specific prior written permission.
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
- * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
- * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  *
- ****************************************************************************/
+ *****************************************************************************/
+#include <zephyr/kernel.h>
 
-#include <kernel.h>
-#include <sys_clock.h>
-
-int64_t z_tick_get(void)
+int64_t sys_clock_tick_get(void)
 {
 #if defined(CONFIG_SYSTEM_TIME64)
 	return clock_systime_ticks();
@@ -56,30 +38,46 @@ int64_t z_tick_get(void)
 
 int64_t k_uptime_ticks(void)
 {
-	return z_tick_get();
+	return sys_clock_tick_get();
 }
 
-uint32_t arch_k_cycle_get_32(void)
+k_timeout_t sys_timepoint_timeout(k_timepoint_t timepoint)
 {
-	return (uint32_t)z_tick_get();
+	uint64_t now, remaining;
+
+	if (timepoint.tick == UINT64_MAX) {
+		return K_FOREVER;
+	}
+	if (timepoint.tick == 0) {
+		return K_NO_WAIT;
+	}
+
+	now = sys_clock_tick_get();
+	remaining = (timepoint.tick > now) ? (timepoint.tick - now) : 0;
+	return K_TICKS(remaining);
 }
 
-int64_t sys_clock_tick_get(void)
+k_timepoint_t sys_timepoint_calc(k_timeout_t timeout)
 {
-	return z_tick_get();
+	k_timepoint_t timepoint;
+
+	if (K_TIMEOUT_EQ(timeout, K_FOREVER)) {
+		timepoint.tick = UINT64_MAX;
+	} else if (K_TIMEOUT_EQ(timeout, K_NO_WAIT)) {
+		timepoint.tick = 0;
+	} else {
+		k_ticks_t dt = timeout.ticks;
+
+		if (IS_ENABLED(CONFIG_TIMEOUT_64BIT) && Z_TICK_ABS(dt) >= 0) {
+			timepoint.tick = Z_TICK_ABS(dt);
+		} else {
+			timepoint.tick = sys_clock_tick_get() + MAX(1, dt);
+		}
+	}
+
+	return timepoint;
 }
 
-uint64_t sys_clock_timeout_end_calc(k_timeout_t timeout)
-{
-	if (K_TIMEOUT_EQ(timeout, K_FOREVER))
-		return UINT64_MAX;
-	else if (K_TIMEOUT_EQ(timeout, K_NO_WAIT))
-		return z_tick_get();
-
-	return z_tick_get() + timeout.ticks;
-}
-
-#if defined(CONFIG_ZEPHYR_WORK_QUEUE)
 k_ticks_t z_timeout_remaining(const struct _timeout *timeout)
 {
 	clock_t qtime, curr, elapsed;
@@ -112,50 +110,3 @@ int z_abort_timeout(struct _timeout *to)
 
 	return wd_cancel(&dwork->work.wdog);
 }
-#else /* !CONFIG_ZEPHYR_WORK_QUEUE */
-k_ticks_t z_timeout_remaining(const struct _timeout *timeout)
-{
-	struct work_s *nwork;
-	struct k_work_delayable *dwork;
-
-	dwork = CONTAINER_OF(timeout, struct k_work_delayable, timeout);
-
-	nwork = &dwork->work.nwork;
-	if (work_available(nwork)) {
-		return 0;
-	}
-
-	return wd_gettime(&nwork->u.timer);
-}
-
-void z_add_timeout(struct _timeout *to, _timeout_func_t fn,
-		   k_timeout_t timeout)
-{
-	struct k_work_delayable *dwork;
-
-	if (K_TIMEOUT_EQ(timeout, K_FOREVER)) {
-		return;
-	}
-
-	dwork = CONTAINER_OF(to, struct k_work_delayable, timeout);
-
-	if (!work_available(&dwork->work.nwork)) {
-		return;
-	}
-
-	(void)work_queue(LPWORK, &dwork->work.nwork, (worker_t)fn, to, timeout.ticks);
-}
-
-int z_abort_timeout(struct _timeout *to)
-{
-	struct k_work_delayable *dwork;
-
-	dwork = CONTAINER_OF(to, struct k_work_delayable, timeout);
-
-	if (work_available(&dwork->work.nwork)) {
-		return 0;
-	}
-
-	return work_cancel(LPWORK, &dwork->work.nwork);
-}
-#endif /* CONFIG_ZEPHYR_WORK_QUEUE */

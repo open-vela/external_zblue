@@ -1,104 +1,208 @@
-/****************************************************************************
- * apps/external/zblue/zblue/port/subsys/bluetooth/shell/bt_shell.c
+/******************************************************************************
  *
- *   Copyright (C) 2020 Xiaomi InC. All rights reserved.
+ * Copyright (C) 2024 Xiaomi Corporation
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- * 3. Neither the name NuttX nor the names of its contributors may be
- *    used to endorse or promote products derived from this software
- *    without specific prior written permission.
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
- * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
- * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  *
- ****************************************************************************/
+ *****************************************************************************/
 
-#include <zephyr.h>
-#include <shell/shell.h>
+#include <zephyr/kernel.h>
+#include <zephyr/shell/shell.h>
 
-#include <ctype.h>
 #include <syslog.h>
-#include <nuttx/syslog/syslog.h>
 
-void shell_hexdump_line(const struct shell *shell, unsigned int offset,
-		const uint8_t *data, size_t len)
+long shell_strtol(const char *str, int base, int *err)
 {
+	long val;
+	char *endptr = NULL;
+
+	errno = 0;
+	val = strtol(str, &endptr, base);
+	if (errno == ERANGE) {
+		*err = -ERANGE;
+		return 0;
+	} else if (errno || endptr == str || *endptr) {
+		*err = -EINVAL;
+		return 0;
+	}
+
+	return val;
+}
+
+unsigned long shell_strtoul(const char *str, int base, int *err)
+{
+	unsigned long val;
+	char *endptr = NULL;
+
+	if (*str == '-') {
+		*err = -EINVAL;
+		return 0;
+	}
+
+	errno = 0;
+	val = strtoul(str, &endptr, base);
+	if (errno == ERANGE) {
+		*err = -ERANGE;
+		return 0;
+	} else if (errno || endptr == str || *endptr) {
+		*err = -EINVAL;
+		return 0;
+	}
+
+	return val;
+}
+
+bool shell_strtobool(const char *str, int base, int *err)
+{
+	if (!strcmp(str, "on") || !strcmp(str, "enable") || !strcmp(str, "true")) {
+		return true;
+	}
+
+	if (!strcmp(str, "off") || !strcmp(str, "disable") || !strcmp(str, "false")) {
+		return false;
+	}
+
+	return shell_strtoul(str, base, err);
+}
+
+void shell_vfprintf(const struct shell *sh, enum shell_vt100_color color,
+		   const char *fmt, va_list args)
+{
+    ARG_UNUSED(sh);
+    ARG_UNUSED(color);
+
+    vsyslog(LOG_INFO, fmt, args);
+}
+
+/* These functions mustn't be used from shell context to avoid deadlock:
+ * - shell_fprintf_impl
+ * - shell_fprintf_info
+ * - shell_fprintf_normal
+ * - shell_fprintf_warn
+ * - shell_fprintf_error
+ * However, they can be used in shell command handlers.
+ */
+void shell_fprintf_impl(const struct shell *sh, enum shell_vt100_color color,
+		   const char *fmt, ...)
+{
+	va_list args;
+
+	va_start(args, fmt);
+	shell_vfprintf(sh, color, fmt, args);
+	va_end(args);
+}
+
+void shell_fprintf_info(const struct shell *sh, const char *fmt, ...)
+{
+	va_list args;
+
+	va_start(args, fmt);
+	shell_vfprintf(sh, SHELL_INFO, fmt, args);
+	va_end(args);
+}
+
+void shell_fprintf_normal(const struct shell *sh, const char *fmt, ...)
+{
+	va_list args;
+
+	va_start(args, fmt);
+	shell_vfprintf(sh, SHELL_NORMAL, fmt, args);
+	va_end(args);
+}
+
+void shell_fprintf_warn(const struct shell *sh, const char *fmt, ...)
+{
+	va_list args;
+
+	va_start(args, fmt);
+	shell_vfprintf(sh, SHELL_WARNING, fmt, args);
+	va_end(args);
+}
+
+void shell_fprintf_error(const struct shell *sh, const char *fmt, ...)
+{
+	va_list args;
+
+	va_start(args, fmt);
+	shell_vfprintf(sh, SHELL_ERROR, fmt, args);
+	va_end(args);
+}
+
+void shell_hexdump_line(const struct shell *sh, unsigned int offset,
+			const uint8_t *data, size_t len)
+{
+	__ASSERT_NO_MSG(sh);
+
 	int i;
 
-	shell_fprintf(shell, SHELL_NORMAL, "%08X: ", offset);
+	shell_fprintf_normal(sh, "%08X: ", offset);
 
 	for (i = 0; i < SHELL_HEXDUMP_BYTES_IN_LINE; i++) {
 		if (i > 0 && !(i % 8)) {
-			shell_fprintf(shell, SHELL_NORMAL, " ");
+			shell_fprintf_normal(sh, " ");
 		}
 
 		if (i < len) {
-			shell_fprintf(shell, SHELL_NORMAL, "%02x ",
-					data[i] & 0xFF);
+			shell_fprintf_normal(sh, "%02x ",
+					     data[i] & 0xFF);
 		} else {
-			shell_fprintf(shell, SHELL_NORMAL, "   ");
+			shell_fprintf_normal(sh, "   ");
 		}
 	}
 
-	shell_fprintf(shell, SHELL_NORMAL, "|");
+	shell_fprintf_normal(sh, "|");
 
 	for (i = 0; i < SHELL_HEXDUMP_BYTES_IN_LINE; i++) {
 		if (i > 0 && !(i % 8)) {
-			shell_fprintf(shell, SHELL_NORMAL, " ");
+			shell_fprintf_normal(sh, " ");
 		}
 
 		if (i < len) {
 			char c = data[i];
 
-			shell_fprintf(shell, SHELL_NORMAL, "%c",
-					isprint((int)c) ? c : '.');
+			shell_fprintf_normal(sh, "%c",
+					     isprint((int)c) != 0 ? c : '.');
 		} else {
-			shell_fprintf(shell, SHELL_NORMAL, " ");
+			shell_fprintf_normal(sh, " ");
 		}
 	}
 
-	shell_print(shell, "|");
+	shell_print(sh, "|");
 }
 
-void shell_hexdump(const struct shell *shell, const uint8_t *data, size_t len)
+void shell_hexdump(const struct shell *sh, const uint8_t *data, size_t len)
 {
+	__ASSERT_NO_MSG(sh);
+
 	const uint8_t *p = data;
 	size_t line_len;
 
 	while (len) {
 		line_len = MIN(len, SHELL_HEXDUMP_BYTES_IN_LINE);
 
-		shell_hexdump_line(shell, p - data, p, line_len);
+		shell_hexdump_line(sh, p - data, p, line_len);
 
 		len -= line_len;
 		p += line_len;
 	}
 }
 
-void shell_help(const struct shell *shell)
+void shell_help(const struct shell *sh)
 {
-	const struct shell_static_entry *pcmds = &shell->ctx->active_cmd;
+	const struct shell_static_entry *pcmds = &sh->ctx->active_cmd;
 
-	syslog(LOG_INFO, "\t%s mands:%d opts:%d help:%s\n",
+    shell_fprintf_normal(sh, "Help message\n");
+	shell_fprintf_info(sh, "\t%s mands:%d opts:%d help:%s\n",
 		   pcmds->syntax,
 		   pcmds->args.mandatory, pcmds->args.optional,
 		   pcmds->help);
@@ -107,95 +211,135 @@ void shell_help(const struct shell *shell)
 		return;
 	}
 
-	pcmds = pcmds->subcmd->u.entry;
+	pcmds = pcmds->subcmd->entry;
 	for (; pcmds && pcmds->syntax; pcmds++) {
-		syslog(LOG_INFO, "\t%s mands:%d opts:%d help:%s\n",
+		shell_fprintf_info(sh, "\t%s mands:%d opts:%d help:%s\n",
 		       pcmds->syntax,
 		       pcmds->args.mandatory, pcmds->args.optional,
 		       pcmds->help);
 	}
 }
 
-void shell_fprintf(const struct shell *shell, enum shell_vt100_color color,
-		const char *fmt, ...)
-{
-	va_list args;
-
-	(void)shell;
-
-	va_start(args, fmt);
-	nx_vsyslog(LOG_INFO, fmt, &args);
-	va_end(args);
-}
-
 /* Function returning pointer to parent command matching requested syntax. */
 static const struct shell_static_entry *root_cmd_find(const char *syntax)
 {
-	STRUCT_SECTION_FOREACH(shell_cmd_entry, cmd) {
-		if (strcmp(syntax, cmd->u.entry->syntax) == 0) {
-			return cmd->u.entry;
+	TYPE_SECTION_FOREACH(const union shell_cmd_entry, shell_root_cmds, cmd) {
+		if (strcmp(syntax, cmd->entry->syntax) == 0) {
+			return cmd->entry;
 		}
 	}
 
 	return NULL;
 }
 
-static void cmds_show(void)
+static void cmds_show(const struct shell *sh)
 {
-	STRUCT_SECTION_FOREACH(shell_cmd_entry, cmd) {
-		syslog(LOG_INFO, "%s\t%s\n",
-			   cmd->u.entry->syntax, cmd->u.entry->help);
+	TYPE_SECTION_FOREACH(const union shell_cmd_entry, shell_root_cmds, cmd) {
+		shell_fprintf_info(sh, "%s\t%s\n",
+			   cmd->entry->syntax, cmd->entry->help);
 	}
 }
 
-int cmd_zblue(void *vtbl, int argc, char *argv[])
+static int execute_cmd(const struct shell *sh, size_t argc, char **argv)
 {
-	struct shell_ctx ctx;
-	struct shell sh = { .ctx = &ctx };
-	static const struct shell_static_entry *cmd;
+	const struct shell_static_entry *cmd;
 
-	if (argc < 2) {
-		goto end;
-	}
-
-	cmd = root_cmd_find(argv[1]);
+	cmd = root_cmd_find(argv[0]);
 	if (!cmd) {
-		goto end;
+		return -ENOEXEC;
 	}
 
-	if (argc == 2) {
-		memcpy(&ctx.active_cmd, cmd,
+	if (argc == 1) {
+		memcpy(&sh->ctx->active_cmd, cmd,
 		       sizeof(struct shell_static_entry));
 
 		if (!cmd->handler) {
 			return 0;
 		}
 
-		return cmd->handler(&sh, argc - 1, &argv[1]);
+		return cmd->handler(sh, argc, &argv[0]);
 	}
 
-	cmd = cmd->subcmd->u.entry;
+	cmd = cmd->subcmd->entry;
 	for (; cmd && cmd->syntax; cmd++) {
-		if (strcmp(argv[2], cmd->syntax)) {
+		if (strcmp(argv[1], cmd->syntax)) {
 			continue;
 		}
 
-		if (cmd->args.mandatory > argc - 2) {
-			syslog(LOG_INFO, "cmd:%s Mands:%d opts:%d help:%s\n",
+		if (cmd->args.mandatory > argc - 1) {
+			shell_fprintf_info(sh, "cmd:%s Mands:%d opts:%d help:%s\n",
 			   	   cmd->syntax,
 			   	   cmd->args.mandatory, cmd->args.optional,
 			   	   cmd->help);
 			return 0;
 		}
 
-		memcpy(&ctx.active_cmd, cmd,
+		memcpy(&sh->ctx->active_cmd, cmd,
 		       sizeof(struct shell_static_entry));
-		return cmd->handler(&sh, argc - 2, &argv[2]);
+		return cmd->handler(sh, argc - 1, &argv[1]);
 	}
 
-	return 0;
+	return -ENOEXEC;
+}
+
+extern z_sys_init(void);
+
+int main(int argc, char *argv[])
+{
+	struct shell_ctx ctx;
+	struct shell sh = { .ctx = &ctx };
+	int _argc = 0;
+	char* _argv[32];
+	char* buffer = NULL;
+	char* saveptr;
+	int ret;
+	size_t len, size = 0;
+
+	z_sys_init();
+
+	while (1) {
+		printf("zblue> ");
+		fflush(stdout);
+
+		memset(_argv, 0, sizeof(_argv));
+		len = getline(&buffer, &size, stdin);
+		if (-1 == len)
+			goto end;
+
+		buffer[len] = '\0';
+		if (buffer[len - 1] == '\n')
+			buffer[len - 1] = '\0';
+
+		saveptr = NULL;
+		char* tmpstr = buffer;
+
+		while ((tmpstr = strtok_r(tmpstr, " ", &saveptr)) != NULL) {
+			_argv[_argc] = tmpstr;
+			_argc++;
+			tmpstr = NULL;
+		}
+
+		if (_argc > 0) {
+			if (strcmp(_argv[0], "q") == 0) {
+				shell_fprintf_info(&sh, "Bye!\n");
+				ret = 0;
+				goto end;
+			} else if (strcmp(_argv[0], "help") == 0) {
+				cmds_show(&sh);
+			} else {
+				ret = execute_cmd(&sh, _argc, _argv);
+			}
+
+			_argc = 0;
+		}
+	}
+
+return 0;
 
 end:
-	cmds_show();
+	free(buffer);
+	if (ret)
+		cmds_show(&sh);
+
 	return 0;
 }

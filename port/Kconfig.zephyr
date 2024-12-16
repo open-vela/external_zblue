@@ -1,11 +1,148 @@
 #
-# For a description of the syntax of this configuration file,
-# see kconfig-language at https://www.kernel.org/doc/Documentation/kbuild/kconfig-language.txt
+#  Copyright (C) 2024 Xiaomi Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 
-config ASSERT
-	bool "Enable zblue assert"
+config POLL
+	bool "Async I/O Framework"
+	help
+	  Asynchronous notification framework. Enable the k_poll() and
+	  k_poll_signal_raise() APIs.  The former can wait on multiple events
+	  concurrently, which can be either directly triggered or triggered by
+	  the availability of some kernel objects (semaphores and fifos).
+
+config LITTLE_ENDIAN
+	# Hidden Kconfig option representing the default little-endian architecture
+	# This is just the opposite of BIG_ENDIAN and is used for non-negative
+	# conditional compilation
+	bool
 	default y
+
+config NET_BUF_ALIGNMENT
+	int "Network buffer alignment restriction"
+	default 0
+	help
+	  Alignment restriction for network buffers. This is useful for
+	  some hardware IP with DMA that requires the buffers to be aligned
+	  to a certain byte boundary, or dealing with cache line restrictions.
+	  Default value of 0 means the alignment will be the size of a void pointer,
+	  any other value will force the alignment of a net buffer in bytes.
+
+config ATOMIC_OPERATIONS_C
+	bool
+	default y
+	help
+	  Use atomic operations routines that are implemented entirely
+	  in C by locking interrupts. Selected by architectures which either
+	  do not have support for atomic operations in their instruction
+	  set, or haven't been implemented yet during bring-up, and also
+	  the compiler does not have support for the atomic __sync_* builtins.
+
+config SYS_CLOCK_MAX_TIMEOUT_DAYS
+	int "Max timeout (in days) used in conversions"
+	default 365
+	help
+	  Value is used in the time conversion static inline function to determine
+	  at compile time which algorithm to use. One algorithm is faster, takes
+	  less code but may overflow if multiplication of source and target
+	  frequency exceeds 64 bits. Second algorithm prevents that. Faster
+	  algorithm is selected for conversion if maximum timeout represented in
+	  source frequency domain multiplied by target frequency fits in 64 bits.
+
+config SYS_CLOCK_EXISTS
+	bool "System clock exists and is enabled"
+	default y
+	help
+	  This option specifies that the kernel has timer support.
+
+	  Some device configurations can eliminate significant code if
+	  this is disabled.  Obviously timeout-related APIs will not
+	  work when disabled.
+
+config SYS_CLOCK_HW_CYCLES_PER_SEC
+	int "System clock's h/w timer frequency"
+	default -1
+	help
+	  This option specifies the frequency of the hardware timer used for the
+	  system clock (in Hz). This option is set by the SOC's or board's Kconfig file
+	  and the user should generally avoid modifying it via the menu configuration.
+
+config NUM_COOP_PRIORITIES
+	int "Number of coop priorities"
+	default 100
+	range 0 128
+	help
+	  Number of cooperative priorities configured in the system. Gives access
+	  to priorities:
+
+config NUM_PREEMPT_PRIORITIES
+	int "Number of preemptible priorities"
+	default 100
+	range 0 128
+	help
+	  Number of preemptible priorities available in the system. Gives access
+	  to priorities 0 to CONFIG_NUM_PREEMPT_PRIORITIES - 1.
+
+config MP_MAX_NUM_CPUS
+	int "Maximum number of CPUs/cores"
+	default 1
+	range 1 12
+	help
+	  Maximum number of multiprocessing-capable cores available to the
+	  multicpu API and SMP features.
+
+config SYSTEM_WORKQUEUE_STACK_SIZE
+	int "System workqueue stack size"
+	default 4096
+
+config SYSTEM_WORKQUEUE_PRIORITY
+	int "System workqueue priority"
+	default 110
+	help
+	  By default, system work queue priority is the lowest cooperative
+	  priority. This means that any work handler, once started, won't
+	  be preempted by any other thread until finished.
+
+config SYSTEM_WORKQUEUE_NO_YIELD
+	bool "Select whether system work queue yields"
+	help
+	  By default, the system work queue yields between each work item, to
+	  prevent other threads from being starved.  Selecting this removes
+	  this yield, which may be useful if the work queue thread is
+	  cooperative and a sequence of work items is expected to complete
+	  without yielding.
+
+config PRINTK
+	bool "Send printk() to console"
+	default y
+	help
+	  This option directs printk() debugging output to the supported
+	  console device, rather than suppressing the generation
+	  of printk() output entirely. Output is sent immediately, without
+	  any mutual exclusion or buffering.
+
+config ASSERT
+	bool "__ASSERT() macro"
+	default y if TEST
+	help
+	  This enables the __ASSERT() macro in the kernel code. If an assertion
+	  fails, the policy for what to do is controlled by the implementation
+	  of the assert_post_action() function, which by default will trigger
+	  a fatal error.
+
+	  Disabling this option will cause assertions to compile to nothing,
+	  improving performance and system footprint.
 
 if ASSERT
 
@@ -20,6 +157,7 @@ config ASSERT_LEVEL
 	  Level 0: off
 	  Level 1: on + warning in every file that includes __assert.h
 	  Level 2: on + no warning
+
 
 config ASSERT_VERBOSE
 	bool "Verbose assertions"
@@ -54,81 +192,4 @@ config ASSERT_NO_MSG_INFO
 	  necessary for tiny targets. It is recommended to disable message
 	  before disabling file info since the message can be found in the
 	  source using file info.
-
 endif
-
-config PM_DEVICE
-	int
-	default 0
-
-config NET_BUF_WARN_ALLOC_INTERVAL
-	int
-	default 0
-
-config NET_BUF_VARIABLE
-	bool
-	default n
-
-config ATOMIC_OPERATIONS_C
-	bool
-	default y
-
-config SRAM_BASE_ADDRESS
-	int
-	default 0
-
-config NUM_METAIRQ_PRIORITIES
-	int
-	default 0
-
-config NUM_PREEMPT_PRIORITIES
-	int
-	default 0
-
-config HEAP_MEM_POOL_SIZE
-	int
-	default 0
-
-config NUM_MBOX_ASYNC_MSGS
-	int
-	default 0
-
-config MP_NUM_CPUS
-	int
-	default 0
-
-config LOG_SPEED
-	int
-	default 0
-
-config LOG2_MODE_IMMEDIATE
-	int
-	default 0
-
-config LOG2_ALWAYS_RUNTIME
-	int
-	default 0
-
-config LOG2_USE_VLA
-	int
-	default 0
-
-config LOG_TRACE_SHORT_TIMESTAMP
-	int
-	default 0
-
-config LOG_TIMESTAMP_64BIT
-	int
-	default 0
-
-config SYS_CLOCK_HW_CYCLES_PER_SEC
-	int
-	default -1
-
-config SYS_CLOCK_EXISTS
-	bool
-	default y
-
-config SYS_CLOCK_MAX_TIMEOUT_DAYS
-	int
-	default 365
