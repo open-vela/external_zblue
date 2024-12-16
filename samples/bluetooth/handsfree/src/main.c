@@ -49,7 +49,7 @@ static void call_held(struct bt_conn *conn, uint32_t value)
 	printk("Call Held indicator value: %u\n", value);
 }
 
-static void signal(struct bt_conn *conn, uint32_t value)
+static void signal_cb(struct bt_conn *conn, uint32_t value)
 {
 	printk("Signal indicator value: %u\n", value);
 }
@@ -76,7 +76,7 @@ static struct bt_hfp_hf_cb hf_cb = {
 	.call = call,
 	.call_setup = call_setup,
 	.call_held = call_held,
-	.signal = signal,
+	.signal = signal_cb,
 	.roam = roam,
 	.battery = battery,
 	.ring_indication = ring_cb,
@@ -122,12 +122,17 @@ static void handsfree_enable(void)
 int main(void)
 {
 	int err;
+	extern void z_sys_init(void);
 
+	z_sys_init();
 	handsfree_enable();
 
 	err = bt_enable(bt_ready);
 	if (err) {
 		printk("Bluetooth init failed (err %d)\n", err);
 	}
+
+	k_sleep(K_FOREVER);
+
 	return 0;
 }

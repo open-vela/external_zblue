@@ -1,94 +1,40 @@
-/****************************************************************************
- * apps/external/zblue/zblue/port/kernel/thread.c
+/******************************************************************************
  *
- *   Copyright (C) 2020 Xiaomi InC. All rights reserved.
+ * Copyright (C) 2024 Xiaomi Corporation
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- * 3. Neither the name NuttX nor the names of its contributors may be
- *    used to endorse or promote products derived from this software
- *    without specific prior written permission.
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
- * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
- * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  *
- ****************************************************************************/
-
-#include <kernel.h>
-#include <inttypes.h>
+ *****************************************************************************/
 #include <sys/prctl.h>
 
-#include <nuttx/kmalloc.h>
-#include <nuttx/kthread.h>
+#include <zephyr/kernel.h>
+
+static sys_dlist_t g_task_list = SYS_DLIST_STATIC_INIT(&g_task_list);
 
 typedef struct
 {
 	void *argv[4];
 } k_thread_main_t;
 
-static sys_slist_t task_list = SYS_SLIST_STATIC_INIT(&task_list);
-
-static int nxthread_create(FAR const char *name, uint8_t ttype, int priority,
-		FAR void *stack, int stack_size, main_t entry, FAR char * const argv[])
+bool k_is_in_isr(void)
 {
-	FAR struct task_tcb_s *ttcb;
-	pid_t pid;
-	int ret;
-
-	ttcb = (FAR struct task_tcb_s *)kmm_zalloc(sizeof(struct task_tcb_s));
-	if (!ttcb)
-		return -ENOMEM;
-
-	ttcb->cmn.flags = ttype;
-
-	ret = nxtask_init(ttcb, name, priority, stack, stack_size, entry, argv, NULL, NULL);
-	if (ret < OK) {
-		kmm_free(ttcb);
-		return ret;
-	}
-
-	pid = ttcb->cmn.pid;
-
-	nxtask_activate(&ttcb->cmn);
-
-	return (int)pid;
+	return false;
 }
 
-static int nxthread_delete(pid_t pid)
-{
-	int ret = nxtask_delete(pid);
-	if (ret < 0){
-		set_errno(-ret);
-		ret = ERROR;
-	}
-	return ret;
-}
-
-
-extern struct k_work_q k_sys_work_q;
-
-k_tid_t z_current_get(void)
+k_tid_t k_thread_current(void)
 {
 	struct k_thread *thread;
-	void *pid = (void *)getpid();
+	void *pid = (void *)gettid();
 
 #if !defined(CONFIG_ZEPHYR_WORK_QUEUE)
 	if (pid == k_sys_work_q.thread.init_data)
@@ -96,7 +42,7 @@ k_tid_t z_current_get(void)
 
 #endif /* !CONFIG_ZEPHYR_WORK_QUEUE */
 
-	SYS_SLIST_FOR_EACH_CONTAINER(&task_list, thread, node) {
+	SYS_DLIST_FOR_EACH_CONTAINER(&g_task_list, thread, base.qnode_dlist) {
 		if (thread->init_data == pid) {
 			return thread;
 		}
@@ -105,95 +51,6 @@ k_tid_t z_current_get(void)
 	return NULL;
 }
 
-int k_thread_name_set(struct k_thread *thread, const char *value)
-{
-	return prctl(PR_SET_NAME_EXT, value, (int)thread->init_data);
-}
-
-int k_is_preempt_thread(void)
-{
-	int sched;
-
-	sched = sched_getscheduler(0);
-	return (sched == SCHED_RR);
-}
-
-#if defined(CONFIG_SCHED_WAITPID) && !defined(CONFIG_ZEPHYR_WORK_ON_USERSPACE)
-static int k_thread_main(int argc, FAR char *argv[])
-{
-	struct sched_param param;
-	k_thread_main_t *_main;
-	void *_argv[4];
-
-	_main = (k_thread_main_t *)((uintptr_t)strtoul(argv[2], NULL, 0));
-
-	if (_main == NULL)
-		return -EINVAL;
-
-	memcpy(_argv, _main->argv, sizeof(_argv));
-
-	kmm_free(_main);
-
-	sched_getparam(0, &param);
-	sched_setscheduler(0, SCHED_FIFO, &param);
-
-#if CONFIG_BT_THREAD_NO_PREEM
-	sched_lock();
-#endif /* CONFIG_BT_THREAD_NO_PREEM */
-
-	((k_thread_entry_t)_argv[0])(_argv[1], _argv[2], _argv[3]);
-	return 0;
-}
-
-k_tid_t k_thread_create(struct k_thread *new_thread,
-		k_thread_stack_t *stack,
-		size_t stack_size, k_thread_entry_t entry,
-		void *p1, void *p2, void *p3,
-		int prio, uint32_t options, k_timeout_t delay)
-{
-	k_thread_main_t *_main;
-	cpu_set_t cpuset0;
-	char arg1[16];
-	void *argv[3];
-	int ret;
-
-	_main = kmm_malloc(sizeof(*_main));
-	if (_main == NULL)
-		return (k_tid_t)(intptr_t)-ENOMEM;
-
-	_main->argv[0] = entry;
-	_main->argv[1] = p1;
-	_main->argv[2] = p2;
-	_main->argv[3] = p3;
-
-	snprintf(arg1, 16, "0x%" PRIxPTR, (uintptr_t)_main);
-
-	argv[0] = "";
-	argv[1] = arg1;
-	argv[2] = NULL;
-
-	ret = nxthread_create("zephyr", TCB_FLAG_TTYPE_KERNEL, prio,
-			      stack, stack_size, k_thread_main, (FAR char * const *)argv);
-	if (ret < 0) {
-		kmm_free(_main);
-		return (k_tid_t)-1;
-	}
-
-#ifdef CONFIG_SMP
-	CPU_ZERO(&cpuset0);
-	CPU_SET(0,&cpuset0);
-
-	sched_setaffinity(ret, sizeof(cpu_set_t), &cpuset0);
-#endif /* CONFIG_SMP */
-
-	new_thread->init_data = (void *)ret;
-
-	sys_slist_append(&task_list, &new_thread->node);
-
-	return (k_tid_t)ret;
-}
-
-#else /* !CONFIG_SCHED_WAITPID */
 static void *k_thread_main(void * args)
 {
 	struct sched_param param;
@@ -206,7 +63,7 @@ static void *k_thread_main(void * args)
 
 	memcpy(_argv, _main->argv, sizeof(_argv));
 
-	kmm_free(_main);
+	free(_main);
 
 	sched_getparam(0, &param);
 	sched_setscheduler(0, SCHED_FIFO, &param);
@@ -220,10 +77,11 @@ static void *k_thread_main(void * args)
 }
 
 k_tid_t k_thread_create(struct k_thread *new_thread,
-		k_thread_stack_t *stack,
-		size_t stack_size, k_thread_entry_t entry,
-		void *p1, void *p2, void *p3,
-		int prio, uint32_t options, k_timeout_t delay)
+				  k_thread_stack_t *stack,
+				  size_t stack_size,
+				  k_thread_entry_t entry,
+				  void *p1, void *p2, void *p3,
+				  int prio, uint32_t options, k_timeout_t delay)
 {
 	k_thread_main_t *_main;
 	pthread_attr_t pattr;
@@ -234,7 +92,7 @@ k_tid_t k_thread_create(struct k_thread *new_thread,
 	};
 	int ret;
 
-	_main = kmm_malloc(sizeof(*_main));
+	_main = malloc(sizeof(*_main));
 	if (_main == NULL)
 		return (k_tid_t)(intptr_t)-ENOMEM;
 
@@ -250,7 +108,7 @@ k_tid_t k_thread_create(struct k_thread *new_thread,
 	ret = pthread_create(&pid, &pattr, k_thread_main, _main);
 	pthread_attr_destroy(&pattr);
 	if (ret < 0) {
-		kmm_free(_main);
+		free(_main);
 		return (k_tid_t)-1;
 	}
 
@@ -262,35 +120,28 @@ k_tid_t k_thread_create(struct k_thread *new_thread,
 #endif /* CONFIG_SMP */
 
 	new_thread->init_data = (void *)pid;
+	sys_dlist_append(&g_task_list, &new_thread->base.qnode_dlist);
 
-	sys_slist_append(&task_list, &new_thread->node);
-
-	return (k_tid_t)pid;
+	return (k_tid_t)new_thread;
 }
-#endif /* CONFIG_SCHED_WAITPID */
+
+int k_thread_name_set(k_tid_t thread, const char *str)
+{
+    return prctl(PR_SET_NAME_EXT, str, (int)thread->init_data);
+}
 
 void k_thread_start(k_tid_t thread)
 {
-	(void)thread;
+}
+
+void k_thread_suspend(k_tid_t thread)
+{
+}
+
+void k_thread_resume(k_tid_t thread)
+{
 }
 
 void k_thread_abort(k_tid_t thread)
 {
-	(void)thread;
-}
-
-bool k_is_in_isr(void)
-{
-	return false;
-}
-
-void assert_print(const char *fmt, ...)
-{
-	va_list ap;
-
-	va_start(ap, fmt);
-
-	vprintk(fmt, ap);
-
-	va_end(ap);
 }
