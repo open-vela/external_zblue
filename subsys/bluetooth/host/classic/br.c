@@ -1264,8 +1264,8 @@ int bt_br_write_local_name(const char *name)
 	}
 
 	name_cp = net_buf_add(buf, sizeof(*name_cp));
-	strncpy((char *)name_cp->local_name, name,
-		sizeof(name_cp->local_name));
+	memset(name_cp, 0, sizeof(*name_cp));
+	memcpy((char *)name_cp->local_name, name, sizeof(name_cp->local_name));
 
 	return bt_hci_cmd_send_sync(BT_HCI_OP_WRITE_LOCAL_NAME, buf, NULL);
 }

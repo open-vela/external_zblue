@@ -627,8 +627,8 @@ const struct settings_handler_static *_settings_handler_static_list[] = {
 #endif /* CONFIG_BT_GATT_SERVICE_CHANGED */
 #if defined(CONFIG_BT_GATT_CACHING)
 	&settings_handler_bt_cf,
-#endif /* CONFIG_BT_GATT_CACHING */
 	&settings_handler_bt_hash,
+#endif /* CONFIG_BT_GATT_CACHING */
 #if defined(CONFIG_BT_DIS)
 #if defined(CONFIG_BT_DIS_SETTINGS)
 		&settings_handler_bt_dis,
