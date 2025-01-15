@@ -250,6 +250,7 @@ static int commit_settings(void)
 	} else {
 		if (IS_ENABLED(CONFIG_BT_CLASSIC)) {
 			bt_br_write_local_name(bt_dev.name);
+			bt_br_write_ext_inq_response(true);
 		}
 	}
 #endif

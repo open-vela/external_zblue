@@ -156,6 +156,7 @@ struct bt_hci_cmd_hdr {
 #define BT_FEAT_2EV3_PKT(feat)                  BT_FEAT_TEST(feat, 0, 5, 5)
 #define BT_FEAT_3EV3_PKT(feat)                  BT_FEAT_TEST(feat, 0, 5, 6)
 #define BT_FEAT_3SLOT_PKT(feat)                 BT_FEAT_TEST(feat, 0, 5, 7)
+#define BT_FEAT_EIR(feat)                       BT_FEAT_TEST(feat, 0, 6, 0)
 #define BT_FEAT_SSP(feat)                       BT_FEAT_TEST(feat, 0, 6, 3)
 
 /* LE features */
@@ -720,6 +721,19 @@ struct bt_hci_rp_read_tx_power_level {
 	uint8_t  status;
 	uint16_t handle;
 	int8_t   tx_power_level;
+} __packed;
+
+#define BT_HCI_OP_READ_EXTENDED_INQUIRY_RESPONSE BT_OP(BT_OGF_BASEBAND, 0x0051) /* 0x0c51 */
+struct bt_hci_rp_read_extended_inquiry_response {
+	uint8_t  status;
+	uint8_t  fec_required;
+	uint8_t  extended_inquiry_response[240];
+} __packed;
+
+#define BT_HCI_OP_WRITE_EXTENDED_INQUIRY_RESPONSE BT_OP(BT_OGF_BASEBAND, 0x0052) /* 0x0c52 */
+struct bt_hci_cp_write_extended_inquiry_response {
+	uint8_t fec;
+	uint8_t extended_inquiry_response[240];
 } __packed;
 
 #define BT_HCI_LE_TX_POWER_PHY_1M               0x01
