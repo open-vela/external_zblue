@@ -4558,7 +4558,13 @@ int bt_set_name(const char *name)
 	}
 
 	if (IS_ENABLED(CONFIG_BT_CLASSIC)) {
-		return bt_br_write_local_name(name);
+		err = bt_br_write_local_name(name);
+		if (err) {
+			LOG_WRN("Unable to set BR/EDR name");
+			return err;
+		}
+
+		return bt_br_write_ext_inq_response(true);
 	}
 
 	return 0;

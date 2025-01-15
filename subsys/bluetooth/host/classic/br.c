@@ -1270,6 +1270,79 @@ int bt_br_write_local_name(const char *name)
 	return bt_hci_cmd_send_sync(BT_HCI_OP_WRITE_LOCAL_NAME, buf, NULL);
 }
 
+int bt_br_read_ext_inq_response(uint8_t *status, uint8_t *fec_required, uint8_t *eir)
+{
+	struct bt_hci_rp_read_extended_inquiry_response *rp;
+	struct net_buf *rsp;
+	int err;
+
+	if (!BT_FEAT_EIR(bt_dev.features)) {
+		return -ENOTSUP;
+	}
+
+	err = bt_hci_cmd_send_sync(BT_HCI_OP_READ_EXTENDED_INQUIRY_RESPONSE, NULL, &rsp);
+	if (err) {
+		return err;
+	}
+
+	rp = (void *)rsp->data;
+	*status = rp->status;
+	*fec_required = rp->fec_required;
+
+	if (eir) {
+		memcpy(eir, rp->extended_inquiry_response, sizeof(rp->extended_inquiry_response));
+	}
+
+	net_buf_unref(rsp);
+
+	return 0;
+}
+
+int bt_br_write_ext_inq_response(uint8_t fec_required)
+{
+	struct net_buf *buf;
+	struct bt_hci_cp_write_extended_inquiry_response *cp;
+	size_t name_len, eir_len = 240;
+	uint8_t type;
+
+	if (!BT_FEAT_EIR(bt_dev.features)) {
+		return -ENOTSUP;
+	}
+
+	buf = bt_hci_cmd_create(BT_HCI_OP_WRITE_EXTENDED_INQUIRY_RESPONSE, sizeof(*cp));
+	if (!buf) {
+		return -ENOBUFS;
+	}
+
+	net_buf_add_u8(buf, fec_required);
+
+	/* Fill in EIR data (Name) */
+	eir_len -= 2;
+	name_len = strlen(bt_dev.name);
+	if (name_len > eir_len) {
+		name_len = eir_len;
+		type = EIR_SHORT_NAME;
+		eir_len = 0;
+	} else {
+		type = EIR_COMPLETE_NAME;
+		eir_len -= name_len;
+	}
+
+	net_buf_add_u8(buf, name_len + 1);
+	net_buf_add_u8(buf, type);
+	net_buf_add_mem(buf, bt_dev.name, name_len);
+
+	/* TODO: Fill in EIR data (COD) */
+	/* TODO: Fill in EIR data (UUID) */
+	/* TODO: Fill in EIR data (Flags) */
+	/* TODO: Fill in EIR data (Manufacturer Specific Data) */
+	/* TODO: Fill in EIR data (TX Power) */
+
+	net_buf_add(buf, eir_len);
+
+	return bt_hci_cmd_send_sync(BT_HCI_OP_WRITE_EXTENDED_INQUIRY_RESPONSE, buf, NULL);
+}
+
 int bt_br_remote_name_request(const bt_addr_t *bdaddr, bt_br_remote_name_req_cb_t cb)
 {
 	struct bt_br_discovery_result *result;
