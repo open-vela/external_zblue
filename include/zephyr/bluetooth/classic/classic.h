@@ -273,6 +273,30 @@ int bt_br_set_class_of_device(uint32_t local_cod);
  */
 int bt_br_write_local_name(const char *name);
 
+/**
+ * @brief Read the Extended Inquiry Response configuration parameter of the
+ *        local BR/EDR Controller.
+ *
+ * @param status Status of the command.
+ * @param fec_required FEC required for EIR.
+ * @param eir Extended Inquiry Response data.
+ *
+ * @return Zero on success or error code otherwise, positive in case
+ * of protocol error or negative (POSIX) in case of stack internal error.
+ */
+int bt_br_read_ext_inq_response(uint8_t *status, uint8_t *fec_required, uint8_t *eir);
+
+/**
+ * @brief Write the Extended Inquiry Response configuration parameter of the
+ *        local BR/EDR Controller.
+ *
+ * @param fec_required FEC required for EIR.
+ *
+ * @return Zero on success or error code otherwise, positive in case
+ * of protocol error or negative (POSIX) in case of stack internal error.
+ */
+int bt_br_write_ext_inq_response(uint8_t fec_required);
+
 /** Information about a br/edr bond with a remote device. */
 struct bt_bond_info_br {
 	bt_addr_t addr;
