@@ -65,6 +65,10 @@ static int pin_code_reply(struct bt_conn *conn, const char *pin, uint8_t len)
 
 	LOG_DBG("");
 
+	if (len > sizeof(cp->pin_code)) {
+		return -EINVAL;
+	}
+
 	buf = bt_hci_cmd_create(BT_HCI_OP_PIN_CODE_REPLY, sizeof(*cp));
 	if (!buf) {
 		return -ENOBUFS;
@@ -75,7 +79,7 @@ static int pin_code_reply(struct bt_conn *conn, const char *pin, uint8_t len)
 	bt_addr_copy(&cp->bdaddr, &conn->br.dst);
 	cp->pin_len = len;
 	memset(cp->pin_code, 0, sizeof(cp->pin_code));
-	memcpy((char *)cp->pin_code, pin, sizeof(cp->pin_code));
+	memcpy(cp->pin_code, pin, len);
 
 	return bt_hci_cmd_send_sync(BT_HCI_OP_PIN_CODE_REPLY, buf, NULL);
 }
