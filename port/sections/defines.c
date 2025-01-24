@@ -150,7 +150,7 @@ extern struct net_buf_pool att_pool;
 extern struct net_buf_pool acl_in_pool;
 extern struct net_buf_pool acl_tx_pool;
 extern struct net_buf_pool dummy_pool;
-extern struct net_buf_pool a2dp_tx_pool;
+// extern struct net_buf_pool a2dp_tx_pool;
 
 struct net_buf_pool *_net_buf_pool_list[] = {
 #if defined(CONFIG_BT_HCI)
@@ -236,7 +236,7 @@ struct net_buf_pool *_net_buf_pool_list[] = {
 	&data_pool,
 	&sdp_client_pool,
 #if defined(CONFIG_BT_A2DP)
-	&a2dp_tx_pool,
+	// &a2dp_tx_pool,
 #endif /* CONFIG_BT_A2DP */
 #if defined(CONFIG_BT_RFCOMM)
 	&pool,
@@ -307,10 +307,10 @@ const union shell_cmd_entry *_shell_root_cmds_list[] = {
     &shell_cmd_rfcomm,
 #endif /* CONFIG_BT_RFCOMM */
 #if defined(CONFIG_BT_A2DP)
-    &shell_cmd_a2dp,
+    // &shell_cmd_a2dp,
 #endif /* CONFIG_BT_A2DP */
 #if defined(CONFIG_BT_AVRCP)
-    &shell_cmd_avrcp,
+    // &shell_cmd_avrcp,
 #endif /* CONFIG_BT_AVRCP */
 #endif /* CONFIG_BT_CLASSIC */
 #if defined(CONFIG_BT_CONN)
