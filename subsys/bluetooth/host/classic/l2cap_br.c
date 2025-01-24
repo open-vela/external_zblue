@@ -23,10 +23,10 @@
 #include "host/hci_core.h"
 #include "host/conn_internal.h"
 #include "l2cap_br_internal.h"
-#include "avdtp_internal.h"
-#include "a2dp_internal.h"
-#include "avctp_internal.h"
-#include "avrcp_internal.h"
+//#include "avdtp_internal.h"
+//#include "a2dp_internal.h"
+//#include "avctp_internal.h"
+//#include "avrcp_internal.h"
 #include "rfcomm_internal.h"
 #include "sdp_internal.h"
 
@@ -2076,8 +2076,8 @@ void bt_l2cap_br_init(void)
 		bt_avdtp_init();
 	}
 
-	if (IS_ENABLED(CONFIG_BT_AVCTP)) {
-		bt_avctp_init();
+	if (IS_ENABLED(CONFIG_BT_AVRCP)) {
+		bt_avrcp_init();
 	}
 
 	bt_sdp_init();
@@ -2086,7 +2086,7 @@ void bt_l2cap_br_init(void)
 		bt_a2dp_init();
 	}
 
-	if (IS_ENABLED(CONFIG_BT_AVRCP)) {
-		bt_avrcp_init();
+	if (IS_ENABLED(CONFIG_BT_AVRCP_CTTG)) {
+		bt_avrcp_cttg_init();
 	}
 }

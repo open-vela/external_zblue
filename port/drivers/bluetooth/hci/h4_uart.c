@@ -41,7 +41,7 @@
 #include <sys/uio.h>
 
 #define LOG_MODULE_NAME bt_h4
-#include "common/log.h"
+#include <zephyr/logging/log.h>
 
 #include "bluetooth/bluetooth.h"
 #include "drivers/bluetooth/hci_driver.h"
