@@ -2,6 +2,7 @@
 
 /*
  * Copyright (c) 2015-2016 Intel Corporation
+ * Copyright (c) 2025 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -2695,6 +2696,11 @@ uint8_t bt_conn_read_enc_key_size(const struct bt_conn *conn)
 
 uint8_t bt_conn_enc_key_size(const struct bt_conn *conn)
 {
+	if (!bt_conn_is_type(conn, BT_CONN_TYPE_LE | BT_CONN_TYPE_BR)) {
+		LOG_DBG("Invalid connection type: %u for %p", conn->type, conn);
+		return 0;
+	}
+
 	if (!conn->encrypt) {
 		return 0;
 	}
@@ -2784,6 +2790,11 @@ int bt_conn_set_security(struct bt_conn *conn, bt_security_t sec)
 	bool force_pair;
 	int err;
 
+	if (!bt_conn_is_type(conn, BT_CONN_TYPE_LE | BT_CONN_TYPE_BR)) {
+		LOG_DBG("Invalid connection type: %u for %p", conn->type, conn);
+		return -EINVAL;
+	}
+
 	if (conn->state != BT_CONN_CONNECTED) {
 		return -ENOTCONN;
 	}
@@ -2819,6 +2830,11 @@ int bt_conn_set_security(struct bt_conn *conn, bt_security_t sec)
 
 bt_security_t bt_conn_get_security(const struct bt_conn *conn)
 {
+	if (!bt_conn_is_type(conn, BT_CONN_TYPE_LE | BT_CONN_TYPE_BR)) {
+		LOG_DBG("Invalid connection type: %u for %p", conn->type, conn);
+		return BT_SECURITY_L0;
+	}
+
 	return conn->sec_level;
 }
 #else
@@ -3069,6 +3085,11 @@ struct bt_conn *bt_conn_lookup_state_le(struct bt_dev *hdev,
 
 const bt_addr_le_t *bt_conn_get_dst(const struct bt_conn *conn)
 {
+	if (!bt_conn_is_type(conn, BT_CONN_TYPE_LE)) {
+		LOG_DBG("Invalid connection type: %u for %p", conn->type, conn);
+		return NULL;
+	}
+
 	return &conn->le.dst;
 }
 
@@ -3179,9 +3200,23 @@ int bt_conn_get_info(const struct bt_conn *conn, struct bt_conn_info *info)
 	return -EINVAL;
 }
 
+bool bt_conn_is_type(const struct bt_conn *conn, enum bt_conn_type type)
+{
+	if (conn == NULL) {
+		return false;
+	}
+
+	return (conn->type & type) != 0;
+}
+
 int bt_conn_get_remote_info(struct bt_conn *conn,
 			    struct bt_conn_remote_info *remote_info)
 {
+	if (!bt_conn_is_type(conn, BT_CONN_TYPE_LE | BT_CONN_TYPE_BR)) {
+		LOG_DBG("Invalid connection type: %u for %p", conn->type, conn);
+		return -EINVAL;
+	}
+
 	if (!atomic_test_bit(conn->flags, BT_CONN_LE_FEATURES_EXCHANGED) ||
 	    (IS_ENABLED(CONFIG_BT_REMOTE_VERSION) &&
 	     !atomic_test_bit(conn->flags, BT_CONN_AUTO_VERSION_INFO))) {
@@ -3275,6 +3310,11 @@ int bt_conn_le_enhanced_get_tx_power_level(struct bt_conn *conn,
 	struct bt_hci_cp_le_read_tx_power_level *cp;
 	struct net_buf *buf;
 
+	if (!bt_conn_is_type(conn, BT_CONN_TYPE_LE)) {
+		LOG_DBG("Invalid connection type: %u for %p", conn->type, conn);
+		return -EINVAL;
+	}
+
 	if (!tx_power->phy) {
 		return -EINVAL;
 	}
@@ -3308,6 +3348,11 @@ int bt_conn_le_get_remote_tx_power_level(struct bt_conn *conn,
 	struct bt_hci_cp_le_read_tx_power_level *cp;
 	struct net_buf *buf;
 
+	if (!bt_conn_is_type(conn, BT_CONN_TYPE_LE)) {
+		LOG_DBG("Invalid connection type: %u for %p", conn->type, conn);
+		return -EINVAL;
+	}
+
 	if (!phy) {
 		return -EINVAL;
 	}
@@ -3331,6 +3376,11 @@ int bt_conn_le_set_tx_power_report_enable(struct bt_conn *conn,
 	struct bt_hci_cp_le_set_tx_power_report_enable *cp;
 	struct net_buf *buf;
 
+	if (!bt_conn_is_type(conn, BT_CONN_TYPE_LE)) {
+		LOG_DBG("Invalid connection type: %u for %p", conn->type, conn);
+		return -EINVAL;
+	}
+
 	buf = bt_hci_cmd_create(BT_HCI_OP_LE_SET_TX_POWER_REPORT_ENABLE, sizeof(*cp));
 	if (!buf) {
 		return -ENOBUFS;
@@ -3351,6 +3401,11 @@ int bt_conn_le_get_tx_power_level(struct bt_conn *conn,
 				  struct bt_conn_le_tx_power *tx_power_level)
 {
 	int err;
+
+	if (!bt_conn_is_type(conn, BT_CONN_TYPE_LE)) {
+		LOG_DBG("Invalid connection type: %u for %p", conn->type, conn);
+		return -EINVAL;
+	}
 
 	if (tx_power_level->phy != 0) {
 		if (IS_ENABLED(CONFIG_BT_TRANSMIT_POWER_CONTROL)) {
@@ -3397,6 +3452,11 @@ int bt_conn_le_set_path_loss_mon_param(struct bt_conn *conn,
 	struct bt_hci_cp_le_set_path_loss_reporting_parameters *cp;
 	struct net_buf *buf;
 
+	if (!bt_conn_is_type(conn, BT_CONN_TYPE_LE)) {
+		LOG_DBG("Invalid connection type: %u for %p", conn->type, conn);
+		return -EINVAL;
+	}
+
 	buf = bt_hci_cmd_create(BT_HCI_OP_LE_SET_PATH_LOSS_REPORTING_PARAMETERS, sizeof(*cp));
 	if (!buf) {
 		return -ENOBUFS;
@@ -3417,6 +3477,11 @@ int bt_conn_le_set_path_loss_mon_enable(struct bt_conn *conn, bool reporting_ena
 {
 	struct bt_hci_cp_le_set_path_loss_reporting_enable *cp;
 	struct net_buf *buf;
+
+	if (!bt_conn_is_type(conn, BT_CONN_TYPE_LE)) {
+		LOG_DBG("Invalid connection type: %u for %p", conn->type, conn);
+		return -EINVAL;
+	}
 
 	buf = bt_hci_cmd_create(BT_HCI_OP_LE_SET_PATH_LOSS_REPORTING_ENABLE, sizeof(*cp));
 	if (!buf) {
@@ -3513,6 +3578,11 @@ int bt_conn_le_subrate_request(struct bt_conn *conn,
 {
 	struct bt_hci_cp_le_subrate_request *cp;
 	struct net_buf *buf;
+
+	if (!bt_conn_is_type(conn, BT_CONN_TYPE_LE)) {
+		LOG_DBG("Invalid connection type: %u for %p", conn->type, conn);
+		return -EINVAL;
+	}
 
 	if (!le_subrate_common_params_valid(params)) {
 		return -EINVAL;
@@ -3660,6 +3730,11 @@ void notify_cs_subevent_result(struct bt_conn *conn, struct bt_conn_le_cs_subeve
 int bt_conn_le_param_update(struct bt_conn *conn,
 			    const struct bt_le_conn_param *param)
 {
+	if (!bt_conn_is_type(conn, BT_CONN_TYPE_LE)) {
+		LOG_DBG("Invalid connection type: %u for %p", conn->type, conn);
+		return -EINVAL;
+	}
+
 	LOG_DBG("conn %p features 0x%02x params (%d-%d %d %d)", conn, conn->le.features[0],
 		param->interval_min, param->interval_max, param->latency, param->timeout);
 
@@ -3689,6 +3764,11 @@ int bt_conn_le_param_update(struct bt_conn *conn,
 int bt_conn_le_data_len_update(struct bt_conn *conn,
 			       const struct bt_conn_le_data_len_param *param)
 {
+	if (!bt_conn_is_type(conn, BT_CONN_TYPE_LE)) {
+		LOG_DBG("Invalid connection type: %u for %p", conn->type, conn);
+		return -EINVAL;
+	}
+
 	if (conn->le.data_len.tx_max_len == param->tx_max_len &&
 	    conn->le.data_len.tx_max_time == param->tx_max_time) {
 		return -EALREADY;
@@ -3703,6 +3783,11 @@ int bt_conn_le_phy_update(struct bt_conn *conn,
 			  const struct bt_conn_le_phy_param *param)
 {
 	uint8_t phy_opts, all_phys;
+
+	if (!bt_conn_is_type(conn, BT_CONN_TYPE_LE)) {
+		LOG_DBG("Invalid connection type: %u for %p", conn->type, conn);
+		return -EINVAL;
+	}
 
 	if ((param->options & BT_CONN_LE_PHY_OPT_CODED_S2) &&
 	    (param->options & BT_CONN_LE_PHY_OPT_CODED_S8)) {
@@ -4236,7 +4321,8 @@ int bt_conn_le_auth_cb_register_mc(uint8_t dev_id, const struct bt_conn_auth_cb 
 
 int bt_conn_auth_cb_overlay(struct bt_conn *conn, const struct bt_conn_auth_cb *cb)
 {
-	CHECKIF(conn == NULL) {
+	if (!bt_conn_is_type(conn, BT_CONN_TYPE_LE | BT_CONN_TYPE_BR)) {
+		LOG_DBG("Invalid connection type: %u for %p", conn->type, conn);
 		return -EINVAL;
 	}
 
@@ -4299,6 +4385,11 @@ int bt_conn_auth_info_cb_unregister_mc(uint8_t dev_id, struct bt_conn_auth_info_
 
 int bt_conn_auth_passkey_entry(struct bt_conn *conn, unsigned int passkey)
 {
+	if (!bt_conn_is_type(conn, BT_CONN_TYPE_LE | BT_CONN_TYPE_BR)) {
+		LOG_DBG("Invalid connection type: %u for %p", conn->type, conn);
+		return -EINVAL;
+	}
+
 	if (IS_ENABLED(CONFIG_BT_SMP) && conn->type == BT_CONN_TYPE_LE) {
 		return bt_smp_auth_passkey_entry(conn, passkey);
 	}
@@ -4318,7 +4409,12 @@ int bt_conn_auth_passkey_entry(struct bt_conn *conn, unsigned int passkey)
 int bt_conn_auth_keypress_notify(struct bt_conn *conn,
 				 enum bt_conn_auth_keypress type)
 {
-	if (IS_ENABLED(CONFIG_BT_SMP) && conn->type == BT_CONN_TYPE_LE) {
+	if (!bt_conn_is_type(conn, BT_CONN_TYPE_LE)) {
+		LOG_DBG("Invalid connection type: %u for %p", conn->type, conn);
+		return -EINVAL;
+	}
+
+	if (IS_ENABLED(CONFIG_BT_SMP)) {
 		return bt_smp_auth_keypress_notify(conn, type);
 	}
 
@@ -4329,6 +4425,11 @@ int bt_conn_auth_keypress_notify(struct bt_conn *conn,
 
 int bt_conn_auth_passkey_confirm(struct bt_conn *conn)
 {
+	if (!bt_conn_is_type(conn, BT_CONN_TYPE_LE | BT_CONN_TYPE_BR)) {
+		LOG_DBG("Invalid connection type: %u for %p", conn->type, conn);
+		return -EINVAL;
+	}
+
 	if (IS_ENABLED(CONFIG_BT_SMP) && conn->type == BT_CONN_TYPE_LE) {
 		return bt_smp_auth_passkey_confirm(conn);
 	}
@@ -4346,6 +4447,11 @@ int bt_conn_auth_passkey_confirm(struct bt_conn *conn)
 
 int bt_conn_auth_cancel(struct bt_conn *conn)
 {
+	if (!bt_conn_is_type(conn, BT_CONN_TYPE_LE | BT_CONN_TYPE_BR)) {
+		LOG_DBG("Invalid connection type: %u for %p", conn->type, conn);
+		return -EINVAL;
+	}
+
 	if (IS_ENABLED(CONFIG_BT_SMP) && conn->type == BT_CONN_TYPE_LE) {
 		return bt_smp_auth_cancel(conn);
 	}
@@ -4363,6 +4469,11 @@ int bt_conn_auth_cancel(struct bt_conn *conn)
 
 int bt_conn_auth_pairing_confirm(struct bt_conn *conn)
 {
+	if (!bt_conn_is_type(conn, BT_CONN_TYPE_LE | BT_CONN_TYPE_BR)) {
+		LOG_DBG("Invalid connection type: %u for %p", conn->type, conn);
+		return -EINVAL;
+	}
+
 	if (IS_ENABLED(CONFIG_BT_SMP) && conn->type == BT_CONN_TYPE_LE) {
 		return bt_smp_auth_pairing_confirm(conn);
 	}
