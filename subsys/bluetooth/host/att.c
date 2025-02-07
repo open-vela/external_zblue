@@ -131,11 +131,6 @@ static uint16_t bt_att_mtu(struct bt_att_chan *chan)
 	return MIN(chan->chan.rx.mtu, chan->chan.tx.mtu);
 }
 
-/* Descriptor of application-specific authorization callbacks that are used
- * with the CONFIG_BT_GATT_AUTHORIZATION_CUSTOM Kconfig enabled.
- */
-const static struct bt_gatt_authorization_cb *authorization_cb;
-
 /* ATT connection specific data */
 struct bt_att {
 	struct bt_conn		*conn;
@@ -164,7 +159,6 @@ K_MEM_SLAB_DEFINE(att_slab, sizeof(struct bt_att),
 K_MEM_SLAB_DEFINE(chan_slab, sizeof(struct bt_att_chan),
 		  CONFIG_BT_MAX_CONN * ATT_CHAN_MAX,
 		  __alignof__(struct bt_att_chan));
-static struct bt_att_req cancel;
 
 /** The thread ATT response handlers likely run on.
  *
@@ -178,12 +172,15 @@ static struct bt_att_req cancel;
  *
  *  The intended use of this value is to detect the above situation.
  */
-static k_tid_t att_handle_rsp_thread;
-
-static struct bt_att_tx_meta_data tx_meta_data_storage[CONFIG_BT_ATT_TX_COUNT];
-
 struct bt_att_tx_meta_data *bt_att_get_tx_meta_data(const struct net_buf *buf);
 static void att_on_sent_cb(struct bt_att_tx_meta_data *meta);
+static struct bt_att_tx_meta_data tx_meta_data_storage[CONFIG_BT_ATT_TX_COUNT];
+
+struct bt_att_ctx {
+	struct bt_att_req cancel;
+	const struct bt_gatt_authorization_cb *authorization_cb;
+	k_tid_t att_handle_rsp_thread;
+} att_ctx[CONFIG_BT_NUM_CTLRS];
 
 #if defined(CONFIG_BT_ATT_ERR_TO_STR)
 const char *bt_att_err_to_str(uint8_t att_err)
@@ -922,6 +919,8 @@ static uint8_t att_handle_rsp(struct bt_att_chan *chan, void *pdu, uint16_t len,
 			      int err)
 {
 	bt_att_func_t func = NULL;
+	struct bt_conn *conn = chan->att->conn;
+	struct bt_att_ctx *ctx = conn->hdev->att;
 	void *params;
 
 	LOG_DBG("chan %p err %d len %u: %s", chan, err, len, bt_hex(pdu, len));
@@ -935,7 +934,7 @@ static uint8_t att_handle_rsp(struct bt_att_chan *chan, void *pdu, uint16_t len,
 	}
 
 	/* Check if request has been cancelled */
-	if (chan->req == &cancel) {
+	if (chan->req == &ctx->cancel) {
 		chan->req = NULL;
 		goto process;
 	}
@@ -1081,6 +1080,7 @@ static uint8_t att_find_info_rsp(struct bt_att_chan *chan, uint16_t start_handle
 			      uint16_t end_handle)
 {
 	struct find_info_data data;
+	struct bt_dev *hdev = chan->att->conn->hdev;
 
 	(void)memset(&data, 0, sizeof(data));
 
@@ -1090,7 +1090,7 @@ static uint8_t att_find_info_rsp(struct bt_att_chan *chan, uint16_t start_handle
 	}
 
 	data.chan = chan;
-	bt_gatt_foreach_attr(start_handle, end_handle, find_info_cb, &data);
+	bt_gatt_foreach_attr_mc(hdev->dev_id, start_handle, end_handle, find_info_cb, &data);
 
 	if (!data.rsp) {
 		net_buf_unref(data.buf);
@@ -1235,6 +1235,7 @@ static uint8_t att_find_type_rsp(struct bt_att_chan *chan, uint16_t start_handle
 			      uint8_t value_len)
 {
 	struct find_type_data data;
+	struct bt_dev *hdev = chan->att->conn->hdev;
 
 	(void)memset(&data, 0, sizeof(data));
 
@@ -1251,7 +1252,7 @@ static uint8_t att_find_type_rsp(struct bt_att_chan *chan, uint16_t start_handle
 	/* Pre-set error in case no service will be found */
 	data.err = BT_ATT_ERR_ATTRIBUTE_NOT_FOUND;
 
-	bt_gatt_foreach_attr(start_handle, end_handle, find_type_cb, &data);
+	bt_gatt_foreach_attr_mc(hdev->dev_id, start_handle, end_handle, find_type_cb, &data);
 
 	/* If error has not been cleared, no service has been found */
 	if (data.err) {
@@ -1329,15 +1330,17 @@ typedef bool (*attr_read_cb)(struct net_buf *buf, ssize_t read,
 static bool attr_read_authorize(struct bt_conn *conn,
 				const struct bt_gatt_attr *attr)
 {
+	struct bt_att_ctx *ctx = conn->hdev->att;
+
 	if (!IS_ENABLED(CONFIG_BT_GATT_AUTHORIZATION_CUSTOM)) {
 		return true;
 	}
 
-	if (!authorization_cb || !authorization_cb->read_authorize) {
+	if (!ctx->authorization_cb || !ctx->authorization_cb->read_authorize) {
 		return true;
 	}
 
-	return authorization_cb->read_authorize(conn, attr);
+	return ctx->authorization_cb->read_authorize(conn, attr);
 }
 
 static bool attr_read_type_cb(struct net_buf *frag, ssize_t read,
@@ -1485,6 +1488,7 @@ static uint8_t att_read_type_rsp(struct bt_att_chan *chan, struct bt_uuid *uuid,
 			      uint16_t start_handle, uint16_t end_handle)
 {
 	struct read_type_data data;
+	struct bt_dev *hdev = chan->att->conn->hdev;
 
 	(void)memset(&data, 0, sizeof(data));
 
@@ -1501,7 +1505,7 @@ static uint8_t att_read_type_rsp(struct bt_att_chan *chan, struct bt_uuid *uuid,
 	/* Pre-set error if no attr will be found in handle */
 	data.err = BT_ATT_ERR_ATTRIBUTE_NOT_FOUND;
 
-	bt_gatt_foreach_attr(start_handle, end_handle, read_type_cb, &data);
+	bt_gatt_foreach_attr_mc(hdev->dev_id, start_handle, end_handle, read_type_cb, &data);
 
 	if (data.err) {
 		net_buf_unref(data.buf);
@@ -1618,6 +1622,7 @@ static uint8_t att_read_rsp(struct bt_att_chan *chan, uint8_t op, uint8_t rsp,
 			 uint16_t handle, uint16_t offset)
 {
 	struct read_data data;
+	struct bt_dev *hdev = chan->att->conn->hdev;
 
 	if (!bt_gatt_change_aware(chan->att->conn, true)) {
 		if (!atomic_test_and_set_bit(chan->flags, ATT_OUT_OF_SYNC_SENT)) {
@@ -1644,7 +1649,7 @@ static uint8_t att_read_rsp(struct bt_att_chan *chan, uint8_t op, uint8_t rsp,
 	/* Pre-set error if no attr will be found in handle */
 	data.err = BT_ATT_ERR_INVALID_HANDLE;
 
-	bt_gatt_foreach_attr(handle, handle, read_cb, &data);
+	bt_gatt_foreach_attr_mc(hdev->dev_id, handle, handle, read_cb, &data);
 
 	/* In case of error discard data and respond with an error */
 	if (data.err) {
@@ -1695,6 +1700,7 @@ static uint8_t att_read_mult_req(struct bt_att_chan *chan, struct net_buf *buf)
 {
 	struct read_data data;
 	uint16_t handle;
+	struct bt_dev *hdev = chan->att->conn->hdev;
 
 	if (!bt_gatt_change_aware(chan->att->conn, true)) {
 		if (!atomic_test_and_set_bit(chan->flags, ATT_OUT_OF_SYNC_SENT)) {
@@ -1727,7 +1733,7 @@ static uint8_t att_read_mult_req(struct bt_att_chan *chan, struct net_buf *buf)
 		 */
 		data.err = BT_ATT_ERR_INVALID_HANDLE;
 
-		bt_gatt_foreach_attr(handle, handle, read_cb, &data);
+		bt_gatt_foreach_attr_mc(hdev->dev_id, handle, handle, read_cb, &data);
 
 		/* Stop reading in case of error */
 		if (data.err) {
@@ -1799,6 +1805,7 @@ static uint8_t att_read_mult_vl_req(struct bt_att_chan *chan, struct net_buf *bu
 {
 	struct read_data data;
 	uint16_t handle;
+	struct bt_dev *hdev = chan->att->conn->hdev;
 
 	if (!bt_gatt_change_aware(chan->att->conn, true)) {
 		if (!atomic_test_and_set_bit(chan->flags, ATT_OUT_OF_SYNC_SENT)) {
@@ -1827,7 +1834,7 @@ static uint8_t att_read_mult_vl_req(struct bt_att_chan *chan, struct net_buf *bu
 		 */
 		data.err = BT_ATT_ERR_INVALID_HANDLE;
 
-		bt_gatt_foreach_attr(handle, handle, read_vl_cb, &data);
+		bt_gatt_foreach_attr_mc(hdev->dev_id, handle, handle, read_vl_cb, &data);
 
 		/* Stop reading in case of error */
 		if (data.err) {
@@ -1929,6 +1936,7 @@ static uint8_t att_read_group_rsp(struct bt_att_chan *chan, struct bt_uuid *uuid
 			       uint16_t start_handle, uint16_t end_handle)
 {
 	struct read_group_data data;
+	struct bt_dev *hdev = chan->att->conn->hdev;
 
 	(void)memset(&data, 0, sizeof(data));
 
@@ -1943,7 +1951,7 @@ static uint8_t att_read_group_rsp(struct bt_att_chan *chan, struct bt_uuid *uuid
 	data.rsp->len = 0U;
 	data.group = NULL;
 
-	bt_gatt_foreach_attr(start_handle, end_handle, read_group_cb, &data);
+	bt_gatt_foreach_attr_mc(hdev->dev_id, start_handle, end_handle, read_group_cb, &data);
 
 	if (!data.rsp->len) {
 		net_buf_unref(data.buf);
@@ -2022,15 +2030,17 @@ struct write_data {
 static bool attr_write_authorize(struct bt_conn *conn,
 				 const struct bt_gatt_attr *attr)
 {
+	struct bt_att_ctx *ctx = conn->hdev->att;
+
 	if (!IS_ENABLED(CONFIG_BT_GATT_AUTHORIZATION_CUSTOM)) {
 		return true;
 	}
 
-	if (!authorization_cb || !authorization_cb->write_authorize) {
+	if (!ctx->authorization_cb || !ctx->authorization_cb->write_authorize) {
 		return true;
 	}
 
-	return authorization_cb->write_authorize(conn, attr);
+	return ctx->authorization_cb->write_authorize(conn, attr);
 }
 
 static uint8_t write_cb(const struct bt_gatt_attr *attr, uint16_t handle,
@@ -2080,6 +2090,7 @@ static uint8_t att_write_rsp(struct bt_att_chan *chan, uint8_t req, uint8_t rsp,
 			  uint16_t len)
 {
 	struct write_data data;
+	struct bt_dev *hdev = chan->att->conn->hdev;
 
 	if (!bt_gatt_change_aware(chan->att->conn, req ? true : false)) {
 		if (!atomic_test_and_set_bit(chan->flags, ATT_OUT_OF_SYNC_SENT)) {
@@ -2110,7 +2121,7 @@ static uint8_t att_write_rsp(struct bt_att_chan *chan, uint8_t req, uint8_t rsp,
 	data.len = len;
 	data.err = BT_ATT_ERR_INVALID_HANDLE;
 
-	bt_gatt_foreach_attr(handle, handle, write_cb, &data);
+	bt_gatt_foreach_attr_mc(hdev->dev_id, handle, handle, write_cb, &data);
 
 	if (data.err) {
 		/* In case of error discard data and respond with an error */
@@ -2210,6 +2221,7 @@ static uint8_t att_prep_write_rsp(struct bt_att_chan *chan, uint16_t handle,
 {
 	struct prep_data data;
 	struct bt_att_prepare_write_rsp *rsp;
+	struct bt_dev *hdev = chan->att->conn->hdev;
 
 	if (!bt_gatt_change_aware(chan->att->conn, true)) {
 		if (!atomic_test_and_set_bit(chan->flags, ATT_OUT_OF_SYNC_SENT)) {
@@ -2231,7 +2243,7 @@ static uint8_t att_prep_write_rsp(struct bt_att_chan *chan, uint16_t handle,
 	data.len = len;
 	data.err = BT_ATT_ERR_INVALID_HANDLE;
 
-	bt_gatt_foreach_attr(handle, handle, prep_write_cb, &data);
+	bt_gatt_foreach_attr_mc(hdev->dev_id, handle, handle, prep_write_cb, &data);
 
 	if (data.err) {
 		/* Respond here since handle is set */
@@ -2537,6 +2549,8 @@ static int att_change_security(struct bt_conn *conn, uint8_t err)
 static uint8_t att_error_rsp(struct bt_att_chan *chan, struct net_buf *buf)
 {
 	struct bt_att_error_rsp *rsp;
+	struct bt_conn *conn = chan->att->conn;
+	struct bt_att_ctx *ctx = conn->hdev->att;
 	uint8_t err;
 
 	rsp = (void *)buf->data;
@@ -2555,7 +2569,7 @@ static uint8_t att_error_rsp(struct bt_att_chan *chan, struct net_buf *buf)
 	 * specification, then the ATT_ERROR_RSP PDU shall still be considered to
 	 * state that the given request cannot be performed for an unknown reason.
 	 */
-	if (!chan->req || chan->req == &cancel || !rsp->error) {
+	if (!chan->req || chan->req == &ctx->cancel || !rsp->error) {
 		err = BT_ATT_ERR_UNLIKELY;
 		goto done;
 	}
@@ -3469,6 +3483,7 @@ static int bt_att_accept(struct bt_conn *conn, struct bt_l2cap_chan **ch)
 {
 	struct bt_att *att;
 	struct bt_att_chan *chan;
+	struct bt_att_ctx *ctx = conn->hdev->att;
 
 	LOG_DBG("conn %p handle %u", conn, conn->handle);
 
@@ -3477,7 +3492,7 @@ static int bt_att_accept(struct bt_conn *conn, struct bt_l2cap_chan **ch)
 		return -ENOMEM;
 	}
 
-	att_handle_rsp_thread = k_current_get();
+	ctx->att_handle_rsp_thread = k_current_get();
 
 	(void)memset(att, 0, sizeof(*att));
 	att->conn = conn;
@@ -3801,7 +3816,7 @@ static int bt_eatt_accept(struct bt_conn *conn, struct bt_l2cap_server *server,
 	return -ENOMEM;
 }
 
-static void bt_eatt_init(void)
+static void bt_eatt_init(struct bt_dev *hdev)
 {
 	int err;
 	static struct bt_l2cap_server eatt_l2cap = {
@@ -3814,7 +3829,7 @@ static void bt_eatt_init(void)
 	LOG_DBG("");
 
 	/* Check if eatt_l2cap server has already been registered. */
-	registered_server = bt_l2cap_server_lookup_psm(eatt_l2cap.psm);
+	registered_server = bt_l2cap_server_lookup_psm(hdev, eatt_l2cap.psm);
 	if (registered_server != &eatt_l2cap) {
 		err = bt_l2cap_server_register(&eatt_l2cap);
 		if (err < 0) {
@@ -3832,12 +3847,14 @@ static void bt_eatt_init(void)
 #endif /* CONFIG_BT_EATT */
 }
 
-void bt_att_init(void)
+void bt_att_init(struct bt_dev *hdev)
 {
-	bt_gatt_init();
+	hdev->att = &att_ctx[hdev->dev_id];
+
+	bt_gatt_init(hdev);
 
 	if (IS_ENABLED(CONFIG_BT_EATT)) {
-		bt_eatt_init();
+		bt_eatt_init(hdev);
 	}
 }
 
@@ -3906,11 +3923,11 @@ static void att_chan_mtu_updated(struct bt_att_chan *updated_chan)
 	}
 }
 
-struct bt_att_req *bt_att_req_alloc(k_timeout_t timeout)
+struct bt_att_req *bt_att_req_alloc(struct bt_dev *hdev, k_timeout_t timeout)
 {
 	struct bt_att_req *req = NULL;
 
-	if (k_current_get() == att_handle_rsp_thread) {
+	if (k_current_get() == hdev->att->att_handle_rsp_thread) {
 		/* No req will be fulfilled while blocking on the bt_recv thread.
 		 * Blocking would cause deadlock.
 		 */
@@ -3990,11 +4007,14 @@ int bt_att_req_send(struct bt_conn *conn, struct bt_att_req *req)
 static bool bt_att_chan_req_cancel(struct bt_att_chan *chan,
 				   struct bt_att_req *req)
 {
+	struct bt_conn *conn = chan->att->conn;
+	struct bt_att_ctx *ctx = conn->hdev->att;
+
 	if (chan->req != req) {
 		return false;
 	}
 
-	chan->req = &cancel;
+	chan->req = &ctx->cancel;
 
 	bt_att_req_free(req);
 
@@ -4138,22 +4158,29 @@ bool bt_att_chan_opt_valid(struct bt_conn *conn, enum bt_att_chan_opt chan_opt)
 	return true;
 }
 
-int bt_gatt_authorization_cb_register(const struct bt_gatt_authorization_cb *cb)
+int bt_gatt_authorization_cb_register_mc(uint8_t dev_id, const struct bt_gatt_authorization_cb *cb)
 {
+	struct bt_dev *hdev = bt_dev_get(dev_id);
+
+	if (!hdev) {
+		return -ENODEV;
+	}
+
+
 	if (!IS_ENABLED(CONFIG_BT_GATT_AUTHORIZATION_CUSTOM)) {
 		return -ENOSYS;
 	}
 
 	if (!cb) {
-		authorization_cb = NULL;
+		hdev->att->authorization_cb = NULL;
 		return 0;
 	}
 
-	if (authorization_cb) {
+	if (hdev->att->authorization_cb) {
 		return -EALREADY;
 	}
 
-	authorization_cb = cb;
+	hdev->att->authorization_cb = cb;
 
 	return 0;
 }

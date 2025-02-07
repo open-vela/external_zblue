@@ -292,14 +292,14 @@ struct bt_att_req {
 	void *user_data;
 };
 
-void bt_att_init(void);
+void bt_att_init(struct bt_dev *hdev);
 uint16_t bt_att_get_mtu(struct bt_conn *conn);
 uint16_t bt_att_get_uatt_mtu(struct bt_conn *conn);
 struct net_buf *bt_att_create_pdu(struct bt_conn *conn, uint8_t op,
 				  size_t len);
 
 /* Allocate a new request */
-struct bt_att_req *bt_att_req_alloc(k_timeout_t timeout);
+struct bt_att_req *bt_att_req_alloc(struct bt_dev *hdev, k_timeout_t timeout);
 
 /* Free a request */
 void bt_att_req_free(struct bt_att_req *req);

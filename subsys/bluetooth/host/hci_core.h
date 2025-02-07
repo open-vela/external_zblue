@@ -156,6 +156,9 @@ enum {
 };
 
 struct bt_le_ext_adv {
+	/* Hci device this advertiser belongs to */
+	struct bt_dev *hdev;
+
 	/* ID Address used for advertising */
 	uint8_t                 id;
 
@@ -212,6 +215,9 @@ enum {
 };
 
 struct bt_le_per_adv_sync {
+	/** Hci device this sync belongs to */
+	struct bt_dev *hdev;
+
 	/** Periodic Advertiser Address */
 	bt_addr_le_t addr;
 
@@ -325,8 +331,25 @@ struct bt_dev_br {
 #define BT_DEV_VS_FEAT_MAX  1
 #define BT_DEV_VS_CMDS_MAX  2
 
+struct bt_br_rnr_cb {
+	bt_addr_t addr;
+	bt_br_remote_name_req_cb_t cb;
+} __packed;
+
+struct bt_scan_pool;
+struct bt_gatt_pool;
+struct bt_smp_pool;
+struct bt_keys_pool;
+struct bt_conn_pool;
+struct bt_l2cap_pool;
+struct bt_l2cap_br_pool;
+struct bt_att_ctx;
+struct bt_sdp_ctx;
+
+#include "ecc.h"
 /* State tracking for the local Bluetooth controller */
 struct bt_dev {
+	uint8_t dev_id;
 	/* Local Identity Address(es) */
 	bt_addr_le_t            id_addr[CONFIG_BT_ID_MAX];
 	uint8_t                    id_count;
@@ -337,6 +360,9 @@ struct bt_dev {
 	/* Legacy advertiser */
 	struct bt_le_ext_adv    adv;
 #else
+	/* Pool of advertising sets */
+	struct bt_le_ext_adv adv_pool[CONFIG_BT_EXT_ADV_MAX_ADV_SET];
+
 	/* Pointer to reserved advertising set */
 	struct bt_le_ext_adv    *adv;
 #if defined(CONFIG_BT_CONN) && (CONFIG_BT_EXT_ADV_MAX_ADV_SET > 1)
@@ -356,6 +382,7 @@ struct bt_dev {
 				CONFIG_BT_EXT_ADV_MAX_ADV_SET)];
 #endif
 #endif
+	struct bt_scan_pool *scan;
 	/* Current local Random Address */
 	bt_addr_le_t            random_addr;
 	uint8_t                    adv_conn_id;
@@ -391,14 +418,22 @@ struct bt_dev {
 	struct bt_dev_br	br;
 #endif
 
+	struct bt_keys_pool *keys;
+
 	/* Number of commands controller can accept */
 	struct k_sem		ncmd_sem;
 
 	/* Last sent HCI command */
 	struct net_buf		*sent_cmd;
 
+	/* Work for handling HCI events & ACL data */
+	struct k_work       rx_work;
+
 	/* Queue for incoming HCI events & ACL data */
 	sys_slist_t rx_queue;
+
+	/* Work used to process Tx data */
+	struct k_work       tx_work;
 
 	/* Queue for outgoing HCI commands */
 	struct k_fifo		cmd_tx_queue;
@@ -409,6 +444,8 @@ struct bt_dev {
 	/* Registered HCI driver */
 	const struct bt_hci_driver *drv;
 #endif
+
+	bt_ready_cb_t ready_cb;
 
 #if defined(CONFIG_BT_PRIVACY)
 	/* Local Identity Resolving Key */
@@ -434,17 +471,95 @@ struct bt_dev {
 	/* Appearance Value */
 	uint16_t		appearance;
 #endif
+
+#if defined(CONFIG_BT_HCI_VS_EVT_USER)
+	bt_hci_vnd_evt_cb_t *hci_vnd_evt_cb;
+#endif
+
+#if defined(CONFIG_BT_CONN)
+	/* Array of disconnected handle and reason */
+	uint16_t disconnected_handles[CONFIG_BT_MAX_CONN];
+	uint8_t disconnected_handles_reason[CONFIG_BT_MAX_CONN];
+#endif
+
+	/* Discovered devices */
+	struct bt_br_discovery_result *discovery_results;
+	size_t discovery_results_size;
+	size_t discovery_results_count;
+	sys_slist_t discovery_cbs;
+
+	/* remote name request callback */
+	struct bt_br_rnr_cb rnr_cb;
+
+#if defined(CONFIG_BT_ECC)
+	uint8_t pub_key[BT_PUB_KEY_LEN];
+	sys_slist_t pub_key_cb_slist;
+	bt_dh_key_cb_t dh_key_cb;
+#endif
+
+	struct bt_smp_pool *smp;
+
+#if defined(CONFIG_BT_ISO)
+	struct bt_conn iso_conns[CONFIG_BT_ISO_MAX_CHAN];
+#if defined(CONFIG_BT_ISO_CENTRAL)
+	struct bt_iso_cig cigs[CONFIG_BT_ISO_MAX_CIG];
+#endif
+#if defined(CONFIG_BT_ISO_PERIPHERAL)
+	struct bt_iso_server *iso_server;
+#endif
+#if defined(CONFIG_BT_ISO_BROADCAST)
+	struct bt_iso_big bigs[CONFIG_BT_ISO_MAX_BIG];
+#endif
+#endif
+
+#if defined(CONFIG_BT_TINYCRYPT_ECC)
+	struct bt_ecc ecc;
+#endif
+
+#if defined(CONFIG_BT_DF)
+	struct bt_le_df_ant_info df_ant_info;
+#endif
+
+#if defined(CONFIG_BT_CONN)
+	struct bt_gatt_pool *gatt;
+#endif
+
+	struct bt_conn_pool *conn;
+#if defined(CONFIG_BT_SMP) || defined(CONFIG_BT_CLASSIC)
+	const struct bt_conn_auth_cb *bt_auth;
+	sys_slist_t bt_auth_info_cbs;
+#endif
+	struct bt_l2cap_pool *l2cap;
+	struct bt_l2cap_br_pool *l2cap_br;
+	struct bt_att_ctx *att;
+	struct bt_sdp_ctx *sdp;
 };
 
-extern struct bt_dev bt_dev;
+struct bt_dev_info {
+	/* Local Address */
+	bt_addr_le_t		addr;
+	/* Local Identity Address */
+	bt_addr_le_t		id_addr;
+	/* Local Name */
+	const char		*name;
+	/* Local version info */
+	uint8_t			manufacturer;
+	uint16_t		hci_version;
+	uint8_t			lmp_version;
+};
+
+struct bt_dev *bt_dev_get(uint8_t dev_id);
+int bt_dev_get_list(struct bt_dev **devs, size_t *count);
+int bt_dev_get_info(const struct bt_dev *dev, struct bt_dev_info *info);
+
+#define bt_dev_get_default() bt_dev_get(0)
+
 #if defined(CONFIG_BT_SMP) || defined(CONFIG_BT_CLASSIC)
-extern const struct bt_conn_auth_cb *bt_auth;
-extern sys_slist_t bt_auth_info_cbs;
 enum bt_security_err bt_security_err_get(uint8_t hci_err);
 #endif /* CONFIG_BT_SMP || CONFIG_BT_CLASSIC */
 
 #if DT_HAS_CHOSEN(zephyr_bt_hci)
-int bt_hci_recv(const struct device *dev, struct net_buf *buf);
+int bt_hci_recv(const struct device *dev, struct net_buf *buf, void *hci_data);
 #endif
 
 /* Data type to store state related with command to be updated
@@ -464,7 +579,7 @@ void bt_hci_cmd_state_set_init(struct net_buf *buf,
 			       struct bt_hci_cmd_state_set *state,
 			       atomic_t *target, int bit, bool val);
 
-int bt_hci_disconnect(uint16_t handle, uint8_t reason);
+int bt_hci_disconnect(struct bt_dev *hdev, uint16_t handle, uint8_t reason);
 
 bool bt_le_conn_params_valid(const struct bt_le_conn_param *param);
 int bt_le_set_data_len(struct bt_conn *conn, uint16_t tx_octets, uint16_t tx_time);
@@ -483,108 +598,109 @@ int bt_le_read_conn_rssi(struct bt_conn *conn, int8_t *rssi);
 int bt_get_df_cte_type(uint8_t hci_cte_type);
 
 int bt_le_create_conn(const struct bt_conn *conn);
-int bt_le_create_conn_cancel(void);
+int bt_le_create_conn_cancel(struct bt_dev *hdev);
 int bt_le_create_conn_synced(const struct bt_conn *conn, const struct bt_le_ext_adv *adv,
 			     uint8_t subevent);
 
-bool bt_addr_le_is_bonded(uint8_t id, const bt_addr_le_t *addr);
-const bt_addr_le_t *bt_lookup_id_addr(uint8_t id, const bt_addr_le_t *addr);
+bool bt_addr_le_is_bonded(struct bt_dev *hdev, uint8_t id, const bt_addr_le_t *addr);
+const bt_addr_le_t *bt_lookup_id_addr(struct bt_dev *hdev, uint8_t id, const bt_addr_le_t *addr);
 
-int bt_send(struct net_buf *buf);
+int bt_send(struct bt_dev *hdev, struct net_buf *buf);
 
 /* Don't require everyone to include keys.h */
 struct bt_keys;
-void bt_id_add(struct bt_keys *keys);
-void bt_id_del(struct bt_keys *keys);
+void bt_id_add(struct bt_dev *hdev, struct bt_keys *keys);
+void bt_id_del(struct bt_dev *hdev, struct bt_keys *keys);
 
-struct bt_keys *bt_id_find_conflict(struct bt_keys *candidate);
+struct bt_keys *bt_id_find_conflict(struct bt_dev *hdev, struct bt_keys *candidate);
 
-int bt_setup_random_id_addr(void);
-int bt_setup_public_id_addr(void);
+int bt_setup_random_id_addr(struct bt_dev *hdev);
+int bt_setup_public_id_addr(struct bt_dev *hdev);
 
-void bt_finalize_init(void);
+void bt_finalize_init(struct bt_dev *hdev);
 
-void bt_hci_host_num_completed_packets(struct net_buf *buf);
+void bt_hci_host_num_completed_packets(struct bt_dev *hdev, struct net_buf *buf);
 
 /* HCI event handlers */
-void bt_hci_pin_code_req(struct net_buf *buf);
-void bt_hci_link_key_notify(struct net_buf *buf);
-void bt_hci_link_key_req(struct net_buf *buf);
-void bt_hci_io_capa_resp(struct net_buf *buf);
-void bt_hci_io_capa_req(struct net_buf *buf);
-void bt_hci_ssp_complete(struct net_buf *buf);
-void bt_hci_user_confirm_req(struct net_buf *buf);
-void bt_hci_user_passkey_notify(struct net_buf *buf);
-void bt_hci_user_passkey_req(struct net_buf *buf);
-void bt_hci_auth_complete(struct net_buf *buf);
+void bt_hci_pin_code_req(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_link_key_notify(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_link_key_req(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_io_capa_resp(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_io_capa_req(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_ssp_complete(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_user_confirm_req(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_user_passkey_notify(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_user_passkey_req(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_auth_complete(struct bt_dev *hdev, struct net_buf *buf);
 
 /* ECC HCI event handlers */
-void bt_hci_evt_le_pkey_complete(struct net_buf *buf);
-void bt_hci_evt_le_dhkey_complete(struct net_buf *buf);
+void bt_hci_evt_le_pkey_complete(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_evt_le_dhkey_complete(struct bt_dev *hdev, struct net_buf *buf);
 
 /* Common HCI event handlers */
-void bt_hci_le_enh_conn_complete(struct bt_hci_evt_le_enh_conn_complete *evt);
+void bt_hci_le_enh_conn_complete(struct bt_dev *hdev,
+			 struct bt_hci_evt_le_enh_conn_complete *evt);
 
 /* Scan HCI event handlers */
-void bt_hci_le_adv_report(struct net_buf *buf);
-void bt_hci_le_scan_timeout(struct net_buf *buf);
-void bt_hci_le_adv_ext_report(struct net_buf *buf);
-void bt_hci_le_per_adv_sync_established(struct net_buf *buf);
-void bt_hci_le_per_adv_sync_established_v2(struct net_buf *buf);
-void bt_hci_le_per_adv_report(struct net_buf *buf);
-void bt_hci_le_per_adv_report_v2(struct net_buf *buf);
-void bt_hci_le_per_adv_sync_lost(struct net_buf *buf);
-void bt_hci_le_biginfo_adv_report(struct net_buf *buf);
-void bt_hci_le_df_connectionless_iq_report(struct net_buf *buf);
-void bt_hci_le_vs_df_connectionless_iq_report(struct net_buf *buf);
-void bt_hci_le_past_received(struct net_buf *buf);
-void bt_hci_le_past_received_v2(struct net_buf *buf);
+void bt_hci_le_adv_report(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_le_scan_timeout(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_le_adv_ext_report(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_le_per_adv_sync_established(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_le_per_adv_sync_established_v2(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_le_per_adv_report(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_le_per_adv_report_v2(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_le_per_adv_sync_lost(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_le_biginfo_adv_report(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_le_df_connectionless_iq_report(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_le_vs_df_connectionless_iq_report(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_le_past_received(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_le_past_received_v2(struct bt_dev *hdev, struct net_buf *buf);
 
 /* CS HCI event handlers */
-void bt_hci_le_cs_read_remote_supported_capabilities_complete(struct net_buf *buf);
-void bt_hci_le_cs_read_remote_fae_table_complete(struct net_buf *buf);
-void bt_hci_le_cs_config_complete_event(struct net_buf *buf);
-void bt_hci_le_cs_security_enable_complete(struct net_buf *buf);
-void bt_hci_le_cs_procedure_enable_complete(struct net_buf *buf);
-void bt_hci_le_cs_subevent_result(struct net_buf *buf);
-void bt_hci_le_cs_subevent_result_continue(struct net_buf *buf);
-void bt_hci_le_cs_test_end_complete(struct net_buf *buf);
+void bt_hci_le_cs_read_remote_supported_capabilities_complete(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_le_cs_read_remote_fae_table_complete(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_le_cs_config_complete_event(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_le_cs_security_enable_complete(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_le_cs_procedure_enable_complete(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_le_cs_subevent_result(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_le_cs_subevent_result_continue(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_le_cs_test_end_complete(struct bt_dev *hdev, struct net_buf *buf);
 
 /* Adv HCI event handlers */
-void bt_hci_le_adv_set_terminated(struct net_buf *buf);
-void bt_hci_le_scan_req_received(struct net_buf *buf);
+void bt_hci_le_adv_set_terminated(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_le_scan_req_received(struct bt_dev *hdev, struct net_buf *buf);
 
 /* BR/EDR HCI event handlers */
-void bt_hci_conn_req(struct net_buf *buf);
-void bt_hci_conn_complete(struct net_buf *buf);
+void bt_hci_conn_req(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_conn_complete(struct bt_dev *hdev, struct net_buf *buf);
 
 
-void bt_hci_inquiry_complete(struct net_buf *buf);
-void bt_hci_inquiry_result_with_rssi(struct net_buf *buf);
-void bt_hci_extended_inquiry_result(struct net_buf *buf);
-void bt_hci_remote_name_request_complete(struct net_buf *buf);
+void bt_hci_inquiry_complete(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_inquiry_result_with_rssi(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_extended_inquiry_result(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_remote_name_request_complete(struct bt_dev *hdev, struct net_buf *buf);
 
-void bt_hci_read_remote_features_complete(struct net_buf *buf);
-void bt_hci_read_remote_ext_features_complete(struct net_buf *buf);
-void bt_hci_role_change(struct net_buf *buf);
+void bt_hci_read_remote_features_complete(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_read_remote_ext_features_complete(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_role_change(struct bt_dev *hdev, struct net_buf *buf);
 #if defined(CONFIG_BT_POWER_MODE_CONTROL)
-void bt_hci_link_mode_change(struct net_buf *buf);
+void bt_hci_link_mode_change(struct bt_dev *hdev, struct net_buf *buf);
 #endif /* CONFIG_BT_POWER_MODE_CONTROL */
-void bt_hci_synchronous_conn_complete(struct net_buf *buf);
+void bt_hci_synchronous_conn_complete(struct bt_dev *hdev, struct net_buf *buf);
 
-void bt_hci_le_df_connection_iq_report(struct net_buf *buf);
-void bt_hci_le_vs_df_connection_iq_report(struct net_buf *buf);
-void bt_hci_le_df_cte_req_failed(struct net_buf *buf);
+void bt_hci_le_df_connection_iq_report(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_le_vs_df_connection_iq_report(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_le_df_cte_req_failed(struct bt_dev *hdev, struct net_buf *buf);
 
-void bt_hci_le_per_adv_subevent_data_request(struct net_buf *buf);
-void bt_hci_le_per_adv_response_report(struct net_buf *buf);
+void bt_hci_le_per_adv_subevent_data_request(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_le_per_adv_response_report(struct bt_dev *hdev, struct net_buf *buf);
 
 int bt_hci_read_remote_version(struct bt_conn *conn);
 int bt_hci_le_read_remote_features(struct bt_conn *conn);
-int bt_hci_le_read_max_data_len(uint16_t *tx_octets, uint16_t *tx_time);
+int bt_hci_le_read_max_data_len(struct bt_dev *hdev, uint16_t *tx_octets, uint16_t *tx_time);
 
-bool bt_drv_quirk_no_auto_dle(void);
+bool bt_drv_quirk_no_auto_dle(struct bt_dev *hdev);
 
-void bt_tx_irq_raise(void);
-void bt_send_one_host_num_completed_packets(uint16_t handle);
+void bt_tx_irq_raise(struct bt_dev *hdev);
+void bt_send_one_host_num_completed_packets(struct bt_dev *hdev, uint16_t handle);
 void bt_acl_set_ncp_sent(struct net_buf *packet, bool value);

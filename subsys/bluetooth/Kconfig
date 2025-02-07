@@ -96,6 +96,13 @@ config BT_OBSERVER
 
 source "$APPSDIR/external/zblue/zblue/subsys/bluetooth/Kconfig.adv"
 
+config BT_NUM_CTLRS
+	int "Number of Bluetooth controllers"
+	range 1 8
+	default 1
+	help
+	  Number of Bluetooth controllers supported.
+
 config BT_CONN
 	bool
 

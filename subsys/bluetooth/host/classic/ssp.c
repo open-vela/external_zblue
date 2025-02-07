@@ -40,7 +40,7 @@ static const uint8_t ssp_method[4 /* remote */][4 /* local */] = {
 	      { JUST_WORKS, JUST_WORKS, JUST_WORKS, JUST_WORKS },
 };
 
-static int pin_code_neg_reply(const bt_addr_t *bdaddr)
+static int pin_code_neg_reply(struct bt_dev *hdev, const bt_addr_t *bdaddr)
 {
 	struct bt_hci_cp_pin_code_neg_reply *cp;
 	struct net_buf *buf;
@@ -55,7 +55,7 @@ static int pin_code_neg_reply(const bt_addr_t *bdaddr)
 	cp = net_buf_add(buf, sizeof(*cp));
 	bt_addr_copy(&cp->bdaddr, bdaddr);
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_PIN_CODE_NEG_REPLY, buf, NULL);
+	return bt_hci_cmd_send_sync(hdev, BT_HCI_OP_PIN_CODE_NEG_REPLY, buf, NULL);
 }
 
 static int pin_code_reply(struct bt_conn *conn, const char *pin, uint8_t len)
@@ -81,14 +81,14 @@ static int pin_code_reply(struct bt_conn *conn, const char *pin, uint8_t len)
 	memset(cp->pin_code, 0, sizeof(cp->pin_code));
 	memcpy(cp->pin_code, pin, len);
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_PIN_CODE_REPLY, buf, NULL);
+	return bt_hci_cmd_send_sync(conn->hdev, BT_HCI_OP_PIN_CODE_REPLY, buf, NULL);
 }
 
 int bt_conn_auth_pincode_entry(struct bt_conn *conn, const char *pin)
 {
 	size_t len;
 
-	if (!bt_auth) {
+	if (!conn->hdev->bt_auth) {
 		return -EINVAL;
 	}
 
@@ -120,7 +120,7 @@ int bt_conn_auth_pincode_entry(struct bt_conn *conn, const char *pin)
 
 static void pin_code_req(struct bt_conn *conn)
 {
-	if (bt_auth && bt_auth->pincode_entry) {
+	if (conn->hdev->bt_auth && conn->hdev->bt_auth->pincode_entry) {
 		bool secure = false;
 
 		if (conn->required_sec_level == BT_SECURITY_L3) {
@@ -129,27 +129,27 @@ static void pin_code_req(struct bt_conn *conn)
 
 		atomic_set_bit(conn->flags, BT_CONN_USER);
 		atomic_set_bit(conn->flags, BT_CONN_BR_PAIRING);
-		bt_auth->pincode_entry(conn, secure);
+		conn->hdev->bt_auth->pincode_entry(conn, secure);
 	} else {
-		pin_code_neg_reply(&conn->br.dst);
+		pin_code_neg_reply(conn->hdev, &conn->br.dst);
 	}
 }
 
-static uint8_t get_io_capa(void)
+static uint8_t get_io_capa(struct bt_dev *hdev)
 {
-	if (!bt_auth) {
+	if (!hdev->bt_auth) {
 		return BT_IO_NO_INPUT_OUTPUT;
 	}
 
-	if (bt_auth->passkey_confirm && bt_auth->passkey_display) {
+	if (hdev->bt_auth->passkey_confirm && hdev->bt_auth->passkey_display) {
 		return BT_IO_DISPLAY_YESNO;
 	}
 
-	if (bt_auth->passkey_entry) {
+	if (hdev->bt_auth->passkey_entry) {
 		return BT_IO_KEYBOARD_ONLY;
 	}
 
-	if (bt_auth->passkey_display) {
+	if (hdev->bt_auth->passkey_display) {
 		return BT_IO_DISPLAY_ONLY;
 	}
 
@@ -158,7 +158,7 @@ static uint8_t get_io_capa(void)
 
 static uint8_t ssp_pair_method(const struct bt_conn *conn)
 {
-	return ssp_method[conn->br.remote_io_capa][get_io_capa()];
+	return ssp_method[conn->br.remote_io_capa][get_io_capa(conn->hdev)];
 }
 
 static uint8_t ssp_get_auth(const struct bt_conn *conn)
@@ -194,7 +194,7 @@ static int ssp_confirm_reply(struct bt_conn *conn)
 	cp = net_buf_add(buf, sizeof(*cp));
 	bt_addr_copy(&cp->bdaddr, &conn->br.dst);
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_USER_CONFIRM_REPLY, buf, NULL);
+	return bt_hci_cmd_send_sync(conn->hdev, BT_HCI_OP_USER_CONFIRM_REPLY, buf, NULL);
 }
 
 static int ssp_confirm_neg_reply(struct bt_conn *conn)
@@ -212,7 +212,7 @@ static int ssp_confirm_neg_reply(struct bt_conn *conn)
 	cp = net_buf_add(buf, sizeof(*cp));
 	bt_addr_copy(&cp->bdaddr, &conn->br.dst);
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_USER_CONFIRM_NEG_REPLY, buf,
+	return bt_hci_cmd_send_sync(conn->hdev, BT_HCI_OP_USER_CONFIRM_NEG_REPLY, buf,
 				    NULL);
 }
 
@@ -230,7 +230,7 @@ static void ssp_pairing_complete(struct bt_conn *conn, uint8_t status)
 		bool bond = !atomic_test_bit(conn->flags, BT_CONN_BR_NOBOND);
 		struct bt_conn_auth_info_cb *listener, *next;
 
-		SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&bt_auth_info_cbs, listener,
+		SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&conn->hdev->bt_auth_info_cbs, listener,
 						  next, node) {
 			if (listener->pairing_complete) {
 				listener->pairing_complete(conn, bond);
@@ -239,7 +239,7 @@ static void ssp_pairing_complete(struct bt_conn *conn, uint8_t status)
 	} else {
 		struct bt_conn_auth_info_cb *listener, *next;
 
-		SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&bt_auth_info_cbs, listener,
+		SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&conn->hdev->bt_auth_info_cbs, listener,
 						  next, node) {
 			if (listener->pairing_failed) {
 				listener->pairing_failed(conn, status);
@@ -252,7 +252,7 @@ static void ssp_link_key_notify(struct bt_conn *conn, uint8_t *key, uint8_t key_
 {
 	struct bt_conn_auth_info_cb *listener, *next;
 
-	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&bt_auth_info_cbs, listener,
+	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&conn->hdev->bt_auth_info_cbs, listener,
 						next, node) {
 		if (listener->link_key_notify) {
 			listener->link_key_notify(conn, key, key_type);
@@ -278,15 +278,15 @@ static void ssp_auth(struct bt_conn *conn, uint32_t passkey)
 	switch (conn->br.pairing_method) {
 	case PASSKEY_CONFIRM:
 		atomic_set_bit(conn->flags, BT_CONN_USER);
-		bt_auth->passkey_confirm(conn, passkey);
+		conn->hdev->bt_auth->passkey_confirm(conn, passkey);
 		break;
 	case PASSKEY_DISPLAY:
 		atomic_set_bit(conn->flags, BT_CONN_USER);
-		bt_auth->passkey_display(conn, passkey);
+		conn->hdev->bt_auth->passkey_display(conn, passkey);
 		break;
 	case PASSKEY_INPUT:
 		atomic_set_bit(conn->flags, BT_CONN_USER);
-		bt_auth->passkey_entry(conn);
+		conn->hdev->bt_auth->passkey_entry(conn);
 		break;
 	case JUST_WORKS:
 		/*
@@ -294,11 +294,11 @@ static void ssp_auth(struct bt_conn *conn, uint32_t passkey)
 		 * model is applied then notify user about such pairing request.
 		 * [BT Core 4.2 table 5.7, Vol 3, Part C, 5.2.2.6]
 		 */
-		if (bt_auth && bt_auth->pairing_confirm &&
+		if (conn->hdev->bt_auth && conn->hdev->bt_auth->pairing_confirm &&
 		    !atomic_test_bit(conn->flags,
 				     BT_CONN_BR_PAIRING_INITIATOR)) {
 			atomic_set_bit(conn->flags, BT_CONN_USER);
-			bt_auth->pairing_confirm(conn);
+			conn->hdev->bt_auth->pairing_confirm(conn);
 			break;
 		}
 		ssp_confirm_reply(conn);
@@ -324,7 +324,7 @@ static int ssp_passkey_reply(struct bt_conn *conn, unsigned int passkey)
 	bt_addr_copy(&cp->bdaddr, &conn->br.dst);
 	cp->passkey = sys_cpu_to_le32(passkey);
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_USER_PASSKEY_REPLY, buf, NULL);
+	return bt_hci_cmd_send_sync(conn->hdev, BT_HCI_OP_USER_PASSKEY_REPLY, buf, NULL);
 }
 
 static int ssp_passkey_neg_reply(struct bt_conn *conn)
@@ -342,7 +342,7 @@ static int ssp_passkey_neg_reply(struct bt_conn *conn)
 	cp = net_buf_add(buf, sizeof(*cp));
 	bt_addr_copy(&cp->bdaddr, &conn->br.dst);
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_USER_PASSKEY_NEG_REPLY, buf,
+	return bt_hci_cmd_send_sync(conn->hdev, BT_HCI_OP_USER_PASSKEY_NEG_REPLY, buf,
 				    NULL);
 }
 
@@ -363,7 +363,7 @@ static int conn_auth(struct bt_conn *conn)
 
 	atomic_set_bit(conn->flags, BT_CONN_BR_PAIRING_INITIATOR);
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_AUTH_REQUESTED, buf, NULL);
+	return bt_hci_cmd_send_sync(conn->hdev, BT_HCI_OP_AUTH_REQUESTED, buf, NULL);
 }
 
 int bt_ssp_start_security(struct bt_conn *conn)
@@ -372,7 +372,7 @@ int bt_ssp_start_security(struct bt_conn *conn)
 		return -EBUSY;
 	}
 
-	if (get_io_capa() == BT_IO_NO_INPUT_OUTPUT &&
+	if (get_io_capa(conn->hdev) == BT_IO_NO_INPUT_OUTPUT &&
 	    conn->required_sec_level > BT_SECURITY_L2) {
 		return -EINVAL;
 	}
@@ -426,7 +426,7 @@ int bt_ssp_auth_cancel(struct bt_conn *conn)
 		return bt_conn_disconnect(conn,
 					  BT_HCI_ERR_AUTH_FAIL);
 	case LEGACY:
-		return pin_code_neg_reply(&conn->br.dst);
+		return pin_code_neg_reply(conn->hdev, &conn->br.dst);
 	default:
 		break;
 	}
@@ -434,14 +434,14 @@ int bt_ssp_auth_cancel(struct bt_conn *conn)
 	return -EINVAL;
 }
 
-void bt_hci_pin_code_req(struct net_buf *buf)
+void bt_hci_pin_code_req(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_pin_code_req *evt = (void *)buf->data;
 	struct bt_conn *conn;
 
 	LOG_DBG("");
 
-	conn = bt_conn_lookup_addr_br(&evt->bdaddr);
+	conn = bt_conn_lookup_addr_br_mc(hdev->dev_id, &evt->bdaddr);
 	if (!conn) {
 		LOG_ERR("Can't find conn for %s", bt_addr_str(&evt->bdaddr));
 		return;
@@ -451,12 +451,12 @@ void bt_hci_pin_code_req(struct net_buf *buf)
 	bt_conn_unref(conn);
 }
 
-void bt_hci_link_key_notify(struct net_buf *buf)
+void bt_hci_link_key_notify(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_link_key_notify *evt = (void *)buf->data;
 	struct bt_conn *conn;
 
-	conn = bt_conn_lookup_addr_br(&evt->bdaddr);
+	conn = bt_conn_lookup_addr_br_mc(hdev->dev_id, &evt->bdaddr);
 	if (!conn) {
 		LOG_ERR("Can't find conn for %s", bt_addr_str(&evt->bdaddr));
 		return;
@@ -465,7 +465,7 @@ void bt_hci_link_key_notify(struct net_buf *buf)
 	LOG_DBG("%s, link type 0x%02x", bt_addr_str(&evt->bdaddr), evt->key_type);
 
 	if (!conn->br.link_key) {
-		conn->br.link_key = bt_keys_get_link_key(&evt->bdaddr);
+		conn->br.link_key = bt_keys_get_link_key(hdev, &evt->bdaddr);
 	}
 	if (!conn->br.link_key) {
 		LOG_ERR("Can't update keys for %s", bt_addr_str(&evt->bdaddr));
@@ -513,14 +513,14 @@ void bt_hci_link_key_notify(struct net_buf *buf)
 	if (!atomic_test_bit(conn->flags, BT_CONN_BR_NOBOND)) {
 		ssp_link_key_notify(conn, conn->br.link_key->val, evt->key_type);
 		if (IS_ENABLED(CONFIG_BT_SETTINGS)) {
-			bt_keys_link_key_store(conn->br.link_key);
+			bt_keys_link_key_store(hdev, conn->br.link_key);
 		}
 	}
 
 	bt_conn_unref(conn);
 }
 
-void link_key_neg_reply(const bt_addr_t *bdaddr)
+void link_key_neg_reply(struct bt_dev *hdev, const bt_addr_t *bdaddr)
 {
 	struct bt_hci_cp_link_key_neg_reply *cp;
 	struct net_buf *buf;
@@ -535,10 +535,10 @@ void link_key_neg_reply(const bt_addr_t *bdaddr)
 
 	cp = net_buf_add(buf, sizeof(*cp));
 	bt_addr_copy(&cp->bdaddr, bdaddr);
-	bt_hci_cmd_send_sync(BT_HCI_OP_LINK_KEY_NEG_REPLY, buf, NULL);
+	bt_hci_cmd_send_sync(hdev, BT_HCI_OP_LINK_KEY_NEG_REPLY, buf, NULL);
 }
 
-void link_key_reply(const bt_addr_t *bdaddr, const uint8_t *lk)
+void link_key_reply(struct bt_dev *hdev, const bt_addr_t *bdaddr, const uint8_t *lk)
 {
 	struct bt_hci_cp_link_key_reply *cp;
 	struct net_buf *buf;
@@ -554,29 +554,29 @@ void link_key_reply(const bt_addr_t *bdaddr, const uint8_t *lk)
 	cp = net_buf_add(buf, sizeof(*cp));
 	bt_addr_copy(&cp->bdaddr, bdaddr);
 	memcpy(cp->link_key, lk, 16);
-	bt_hci_cmd_send_sync(BT_HCI_OP_LINK_KEY_REPLY, buf, NULL);
+	bt_hci_cmd_send_sync(hdev, BT_HCI_OP_LINK_KEY_REPLY, buf, NULL);
 }
 
-void bt_hci_link_key_req(struct net_buf *buf)
+void bt_hci_link_key_req(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_link_key_req *evt = (void *)buf->data;
 	struct bt_conn *conn;
 
 	LOG_DBG("%s", bt_addr_str(&evt->bdaddr));
 
-	conn = bt_conn_lookup_addr_br(&evt->bdaddr);
+	conn = bt_conn_lookup_addr_br_mc(hdev->dev_id, &evt->bdaddr);
 	if (!conn) {
 		LOG_ERR("Can't find conn for %s", bt_addr_str(&evt->bdaddr));
-		link_key_neg_reply(&evt->bdaddr);
+		link_key_neg_reply(hdev, &evt->bdaddr);
 		return;
 	}
 
 	if (!conn->br.link_key) {
-		conn->br.link_key = bt_keys_find_link_key(&evt->bdaddr);
+		conn->br.link_key = bt_keys_find_link_key(hdev, &evt->bdaddr);
 	}
 
 	if (!conn->br.link_key) {
-		link_key_neg_reply(&evt->bdaddr);
+		link_key_neg_reply(hdev, &evt->bdaddr);
 		bt_conn_unref(conn);
 		return;
 	}
@@ -587,16 +587,16 @@ void bt_hci_link_key_req(struct net_buf *buf)
 	 */
 	if (!(conn->br.link_key->flags & BT_LINK_KEY_AUTHENTICATED) &&
 	    conn->required_sec_level > BT_SECURITY_L2) {
-		link_key_neg_reply(&evt->bdaddr);
+		link_key_neg_reply(hdev, &evt->bdaddr);
 		bt_conn_unref(conn);
 		return;
 	}
 
-	link_key_reply(&evt->bdaddr, conn->br.link_key->val);
+	link_key_reply(hdev, &evt->bdaddr, conn->br.link_key->val);
 	bt_conn_unref(conn);
 }
 
-void io_capa_neg_reply(const bt_addr_t *bdaddr, const uint8_t reason)
+void io_capa_neg_reply(struct bt_dev *hdev, const bt_addr_t *bdaddr, const uint8_t reason)
 {
 	struct bt_hci_cp_io_capability_neg_reply *cp;
 	struct net_buf *resp_buf;
@@ -611,10 +611,10 @@ void io_capa_neg_reply(const bt_addr_t *bdaddr, const uint8_t reason)
 	cp = net_buf_add(resp_buf, sizeof(*cp));
 	bt_addr_copy(&cp->bdaddr, bdaddr);
 	cp->reason = reason;
-	bt_hci_cmd_send_sync(BT_HCI_OP_IO_CAPABILITY_NEG_REPLY, resp_buf, NULL);
+	bt_hci_cmd_send_sync(hdev, BT_HCI_OP_IO_CAPABILITY_NEG_REPLY, resp_buf, NULL);
 }
 
-void bt_hci_io_capa_resp(struct net_buf *buf)
+void bt_hci_io_capa_resp(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_io_capa_resp *evt = (void *)buf->data;
 	struct bt_conn *conn;
@@ -624,19 +624,19 @@ void bt_hci_io_capa_resp(struct net_buf *buf)
 
 	if (evt->authentication > BT_HCI_GENERAL_BONDING_MITM) {
 		LOG_ERR("Invalid remote authentication requirements");
-		io_capa_neg_reply(&evt->bdaddr,
+		io_capa_neg_reply(hdev, &evt->bdaddr,
 				  BT_HCI_ERR_UNSUPP_FEATURE_PARAM_VAL);
 		return;
 	}
 
 	if (evt->capability > BT_IO_NO_INPUT_OUTPUT) {
 		LOG_ERR("Invalid remote io capability requirements");
-		io_capa_neg_reply(&evt->bdaddr,
+		io_capa_neg_reply(hdev, &evt->bdaddr,
 				  BT_HCI_ERR_UNSUPP_FEATURE_PARAM_VAL);
 		return;
 	}
 
-	conn = bt_conn_lookup_addr_br(&evt->bdaddr);
+	conn = bt_conn_lookup_addr_br_mc(hdev->dev_id, &evt->bdaddr);
 	if (!conn) {
 		LOG_ERR("Unable to find conn for %s", bt_addr_str(&evt->bdaddr));
 		return;
@@ -654,7 +654,7 @@ void bt_hci_io_capa_resp(struct net_buf *buf)
 /* Clear MITM flag */
 #define BT_HCI_SET_NO_MITM(auth) ((auth) & (~0x01))
 
-void bt_hci_io_capa_req(struct net_buf *buf)
+void bt_hci_io_capa_req(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_io_capa_req *evt = (void *)buf->data;
 	struct net_buf *resp_buf;
@@ -664,7 +664,7 @@ void bt_hci_io_capa_req(struct net_buf *buf)
 
 	LOG_DBG("");
 
-	conn = bt_conn_lookup_addr_br(&evt->bdaddr);
+	conn = bt_conn_lookup_addr_br_mc(hdev->dev_id, &evt->bdaddr);
 	if (!conn) {
 		LOG_ERR("Can't find conn for %s", bt_addr_str(&evt->bdaddr));
 		return;
@@ -685,7 +685,7 @@ void bt_hci_io_capa_req(struct net_buf *buf)
 	 * remote's authentication set.
 	 */
 	if (atomic_test_bit(conn->flags, BT_CONN_BR_PAIRING_INITIATOR)) {
-		if (get_io_capa() != BT_IO_NO_INPUT_OUTPUT) {
+		if (get_io_capa(conn->hdev) != BT_IO_NO_INPUT_OUTPUT) {
 			if (atomic_test_bit(conn->flags, BT_CONN_BR_GENERAL_BONDING)) {
 				auth = BT_HCI_GENERAL_BONDING_MITM;
 			} else {
@@ -714,21 +714,21 @@ void bt_hci_io_capa_req(struct net_buf *buf)
 
 	cp = net_buf_add(resp_buf, sizeof(*cp));
 	bt_addr_copy(&cp->bdaddr, &evt->bdaddr);
-	cp->capability = get_io_capa();
+	cp->capability = get_io_capa(conn->hdev);
 	cp->authentication = auth;
 	cp->oob_data = 0U;
-	bt_hci_cmd_send_sync(BT_HCI_OP_IO_CAPABILITY_REPLY, resp_buf, NULL);
+	bt_hci_cmd_send_sync(hdev, BT_HCI_OP_IO_CAPABILITY_REPLY, resp_buf, NULL);
 	bt_conn_unref(conn);
 }
 
-void bt_hci_ssp_complete(struct net_buf *buf)
+void bt_hci_ssp_complete(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_ssp_complete *evt = (void *)buf->data;
 	struct bt_conn *conn;
 
 	LOG_DBG("status 0x%02x", evt->status);
 
-	conn = bt_conn_lookup_addr_br(&evt->bdaddr);
+	conn = bt_conn_lookup_addr_br_mc(hdev->dev_id, &evt->bdaddr);
 	if (!conn) {
 		LOG_ERR("Can't find conn for %s", bt_addr_str(&evt->bdaddr));
 		return;
@@ -747,12 +747,12 @@ void bt_hci_ssp_complete(struct net_buf *buf)
 	bt_conn_unref(conn);
 }
 
-void bt_hci_user_confirm_req(struct net_buf *buf)
+void bt_hci_user_confirm_req(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_user_confirm_req *evt = (void *)buf->data;
 	struct bt_conn *conn;
 
-	conn = bt_conn_lookup_addr_br(&evt->bdaddr);
+	conn = bt_conn_lookup_addr_br_mc(hdev->dev_id, &evt->bdaddr);
 	if (!conn) {
 		LOG_ERR("Can't find conn for %s", bt_addr_str(&evt->bdaddr));
 		return;
@@ -762,14 +762,14 @@ void bt_hci_user_confirm_req(struct net_buf *buf)
 	bt_conn_unref(conn);
 }
 
-void bt_hci_user_passkey_notify(struct net_buf *buf)
+void bt_hci_user_passkey_notify(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_user_passkey_notify *evt = (void *)buf->data;
 	struct bt_conn *conn;
 
 	LOG_DBG("");
 
-	conn = bt_conn_lookup_addr_br(&evt->bdaddr);
+	conn = bt_conn_lookup_addr_br_mc(hdev->dev_id, &evt->bdaddr);
 	if (!conn) {
 		LOG_ERR("Can't find conn for %s", bt_addr_str(&evt->bdaddr));
 		return;
@@ -779,12 +779,12 @@ void bt_hci_user_passkey_notify(struct net_buf *buf)
 	bt_conn_unref(conn);
 }
 
-void bt_hci_user_passkey_req(struct net_buf *buf)
+void bt_hci_user_passkey_req(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_user_passkey_req *evt = (void *)buf->data;
 	struct bt_conn *conn;
 
-	conn = bt_conn_lookup_addr_br(&evt->bdaddr);
+	conn = bt_conn_lookup_addr_br_mc(hdev->dev_id, &evt->bdaddr);
 	if (!conn) {
 		LOG_ERR("Can't find conn for %s", bt_addr_str(&evt->bdaddr));
 		return;
@@ -794,7 +794,7 @@ void bt_hci_user_passkey_req(struct net_buf *buf)
 	bt_conn_unref(conn);
 }
 
-static void link_encr(const uint16_t handle)
+static void link_encr(struct bt_dev *hdev, const uint16_t handle)
 {
 	struct bt_hci_cp_set_conn_encrypt *encr;
 	struct net_buf *buf;
@@ -811,10 +811,10 @@ static void link_encr(const uint16_t handle)
 	encr->handle = sys_cpu_to_le16(handle);
 	encr->encrypt = 0x01;
 
-	bt_hci_cmd_send_sync(BT_HCI_OP_SET_CONN_ENCRYPT, buf, NULL);
+	bt_hci_cmd_send_sync(hdev, BT_HCI_OP_SET_CONN_ENCRYPT, buf, NULL);
 }
 
-void bt_hci_auth_complete(struct net_buf *buf)
+void bt_hci_auth_complete(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_auth_complete *evt = (void *)buf->data;
 	struct bt_conn *conn;
@@ -822,7 +822,7 @@ void bt_hci_auth_complete(struct net_buf *buf)
 
 	LOG_DBG("status 0x%02x, handle %u", evt->status, handle);
 
-	conn = bt_conn_lookup_handle(handle, BT_CONN_TYPE_BR);
+	conn = bt_conn_lookup_handle(hdev, handle, BT_CONN_TYPE_BR);
 	if (!conn) {
 		LOG_ERR("Can't find conn for handle %u", handle);
 		return;
@@ -836,7 +836,7 @@ void bt_hci_auth_complete(struct net_buf *buf)
 		bt_conn_security_changed(conn, evt->status,
 					 bt_security_err_get(evt->status));
 	} else {
-		link_encr(handle);
+		link_encr(hdev, handle);
 	}
 
 	bt_conn_unref(conn);

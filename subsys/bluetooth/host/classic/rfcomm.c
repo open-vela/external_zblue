@@ -1783,7 +1783,7 @@ static int rfcomm_accept(struct bt_conn *conn, struct bt_l2cap_server *server,
 	return -ENOMEM;
 }
 
-void bt_rfcomm_init(void)
+void bt_rfcomm_init(struct bt_dev *hdev)
 {
 	static struct bt_l2cap_server server = {
 		.psm       = BT_L2CAP_PSM_RFCOMM,
@@ -1791,5 +1791,5 @@ void bt_rfcomm_init(void)
 		.sec_level = BT_SECURITY_L1,
 	};
 
-	bt_l2cap_br_server_register(&server);
+	bt_l2cap_br_server_register_mc(hdev->dev_id, &server);
 }

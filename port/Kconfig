@@ -31,6 +31,19 @@ config BT_UART_ON_DEV_NAME
     This option specifies the name of UART device to be used
     for Bluetooth.
 
+config BT_MC_SHELL
+  bool "Bluetooth MC Shell"
+  depends on !BT_SHELL
+  default n
+  help
+    Enable Bluetooth MC Shell
+
+config BT_ORIGINAL_API
+  bool "Enable Original API"
+  default n
+  help
+    Enable Original API
+
 config FILE_SYSTEM
   bool "File system support"
   help

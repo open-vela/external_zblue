@@ -5,7 +5,7 @@
  */
 
 /* Performs initialization of Direction Finding in Host */
-int le_df_init(void);
+int le_df_init(struct bt_dev *hdev);
 
 int hci_df_prepare_connectionless_iq_report(struct net_buf *buf,
 					    struct bt_df_per_adv_sync_iq_samples_report *report,

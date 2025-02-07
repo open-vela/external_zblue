@@ -216,4 +216,4 @@ struct bt_rfcomm_rpn {
 #define BT_RFCOMM_PN_CFC_RESP  0xe0
 
 /* Initialize RFCOMM signal layer */
-void bt_rfcomm_init(void);
+void bt_rfcomm_init(struct bt_dev *hdev);

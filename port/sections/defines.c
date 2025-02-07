@@ -402,6 +402,26 @@ const union shell_cmd_entry *_shell_root_cmds_list[] = {
 #if defined(CONFIG_BT_MESH_SHELL)
     &shell_cmd_mesh,
 #endif /* CONFIG_BT_MESH_SHELL */
+#elif defined(CONFIG_BT_MC_SHELL)
+	&shell_cmd_bt,
+#if defined(CONFIG_BT_CLASSIC)
+	&shell_cmd_br,
+#if defined(CONFIG_BT_RFCOMM)
+	&shell_cmd_rfcomm,
+#endif /* CONFIG_BT_RFCOMM */
+#if defined(CONFIG_BT_A2DP)
+// &shell_cmd_a2dp,
+#endif /* CONFIG_BT_A2DP */
+#if defined(CONFIG_BT_AVRCP)
+// &shell_cmd_avrcp,
+#endif /* CONFIG_BT_AVRCP */
+#endif /* CONFIG_BT_CLASSIC */
+#if defined(CONFIG_BT_CONN)
+	&shell_cmd_gatt,
+#if defined(CONFIG_BT_L2CAP_DYNAMIC_CHANNEL)
+	&shell_cmd_l2cap,
+#endif /* CONFIG_BT_L2CAP_DYNAMIC_CHANNEL */
+#endif /* CONFIG_BT_CONN */
 #endif /* CONFIG_BT_SHELL */
     NULL,
 };
@@ -530,7 +550,8 @@ extern const struct init_entry __init_bas_init;
 extern const struct init_entry __init_bt_nus_auto_start;
 extern const struct init_entry __init_bt_gatt_ots_l2cap_init;
 extern const struct init_entry __init_bt_gatt_ots_instances_prepare;
-extern const struct init_entry __init___device_dts_ord_DT_N_INST_0_zephyr_bt_hci_ttyHCI_ORD;
+extern const struct init_entry __init___device_dts_ord_DT_N_INST_0_zephyr_bt_hci_ttyHCI0_ORD;
+extern const struct init_entry __init___device_dts_ord_DT_N_INST_1_zephyr_bt_hci_ttyHCI1_ORD;
 
 const struct init_entry *_init_entry_list[] = {
 	&__init_init_mem_slab_obj_core_list,
@@ -563,7 +584,8 @@ const struct init_entry *_init_entry_list[] = {
 	&__init_bt_monitor_init,
 #endif /* CONFIG_BT_MONITOR */
 #if defined(CONFIG_BT_H4)
-	&__init___device_dts_ord_DT_N_INST_0_zephyr_bt_hci_ttyHCI_ORD,
+	&__init___device_dts_ord_DT_N_INST_0_zephyr_bt_hci_ttyHCI0_ORD,
+	&__init___device_dts_ord_DT_N_INST_1_zephyr_bt_hci_ttyHCI1_ORD,
 #endif /* CONFIG_BT_H4 */
 	NULL,
 };
@@ -627,8 +649,8 @@ const struct settings_handler_static *_settings_handler_static_list[] = {
 #endif /* CONFIG_BT_GATT_SERVICE_CHANGED */
 #if defined(CONFIG_BT_GATT_CACHING)
 	&settings_handler_bt_cf,
-	&settings_handler_bt_hash,
 #endif /* CONFIG_BT_GATT_CACHING */
+	&settings_handler_bt_hash,
 #if defined(CONFIG_BT_DIS)
 #if defined(CONFIG_BT_DIS_SETTINGS)
 		&settings_handler_bt_dis,
