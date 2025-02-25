@@ -2235,7 +2235,9 @@ static void hci_encrypt_change(struct net_buf *buf)
 			 * central on the link
 			 */
 			if (atomic_test_bit(conn->flags, BT_CONN_BR_PAIRED) &&
-			    conn->role == BT_CONN_ROLE_CENTRAL) {
+			    conn->role == BT_CONN_ROLE_CENTRAL &&
+			    BT_FEAT_HOST_SC(conn->br.features) &&
+			    BT_FEAT_SC(bt_dev.features)) {
 				bt_smp_br_send_pairing_req(conn);
 			}
 		}
