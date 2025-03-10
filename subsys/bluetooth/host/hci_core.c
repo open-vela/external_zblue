@@ -2237,7 +2237,9 @@ static void hci_encrypt_change(struct net_buf *buf)
 			 * central on the link
 			 */
 			if (atomic_test_bit(conn->flags, BT_CONN_BR_PAIRED) &&
-			    conn->role == BT_CONN_ROLE_CENTRAL) {
+			    conn->role == BT_CONN_ROLE_CENTRAL &&
+			    BT_FEAT_HOST_SC(conn->br.features) &&
+			    BT_FEAT_SC(bt_dev.features)) {
 				bt_smp_br_send_pairing_req(conn);
 			}
 		}
@@ -4587,7 +4589,8 @@ int bt_set_name(const char *name)
 		}
 	}
 
-	if (IS_ENABLED(CONFIG_BT_CLASSIC)) {
+	if (IS_ENABLED(CONFIG_BT_CLASSIC) &&
+	    atomic_test_bit(bt_dev.flags, BT_DEV_READY)) {
 		err = bt_br_write_local_name(name);
 		if (err) {
 			LOG_WRN("Unable to set BR/EDR name");

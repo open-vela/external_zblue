@@ -145,6 +145,7 @@ struct bt_hci_cmd_hdr {
 #define BT_FEAT_LE(feat)                        BT_FEAT_TEST(feat, 0, 4, 6)
 #define BT_FEAT_EXT_FEATURES(feat)              BT_FEAT_TEST(feat, 0, 7, 7)
 #define BT_FEAT_HOST_SSP(feat)                  BT_FEAT_TEST(feat, 1, 0, 0)
+#define BT_FEAT_HOST_SC(feat)                   BT_FEAT_TEST(feat, 1, 0, 3)
 #define BT_FEAT_SC(feat)                        BT_FEAT_TEST(feat, 2, 1, 0)
 
 #define BT_FEAT_LMP_SCO_CAPABLE(feat)           BT_FEAT_TEST(feat, 0, 1, 3)

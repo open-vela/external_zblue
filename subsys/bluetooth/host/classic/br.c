@@ -1253,9 +1253,10 @@ int bt_br_write_local_name(const char *name)
 {
 	struct net_buf *buf;
 	struct bt_hci_write_local_name *name_cp;
+	size_t name_len = strlen(name);
 
-	if (!atomic_test_bit(bt_dev.flags, BT_DEV_READY)) {
-		return -EAGAIN;
+	if (name_len > sizeof(name_cp->local_name)) {
+		return -EINVAL;
 	}
 
 	buf = bt_hci_cmd_create(BT_HCI_OP_WRITE_LOCAL_NAME, sizeof(*name_cp));
@@ -1265,7 +1266,7 @@ int bt_br_write_local_name(const char *name)
 
 	name_cp = net_buf_add(buf, sizeof(*name_cp));
 	memset(name_cp, 0, sizeof(*name_cp));
-	memcpy((char *)name_cp->local_name, name, sizeof(name_cp->local_name));
+	memcpy((char *)name_cp->local_name, name, name_len);
 
 	return bt_hci_cmd_send_sync(BT_HCI_OP_WRITE_LOCAL_NAME, buf, NULL);
 }
@@ -1304,6 +1305,7 @@ int bt_br_write_ext_inq_response(uint8_t fec_required)
 	struct bt_hci_cp_write_extended_inquiry_response *cp;
 	size_t name_len, eir_len = 240;
 	uint8_t type;
+	uint8_t *p;
 
 	if (!BT_FEAT_EIR(bt_dev.features)) {
 		return -ENOTSUP;
@@ -1338,7 +1340,8 @@ int bt_br_write_ext_inq_response(uint8_t fec_required)
 	/* TODO: Fill in EIR data (Manufacturer Specific Data) */
 	/* TODO: Fill in EIR data (TX Power) */
 
-	net_buf_add(buf, eir_len);
+	p = net_buf_add(buf, eir_len);
+	memset(p, 0, eir_len);
 
 	return bt_hci_cmd_send_sync(BT_HCI_OP_WRITE_EXTENDED_INQUIRY_RESPONSE, buf, NULL);
 }
