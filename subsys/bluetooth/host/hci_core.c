@@ -999,6 +999,8 @@ static void hci_disconn_complete(struct net_buf *buf)
 		return;
 	}
 
+	conn->err = evt->reason;
+
 	bt_conn_set_state(conn, BT_CONN_DISCONNECTED);
 
 	if (conn->type != BT_CONN_TYPE_LE) {
