@@ -53,7 +53,7 @@ struct h4_data {
 
 #define HCI_DEBUG 0
 
-static K_KERNEL_STACK_DEFINE(rx_thread_stack, 2048);
+static K_KERNEL_STACK_DEFINE(rx_thread_stack, 3072);
 static struct k_thread rx_thread_data;
 
 static void h4_data_dump(const char *tag, uint8_t type, uint8_t *data, uint32_t len)
