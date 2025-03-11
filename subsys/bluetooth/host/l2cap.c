@@ -2209,6 +2209,11 @@ static int l2cap_recv(struct bt_l2cap_chan *chan, struct net_buf *buf)
 	case BT_L2CAP_DISCONN_RSP:
 		le_disconn_rsp(l2cap, hdr->ident, buf);
 		break;
+	case BT_L2CAP_ECHO_REQ:
+	case BT_L2CAP_ECHO_RSP:
+		l2cap_send_reject(chan->conn, hdr->ident,
+				  BT_L2CAP_REJ_NOT_UNDERSTOOD, NULL, 0);
+		break;
 	case BT_L2CAP_LE_CREDITS:
 		le_credits(l2cap, hdr->ident, buf);
 		break;
