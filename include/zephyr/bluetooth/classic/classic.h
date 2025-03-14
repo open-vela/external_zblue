@@ -197,6 +197,19 @@ int bt_br_set_discoverable(bool enable);
 int bt_br_set_connectable(bool enable);
 
 /**
+ * @brief Enable/disable set controller in connectable and discoverable state.
+ * 
+ * Allows make local controller to be connectable or/and discoverable.
+ * 
+ * @param disc_mode Value allowing/disallowing controller to be discoverable.
+ * @param conn_mode Value allowing/disallowing controller to be connectable.
+ * 
+ * @return Negative if fail set to requested state or requested state has been
+ *         already set. Zero if done successfully. 
+ */
+int bt_br_set_visibility(bool disc_mode, bool conn_mode);
+
+/**
  * @brief Set controller page scan activity.
  *
  * Page Scan is only performed when Page_Scan is enabled.

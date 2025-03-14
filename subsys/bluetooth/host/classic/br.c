@@ -1160,6 +1160,32 @@ int bt_br_set_discoverable(bool enable)
 	}
 }
 
+int bt_br_set_visibility(bool disc_mode, bool conn_mode)
+{
+	uint8_t prev = BT_BREDR_SCAN_DISABLED;
+	uint8_t next = BT_BREDR_SCAN_DISABLED;
+
+	if (disc_mode && !conn_mode)
+		return -EPERM;
+
+	if (atomic_test_bit(bt_dev.flags, BT_DEV_PSCAN))
+		prev |= BT_BREDR_SCAN_PAGE;
+
+	if (atomic_test_bit(bt_dev.flags, BT_DEV_ISCAN))
+		prev |= BT_BREDR_SCAN_INQUIRY;
+
+	if (conn_mode)
+		next |= BT_BREDR_SCAN_PAGE;
+
+	if (disc_mode)
+		next |= BT_BREDR_SCAN_INQUIRY;
+
+	if (prev == next)
+		return -EALREADY;
+
+	return write_scan_enable(next);
+}
+
 static int write_scan_activity(uint16_t opcode, uint16_t interval, uint16_t windown)
 {
 	struct bt_hci_cp_write_scan_activity *cp;
