@@ -310,6 +310,13 @@ int main(int argc, char *argv[])
 		if (buffer[len - 1] == '\n')
 			buffer[len - 1] = '\0';
 
+		if (buffer[0] == '!') {
+#ifdef CONFIG_SYSTEM_SYSTEM
+			system(buffer + 1);
+#endif
+			continue;
+		}
+
 		saveptr = NULL;
 		char* tmpstr = buffer;
 
