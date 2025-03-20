@@ -23,6 +23,13 @@ config BT_H4
     Bluetooth H:4 UART driver. Requires hardware flow control
     lines to be available.
 
+config BT_MC_SHELL
+  bool "Bluetooth shell"
+  default n
+  depends on !BT_SHELL
+  help
+    Bluetooth shell.
+
 config BT_UART_ON_DEV_NAME
   string "Device Name of UART Device for Bluetooth"
   default "/dev/ttyHCI0"
