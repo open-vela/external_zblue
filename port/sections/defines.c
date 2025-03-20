@@ -299,7 +299,7 @@ extern const union shell_cmd_entry shell_cmd_ias_client;
 extern const union shell_cmd_entry shell_cmd_ias;
 
 const union shell_cmd_entry *_shell_root_cmds_list[] = {
-#if defined(CONFIG_BT_SHELL)
+#if defined(CONFIG_BT_SHELL) || defined(CONFIG_BT_MC_SHELL)
     &shell_cmd_bt,
 #if defined(CONFIG_BT_CLASSIC)
     &shell_cmd_br,
@@ -402,7 +402,7 @@ const union shell_cmd_entry *_shell_root_cmds_list[] = {
 #if defined(CONFIG_BT_MESH_SHELL)
     &shell_cmd_mesh,
 #endif /* CONFIG_BT_MESH_SHELL */
-#endif /* CONFIG_BT_SHELL */
+#endif /* CONFIG_BT_SHELL || CONFIG_BT_MC_SHELL */
     NULL,
 };
 /* const union shell_cmd_entry END */
