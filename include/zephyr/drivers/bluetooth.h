@@ -76,6 +76,8 @@ enum bt_hci_bus {
 	BT_HCI_BUS_IPM           = BT_HCI_BUS_IPC,
 };
 
+#define	BT_CONTROLLER_ID_DEFAULT (0)
+
 #define BT_DT_HCI_QUIRK_OR(node_id, prop, idx) \
 	UTIL_CAT(BT_HCI_QUIRK_, DT_STRING_UPPER_TOKEN_BY_IDX(node_id, prop, idx))
 #define BT_DT_HCI_QUIRKS_GET(node_id) COND_CODE_1(DT_NODE_HAS_PROP(node_id, bt_hci_quirks), \
@@ -93,10 +95,10 @@ enum bt_hci_bus {
 	UTIL_CAT(BT_HCI_BUS_, DT_STRING_UPPER_TOKEN_OR(node_id, bt_hci_bus, VIRTUAL))
 #define BT_DT_HCI_BUS_INST_GET(inst) BT_DT_HCI_BUS_GET(DT_DRV_INST(inst))
 
-typedef int (*bt_hci_recv_t)(const struct device *dev, struct net_buf *buf);
+typedef int (*bt_hci_recv_t)(const struct device *dev, struct net_buf *buf, void *hci_data);
 
 __subsystem struct bt_hci_driver_api {
-	int (*open)(const struct device *dev, bt_hci_recv_t recv);
+	int (*open)(const struct device *dev, bt_hci_recv_t recv, void *hci_data);
 	int (*close)(const struct device *dev);
 	int (*send)(const struct device *dev, struct net_buf *buf);
 #if defined(CONFIG_BT_HCI_SETUP)
@@ -117,14 +119,15 @@ __subsystem struct bt_hci_driver_api {
  *             host with data from the controller. The buffer passed to
  *             the callback will have its type set with bt_buf_set_type().
  *             The callback is expected to be called from thread context.
+ * @param hci_data Data to be passed to the recv callback.
  *
  * @return 0 on success or negative POSIX error number on failure.
  */
-static inline int bt_hci_open(const struct device *dev, bt_hci_recv_t recv)
+static inline int bt_hci_open(const struct device *dev, bt_hci_recv_t recv, void *hci_data)
 {
 	const struct bt_hci_driver_api *api = (const struct bt_hci_driver_api *)dev->api;
 
-	return api->open(dev, recv);
+	return api->open(dev, recv, hci_data);
 }
 
 /**
