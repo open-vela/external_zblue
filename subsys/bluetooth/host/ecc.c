@@ -202,7 +202,7 @@ int bt_dh_key_gen(const uint8_t remote_pk[BT_PUB_KEY_LEN], bt_dh_key_cb_t cb)
 	return 0;
 }
 
-void bt_hci_evt_le_pkey_complete(struct net_buf *buf)
+void bt_hci_evt_le_pkey_complete(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_le_p256_public_key_complete *evt = (void *)buf->data;
 	struct bt_pub_key_cb *cb;
@@ -225,7 +225,7 @@ void bt_hci_evt_le_pkey_complete(struct net_buf *buf)
 	sys_slist_init(&pub_key_cb_slist);
 }
 
-void bt_hci_evt_le_dhkey_complete(struct net_buf *buf)
+void bt_hci_evt_le_dhkey_complete(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_le_generate_dhkey_complete *evt = (void *)buf->data;
 
