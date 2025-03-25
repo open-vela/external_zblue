@@ -2014,7 +2014,7 @@ int bt_le_per_adv_stop(struct bt_le_ext_adv *adv)
 }
 
 #if defined(CONFIG_BT_PER_ADV_RSP)
-void bt_hci_le_per_adv_subevent_data_request(struct net_buf *buf)
+void bt_hci_le_per_adv_subevent_data_request(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_le_per_adv_subevent_data_request *evt;
 	struct bt_le_per_adv_data_request request;
@@ -2042,7 +2042,7 @@ void bt_hci_le_per_adv_subevent_data_request(struct net_buf *buf)
 	}
 }
 
-void bt_hci_le_per_adv_response_report(struct net_buf *buf)
+void bt_hci_le_per_adv_response_report(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_le_per_adv_response_report *evt;
 	struct bt_hci_evt_le_per_adv_response *response;
@@ -2147,7 +2147,7 @@ int bt_le_per_adv_set_info_transfer(const struct bt_le_ext_adv *adv,
 
 #if defined(CONFIG_BT_EXT_ADV)
 #if defined(CONFIG_BT_BROADCASTER)
-void bt_hci_le_adv_set_terminated(struct net_buf *buf)
+void bt_hci_le_adv_set_terminated(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_le_adv_set_terminated *evt;
 	struct bt_le_ext_adv *adv;
@@ -2190,7 +2190,7 @@ void bt_hci_le_adv_set_terminated(struct net_buf *buf)
 				 * complete event has been raised to the application, we
 				 * discard the event.
 				 */
-				bt_hci_le_enh_conn_complete(&bt_dev.cached_conn_complete[i].evt);
+				bt_hci_le_enh_conn_complete(&bt_dev, &bt_dev.cached_conn_complete[i].evt);
 			}
 			bt_dev.cached_conn_complete[i].valid = false;
 		}
@@ -2264,7 +2264,7 @@ void bt_hci_le_adv_set_terminated(struct net_buf *buf)
 	}
 }
 
-void bt_hci_le_scan_req_received(struct net_buf *buf)
+void bt_hci_le_scan_req_received(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_le_scan_req_received *evt;
 	struct bt_le_ext_adv *adv;
