@@ -45,14 +45,16 @@ enum bt_le_scan_user {
 	BT_LE_SCAN_USER_NUM_FLAGS,
 };
 
-void bt_scan_reset(void);
+void bt_scan_reset(struct bt_dev *hdev);
 
 bool bt_id_scan_random_addr_check(void);
-bool bt_le_scan_active_scanner_running(void);
+bool bt_le_scan_active_scanner_running(struct bt_dev *hdev);
 
-int bt_le_scan_set_enable(uint8_t enable);
+int bt_le_scan_set_enable(struct bt_dev *hdev, uint8_t enable);
 
-void bt_periodic_sync_disable(void);
+void bt_periodic_sync_disable(struct bt_dev *hdev);
+struct bt_le_per_adv_sync *bt_hci_per_adv_sync_lookup_by_handle(
+				struct bt_dev *hdev, uint16_t handle);
 
 /**
  * Start / update the scanner.
@@ -75,6 +77,7 @@ void bt_periodic_sync_disable(void);
  * this allows the background scanner to be started or stopped once the device starts to
  * initiate a connection.
  *
+ * @param hdev the hci device
  * @param flag user requesting the scanner
  *
  * @retval 0 in case of success
@@ -86,7 +89,7 @@ void bt_periodic_sync_disable(void);
  *                   the scanner was not started/stopped/updated.
  * @returns negative error codes for errors in @ref bt_hci_cmd_send_sync
  */
-int bt_le_scan_user_add(enum bt_le_scan_user flag);
+int bt_le_scan_user_add(struct bt_dev *hdev, enum bt_le_scan_user flag);
 
 /**
  * Stop / update the scanner.
@@ -107,6 +110,7 @@ int bt_le_scan_user_add(enum bt_le_scan_user flag);
  * this allows the background scanner to be started or stopped once the device starts to
  * initiate a connection.
  *
+ * @param hdev the hci device
  * @param flag user releasing the scanner
  *
  * @retval 0 in case of success
@@ -115,10 +119,10 @@ int bt_le_scan_user_add(enum bt_le_scan_user flag);
  *                   the scanner was not started/stopped/updated.
  * @returns negative error codes for errors in @ref bt_hci_cmd_send_sync
  */
-int bt_le_scan_user_remove(enum bt_le_scan_user flag);
+int bt_le_scan_user_remove(struct bt_dev *hdev, enum bt_le_scan_user flag);
 
 /**
  * Check if the explicit scanner was enabled.
  */
-bool bt_le_explicit_scanner_running(void);
+bool bt_le_explicit_scanner_running(struct bt_dev *hdev);
 #endif /* defined SUBSYS_BLUETOOTH_HOST_SCAN_H_ */
