@@ -675,7 +675,7 @@ static void le_adv_recv(bt_addr_le_t *addr, struct bt_le_scan_recv_info *info,
 }
 
 #if defined(CONFIG_BT_EXT_ADV)
-void bt_hci_le_scan_timeout(struct net_buf *buf)
+void bt_hci_le_scan_timeout(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_le_scan_cb *listener, *next;
 
@@ -765,7 +765,7 @@ static void create_ext_adv_info(struct bt_hci_evt_le_ext_advertising_info const 
 	scan_info->adv_props = get_adv_props_extended(sys_le16_to_cpu(evt->evt_type));
 }
 
-void bt_hci_le_adv_ext_report(struct net_buf *buf)
+void bt_hci_le_adv_ext_report(struct bt_dev *hdev, struct net_buf *buf)
 {
 	uint8_t num_reports = net_buf_pull_u8(buf);
 
@@ -1013,7 +1013,7 @@ static void bt_hci_le_per_adv_report_recv_failure(struct bt_le_per_adv_sync *per
 }
 #endif /* defined(CONFIG_BT_PER_ADV_SYNC_RSP) && (CONFIG_BT_PER_ADV_SYNC_BUF_SIZE > 0) */
 
-static void bt_hci_le_per_adv_report_common(struct net_buf *buf)
+static void bt_hci_le_per_adv_report_common(struct bt_dev *hdev, struct net_buf *buf)
 {
 #if defined(CONFIG_BT_PER_ADV_SYNC_RSP)
 	struct bt_hci_evt_le_per_advertising_report_v2 *evt;
@@ -1110,7 +1110,7 @@ static void bt_hci_le_per_adv_report_common(struct net_buf *buf)
 	}
 }
 
-void bt_hci_le_per_adv_report(struct net_buf *buf)
+void bt_hci_le_per_adv_report(struct bt_dev *hdev, struct net_buf *buf)
 {
 	if (IS_ENABLED(CONFIG_BT_PER_ADV_SYNC_RSP)) {
 		LOG_ERR("The controller shall raise the latest unmasked version of the event");
@@ -1118,7 +1118,7 @@ void bt_hci_le_per_adv_report(struct net_buf *buf)
 		return;
 	}
 
-	bt_hci_le_per_adv_report_common(buf);
+	bt_hci_le_per_adv_report_common(hdev, buf);
 }
 
 static int per_adv_sync_terminate(uint16_t handle)
@@ -1164,7 +1164,7 @@ static void per_adv_sync_terminated(struct bt_le_per_adv_sync *per_adv_sync,
 	}
 }
 
-static void bt_hci_le_per_adv_sync_established_common(struct net_buf *buf)
+static void bt_hci_le_per_adv_sync_established_common(struct bt_dev *hdev, struct net_buf *buf)
 {
 #if defined(CONFIG_BT_PER_ADV_SYNC_RSP)
 	struct bt_hci_evt_le_per_adv_sync_established_v2 *evt =
@@ -1297,7 +1297,7 @@ static void bt_hci_le_per_adv_sync_established_common(struct net_buf *buf)
 	}
 }
 
-void bt_hci_le_per_adv_sync_established(struct net_buf *buf)
+void bt_hci_le_per_adv_sync_established(struct bt_dev *hdev, struct net_buf *buf)
 {
 	if (IS_ENABLED(CONFIG_BT_PER_ADV_SYNC_RSP)) {
 		LOG_ERR("The controller shall raise the latest unmasked version of the event");
@@ -1305,7 +1305,7 @@ void bt_hci_le_per_adv_sync_established(struct net_buf *buf)
 		return;
 	}
 
-	bt_hci_le_per_adv_sync_established_common(buf);
+	bt_hci_le_per_adv_sync_established_common(hdev, buf);
 }
 
 #if defined(CONFIG_BT_PER_ADV_SYNC_RSP)
@@ -1381,7 +1381,7 @@ int bt_le_per_adv_set_response_data(struct bt_le_per_adv_sync *per_adv_sync,
 }
 #endif /* CONFIG_BT_PER_ADV_SYNC_RSP */
 
-void bt_hci_le_per_adv_sync_lost(struct net_buf *buf)
+void bt_hci_le_per_adv_sync_lost(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_le_per_adv_sync_lost *evt =
 		(struct bt_hci_evt_le_per_adv_sync_lost *)buf->data;
@@ -1415,7 +1415,7 @@ BT_CONN_CB_DEFINE(past_conn_callbacks) = {
 	.disconnected = past_disconnected_cb,
 };
 
-static void bt_hci_le_past_received_common(struct net_buf *buf)
+static void bt_hci_le_past_received_common(struct bt_dev *hdev, struct net_buf *buf)
 {
 #if defined(CONFIG_BT_PER_ADV_SYNC_RSP)
 	struct bt_hci_evt_le_past_received_v2 *evt =
@@ -1512,7 +1512,7 @@ static void bt_hci_le_past_received_common(struct net_buf *buf)
 	bt_conn_unref(sync_info.conn);
 }
 
-void bt_hci_le_past_received(struct net_buf *buf)
+void bt_hci_le_past_received(struct bt_dev *hdev, struct net_buf *buf)
 {
 	if (IS_ENABLED(CONFIG_BT_PER_ADV_SYNC_RSP)) {
 		LOG_ERR("The controller shall raise the latest unmasked version of the event");
@@ -1524,7 +1524,7 @@ void bt_hci_le_past_received(struct net_buf *buf)
 }
 
 #if defined(CONFIG_BT_PER_ADV_SYNC_RSP)
-void bt_hci_le_past_received_v2(struct net_buf *buf)
+void bt_hci_le_past_received_v2(struct bt_dev *hdev, struct net_buf *buf)
 {
 	bt_hci_le_past_received_common(buf);
 }
@@ -1532,19 +1532,19 @@ void bt_hci_le_past_received_v2(struct net_buf *buf)
 #endif /* CONFIG_BT_PER_ADV_SYNC_TRANSFER_RECEIVER */
 
 #if defined(CONFIG_BT_PER_ADV_SYNC_RSP)
-void bt_hci_le_per_adv_sync_established_v2(struct net_buf *buf)
+void bt_hci_le_per_adv_sync_established_v2(struct bt_dev *hdev, struct net_buf *buf)
 {
-	bt_hci_le_per_adv_sync_established_common(buf);
+	bt_hci_le_per_adv_sync_established_common(hdev, buf);
 }
 
-void bt_hci_le_per_adv_report_v2(struct net_buf *buf)
+void bt_hci_le_per_adv_report_v2(struct bt_dev *hdev, struct net_buf *buf)
 {
-	bt_hci_le_per_adv_report_common(buf);
+	bt_hci_le_per_adv_report_common(hdev, buf);
 }
 #endif /* CONFIG_BT_PER_ADV_SYNC_RSP */
 
 #if defined(CONFIG_BT_ISO_BROADCAST)
-void bt_hci_le_biginfo_adv_report(struct net_buf *buf)
+void bt_hci_le_biginfo_adv_report(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_le_biginfo_adv_report *evt;
 	struct bt_le_per_adv_sync *per_adv_sync;
@@ -1584,7 +1584,7 @@ void bt_hci_le_biginfo_adv_report(struct net_buf *buf)
 }
 #endif /* CONFIG_BT_ISO_BROADCAST */
 #if defined(CONFIG_BT_DF_CONNECTIONLESS_CTE_RX)
-static void bt_hci_le_df_connectionless_iq_report_common(uint8_t event, struct net_buf *buf)
+static void bt_hci_le_df_connectionless_iq_report_common(struct bt_dev *hdev, uint8_t event, struct net_buf *buf)
 {
 	int err;
 
@@ -1593,14 +1593,14 @@ static void bt_hci_le_df_connectionless_iq_report_common(uint8_t event, struct n
 	struct bt_le_per_adv_sync_cb *listener;
 
 	if (event == BT_HCI_EVT_LE_CONNECTIONLESS_IQ_REPORT) {
-		err = hci_df_prepare_connectionless_iq_report(buf, &cte_report, &per_adv_sync);
+		err = hci_df_prepare_connectionless_iq_report(hdev, buf, &cte_report, &per_adv_sync);
 		if (err) {
 			LOG_ERR("Prepare CTE conn IQ report failed %d", err);
 			return;
 		}
 	} else if (IS_ENABLED(CONFIG_BT_DF_VS_CL_IQ_REPORT_16_BITS_IQ_SAMPLES) &&
 		   event == BT_HCI_EVT_VS_LE_CONNECTIONLESS_IQ_REPORT) {
-		err = hci_df_vs_prepare_connectionless_iq_report(buf, &cte_report, &per_adv_sync);
+		err = hci_df_vs_prepare_connectionless_iq_report(hdev, buf, &cte_report, &per_adv_sync);
 		if (err) {
 			LOG_ERR("Prepare CTE conn IQ report failed %d", err);
 			return;
@@ -1617,15 +1617,15 @@ static void bt_hci_le_df_connectionless_iq_report_common(uint8_t event, struct n
 	}
 }
 
-void bt_hci_le_df_connectionless_iq_report(struct net_buf *buf)
+void bt_hci_le_df_connectionless_iq_report(struct bt_dev *hdev, struct net_buf *buf)
 {
-	bt_hci_le_df_connectionless_iq_report_common(BT_HCI_EVT_LE_CONNECTIONLESS_IQ_REPORT, buf);
+	bt_hci_le_df_connectionless_iq_report_common(hdev, BT_HCI_EVT_LE_CONNECTIONLESS_IQ_REPORT, buf);
 }
 
 #if defined(CONFIG_BT_DF_VS_CL_IQ_REPORT_16_BITS_IQ_SAMPLES)
-void bt_hci_le_vs_df_connectionless_iq_report(struct net_buf *buf)
+void bt_hci_le_vs_df_connectionless_iq_report(struct bt_dev *hdev, struct net_buf *buf)
 {
-	bt_hci_le_df_connectionless_iq_report_common(BT_HCI_EVT_VS_LE_CONNECTIONLESS_IQ_REPORT,
+	bt_hci_le_df_connectionless_iq_report_common(hdev, BT_HCI_EVT_VS_LE_CONNECTIONLESS_IQ_REPORT,
 						     buf);
 }
 #endif /* CONFIG_BT_DF_VS_CL_IQ_REPORT_16_BITS_IQ_SAMPLES */
@@ -1633,7 +1633,7 @@ void bt_hci_le_vs_df_connectionless_iq_report(struct net_buf *buf)
 #endif /* defined(CONFIG_BT_PER_ADV_SYNC) */
 #endif /* defined(CONFIG_BT_EXT_ADV) */
 
-void bt_hci_le_adv_report(struct net_buf *buf)
+void bt_hci_le_adv_report(struct bt_dev *hdev, struct net_buf *buf)
 {
 	uint8_t num_reports = net_buf_pull_u8(buf);
 	struct bt_hci_evt_le_advertising_info *evt;

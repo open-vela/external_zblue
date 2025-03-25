@@ -81,7 +81,7 @@ int bt_accept_conn(const bt_addr_t *bdaddr)
 	return 0;
 }
 
-void bt_hci_conn_req(struct net_buf *buf)
+void bt_hci_conn_req(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_conn_request *evt = (void *)buf->data;
 	struct bt_conn *conn;
@@ -199,7 +199,7 @@ bool bt_br_update_sec_level(struct bt_conn *conn)
 	return true;
 }
 
-void bt_hci_synchronous_conn_complete(struct net_buf *buf)
+void bt_hci_synchronous_conn_complete(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_sync_conn_complete *evt = (void *)buf->data;
 	struct bt_conn *sco_conn;
@@ -225,7 +225,7 @@ void bt_hci_synchronous_conn_complete(struct net_buf *buf)
 	bt_conn_unref(sco_conn);
 }
 
-void bt_hci_conn_complete(struct net_buf *buf)
+void bt_hci_conn_complete(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_conn_complete *evt = (void *)buf->data;
 	struct bt_conn *conn;
@@ -399,7 +399,7 @@ static void report_discovery_results(void)
 	bt_br_discovery_reset();
 }
 
-void bt_hci_inquiry_complete(struct net_buf *buf)
+void bt_hci_inquiry_complete(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_inquiry_complete *evt = (void *)buf->data;
 
@@ -471,7 +471,7 @@ static struct bt_br_discovery_result *find_discovery_result(const bt_addr_t *add
 	return NULL;
 }
 
-void bt_hci_inquiry_result_with_rssi(struct net_buf *buf)
+void bt_hci_inquiry_result_with_rssi(struct bt_dev *hdev, struct net_buf *buf)
 {
 	uint8_t num_reports = net_buf_pull_u8(buf);
 
@@ -518,7 +518,7 @@ void bt_hci_inquiry_result_with_rssi(struct net_buf *buf)
 	}
 }
 
-void bt_hci_extended_inquiry_result(struct net_buf *buf)
+void bt_hci_extended_inquiry_result(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_extended_inquiry_result *evt = (void *)buf->data;
 	struct bt_br_discovery_result *result;
@@ -551,7 +551,7 @@ void bt_hci_extended_inquiry_result(struct net_buf *buf)
 	}
 }
 
-void bt_hci_remote_name_request_complete(struct net_buf *buf)
+void bt_hci_remote_name_request_complete(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_remote_name_req_complete *evt = (void *)buf->data;
 	struct bt_br_discovery_result *result;
@@ -646,7 +646,7 @@ check_names:
 	}
 }
 
-void bt_hci_read_remote_features_complete(struct net_buf *buf)
+void bt_hci_read_remote_features_complete(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_remote_features *evt = (void *)buf->data;
 	uint16_t handle = sys_le16_to_cpu(evt->handle);
@@ -687,7 +687,7 @@ done:
 	bt_conn_unref(conn);
 }
 
-void bt_hci_read_remote_ext_features_complete(struct net_buf *buf)
+void bt_hci_read_remote_ext_features_complete(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_remote_ext_features *evt = (void *)buf->data;
 	uint16_t handle = sys_le16_to_cpu(evt->handle);
@@ -708,7 +708,7 @@ void bt_hci_read_remote_ext_features_complete(struct net_buf *buf)
 	bt_conn_unref(conn);
 }
 
-void bt_hci_role_change(struct net_buf *buf)
+void bt_hci_role_change(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_role_change *evt = (void *)buf->data;
 	struct bt_conn *conn;
@@ -736,7 +736,7 @@ void bt_hci_role_change(struct net_buf *buf)
 }
 
 #if defined(CONFIG_BT_POWER_MODE_CONTROL)
-void bt_hci_link_mode_change(struct net_buf *buf)
+void bt_hci_link_mode_change(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_mode_change *evt = (void *)buf->data;
 	uint16_t handle = sys_le16_to_cpu(evt->handle);
