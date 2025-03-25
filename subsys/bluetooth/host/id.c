@@ -143,7 +143,7 @@ static int set_random_address(const bt_addr_t *addr)
 
 	net_buf_add_mem(buf, addr, sizeof(*addr));
 
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_LE_SET_RANDOM_ADDRESS, buf, NULL);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_SET_RANDOM_ADDRESS, buf, NULL);
 	if (err) {
 		if (err == -EACCES) {
 			/* If we are here we probably tried to set a random
@@ -198,7 +198,7 @@ int bt_id_set_adv_random_addr(struct bt_le_ext_adv *adv,
 	cp->handle = adv->handle;
 	bt_addr_copy(&cp->bdaddr, addr);
 
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_LE_SET_ADV_SET_RANDOM_ADDR, buf,
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_SET_ADV_SET_RANDOM_ADDR, buf,
 				   NULL);
 	if (err) {
 		return err;
@@ -315,7 +315,7 @@ static void le_rpa_timeout_update(void)
 
 		cp = net_buf_add(buf, sizeof(*cp));
 		cp->rpa_timeout = sys_cpu_to_le16(bt_dev.rpa_timeout);
-		err = bt_hci_cmd_send_sync(BT_HCI_OP_LE_SET_RPA_TIMEOUT, buf, NULL);
+		err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_SET_RPA_TIMEOUT, buf, NULL);
 		if (err) {
 			LOG_ERR("Failed to send HCI RPA timeout command");
 			goto submit;
@@ -848,7 +848,7 @@ static int le_set_privacy_mode(const bt_addr_le_t *addr, uint8_t mode)
 
 	net_buf_add_mem(buf, &cp, sizeof(cp));
 
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_LE_SET_PRIVACY_MODE, buf, NULL);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_SET_PRIVACY_MODE, buf, NULL);
 	if (err) {
 		return err;
 	}
@@ -869,7 +869,7 @@ static int addr_res_enable(uint8_t enable)
 
 	net_buf_add_u8(buf, enable);
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_SET_ADDR_RES_ENABLE,
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_SET_ADDR_RES_ENABLE,
 				    buf, NULL);
 }
 
@@ -899,7 +899,7 @@ static int hci_id_add(uint8_t id, const bt_addr_le_t *addr, uint8_t peer_irk[16]
 	(void)memset(cp->local_irk, 0, 16);
 #endif
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_ADD_DEV_TO_RL, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_ADD_DEV_TO_RL, buf, NULL);
 }
 
 static void pending_id_update(struct bt_keys *keys, void *data)
@@ -1065,7 +1065,7 @@ void bt_id_add(struct bt_keys *keys)
 	if (bt_dev.le.rl_entries == bt_dev.le.rl_size) {
 		LOG_WRN("Resolving list size exceeded. Switching to host.");
 
-		err = bt_hci_cmd_send_sync(BT_HCI_OP_LE_CLEAR_RL, NULL, NULL);
+		err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_CLEAR_RL, NULL, NULL);
 		if (err) {
 			LOG_ERR("Failed to clear resolution list");
 			goto done;
@@ -1140,7 +1140,7 @@ static int hci_id_del(const bt_addr_le_t *addr)
 	cp = net_buf_add(buf, sizeof(*cp));
 	bt_addr_le_copy(&cp->peer_id_addr, addr);
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_REM_DEV_FROM_RL, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_REM_DEV_FROM_RL, buf, NULL);
 }
 
 void bt_id_del(struct bt_keys *keys)
@@ -1504,7 +1504,7 @@ static void bt_read_identity_root(uint8_t *ir)
 		return;
 	}
 
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_VS_READ_KEY_HIERARCHY_ROOTS, NULL,
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_VS_READ_KEY_HIERARCHY_ROOTS, NULL,
 				   &rsp);
 	if (err) {
 		LOG_WRN("Failed to read identity root");
@@ -1538,7 +1538,7 @@ uint8_t bt_id_read_public_addr(bt_addr_le_t *addr)
 	}
 
 	/* Read Bluetooth Address */
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_READ_BD_ADDR, NULL, &rsp);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_READ_BD_ADDR, NULL, &rsp);
 	if (err) {
 		LOG_WRN("Failed to read public address");
 		return 0U;
@@ -1610,7 +1610,7 @@ static uint8_t vs_read_static_addr(struct bt_hci_vs_static_addr addrs[], uint8_t
 		return 0;
 	}
 
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_VS_READ_STATIC_ADDRS, NULL, &rsp);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_VS_READ_STATIC_ADDRS, NULL, &rsp);
 	if (err) {
 		LOG_WRN("Failed to read static addresses");
 		return 0;

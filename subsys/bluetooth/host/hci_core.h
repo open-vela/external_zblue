@@ -494,7 +494,7 @@ int bt_le_create_conn_synced(const struct bt_conn *conn, const struct bt_le_ext_
 bool bt_addr_le_is_bonded(uint8_t id, const bt_addr_le_t *addr);
 const bt_addr_le_t *bt_lookup_id_addr(uint8_t id, const bt_addr_le_t *addr);
 
-int bt_send(struct net_buf *buf);
+int bt_send(struct bt_dev *hdev, struct net_buf *buf);
 
 /* Don't require everyone to include keys.h */
 struct bt_keys;

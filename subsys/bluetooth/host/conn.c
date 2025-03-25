@@ -546,7 +546,7 @@ static int send_acl(struct bt_conn *conn, struct net_buf *buf, uint8_t flags)
 
 	bt_buf_set_type(buf, BT_BUF_ACL_OUT);
 
-	return bt_send(buf);
+	return bt_send(&bt_dev, buf);
 }
 
 static enum bt_iso_timestamp contains_iso_timestamp(struct net_buf *buf)
@@ -604,7 +604,7 @@ static int send_iso(struct bt_conn *conn, struct net_buf *buf, uint8_t flags)
 
 	bt_buf_set_type(buf, BT_BUF_ISO_OUT);
 
-	return bt_send(buf);
+	return bt_send(&bt_dev, buf);
 }
 
 static inline uint16_t conn_mtu(struct bt_conn *conn)
@@ -2355,7 +2355,7 @@ struct bt_conn *bt_conn_create_br(const bt_addr_t *peer,
 	cp->allow_role_switch = param->allow_role_switch ? 0x01 : 0x00;
 	cp->clock_offset = 0x0000; /* TODO used cached clock offset */
 
-	if (bt_hci_cmd_send_sync(BT_HCI_OP_CONNECT, buf, NULL) < 0) {
+	if (bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_CONNECT, buf, NULL) < 0) {
 		bt_conn_unref(conn);
 		return NULL;
 	}
@@ -2488,7 +2488,7 @@ static int bt_hci_connect_br_cancel(struct bt_conn *conn)
 	cp = net_buf_add(buf, sizeof(*cp));
 	memcpy(&cp->bdaddr, &conn->br.dst, sizeof(cp->bdaddr));
 
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_CONNECT_CANCEL, buf, &rsp);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_CONNECT_CANCEL, buf, &rsp);
 	if (err) {
 		return err;
 	}
@@ -2618,7 +2618,7 @@ int bt_conn_le_start_encryption(struct bt_conn *conn, uint8_t rand[8],
 		(void)memset(cp->ltk + len, 0, sizeof(cp->ltk) - len);
 	}
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_START_ENCRYPTION, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_START_ENCRYPTION, buf, NULL);
 }
 #endif /* CONFIG_BT_SMP */
 
@@ -2646,7 +2646,7 @@ uint8_t bt_conn_enc_key_size(const struct bt_conn *conn)
 		cp = net_buf_add(buf, sizeof(*cp));
 		cp->handle = sys_cpu_to_le16(conn->handle);
 
-		if (bt_hci_cmd_send_sync(BT_HCI_OP_READ_ENCRYPTION_KEY_SIZE,
+		if (bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_READ_ENCRYPTION_KEY_SIZE,
 					buf, &rsp)) {
 			return 0;
 		}
@@ -3154,7 +3154,7 @@ static int bt_conn_get_tx_power_level(struct bt_conn *conn, uint8_t type,
 	cp->type = type;
 	cp->handle = sys_cpu_to_le16(conn->handle);
 
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_READ_TX_POWER_LEVEL, buf, &rsp);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_READ_TX_POWER_LEVEL, buf, &rsp);
 	if (err) {
 		return err;
 	}
@@ -3208,7 +3208,7 @@ int bt_conn_le_enhanced_get_tx_power_level(struct bt_conn *conn,
 	cp->handle = sys_cpu_to_le16(conn->handle);
 	cp->phy = tx_power->phy;
 
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_LE_ENH_READ_TX_POWER_LEVEL, buf, &rsp);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_ENH_READ_TX_POWER_LEVEL, buf, &rsp);
 	if (err) {
 		return err;
 	}
@@ -3241,7 +3241,7 @@ int bt_conn_le_get_remote_tx_power_level(struct bt_conn *conn,
 	cp->handle = sys_cpu_to_le16(conn->handle);
 	cp->phy = phy;
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_READ_REMOTE_TX_POWER_LEVEL, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_READ_REMOTE_TX_POWER_LEVEL, buf, NULL);
 }
 
 int bt_conn_le_set_tx_power_report_enable(struct bt_conn *conn,
@@ -3263,7 +3263,7 @@ int bt_conn_le_set_tx_power_report_enable(struct bt_conn *conn,
 	cp->remote_enable = remote_enable ? BT_HCI_LE_TX_POWER_REPORT_ENABLE :
 		BT_HCI_LE_TX_POWER_REPORT_DISABLE;
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_SET_TX_POWER_REPORT_ENABLE, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_SET_TX_POWER_REPORT_ENABLE, buf, NULL);
 }
 #endif /* CONFIG_BT_TRANSMIT_POWER_CONTROL */
 
@@ -3330,7 +3330,7 @@ int bt_conn_le_set_path_loss_mon_param(struct bt_conn *conn,
 	cp->low_hysteresis = params->low_hysteresis;
 	cp->min_time_spent = sys_cpu_to_le16(params->min_time_spent);
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_SET_PATH_LOSS_REPORTING_PARAMETERS, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_SET_PATH_LOSS_REPORTING_PARAMETERS, buf, NULL);
 }
 
 int bt_conn_le_set_path_loss_mon_enable(struct bt_conn *conn, bool reporting_enable)
@@ -3348,7 +3348,7 @@ int bt_conn_le_set_path_loss_mon_enable(struct bt_conn *conn, bool reporting_ena
 	cp->enable = reporting_enable ? BT_HCI_LE_PATH_LOSS_REPORTING_ENABLE :
 			BT_HCI_LE_PATH_LOSS_REPORTING_DISABLE;
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_SET_PATH_LOSS_REPORTING_ENABLE, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_SET_PATH_LOSS_REPORTING_ENABLE, buf, NULL);
 }
 #endif /* CONFIG_BT_PATH_LOSS_MONITORING */
 
@@ -3425,7 +3425,7 @@ int bt_conn_le_subrate_set_defaults(const struct bt_conn_le_subrate_param *param
 	cp->continuation_number = sys_cpu_to_le16(params->continuation_number);
 	cp->supervision_timeout = sys_cpu_to_le16(params->supervision_timeout);
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_SET_DEFAULT_SUBRATE, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_SET_DEFAULT_SUBRATE, buf, NULL);
 }
 
 int bt_conn_le_subrate_request(struct bt_conn *conn,
@@ -3451,7 +3451,7 @@ int bt_conn_le_subrate_request(struct bt_conn *conn,
 	cp->continuation_number = sys_cpu_to_le16(params->continuation_number);
 	cp->supervision_timeout = sys_cpu_to_le16(params->supervision_timeout);
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_SUBRATE_REQUEST, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_SUBRATE_REQUEST, buf, NULL);
 }
 #endif /* CONFIG_BT_SUBRATING */
 
@@ -4063,7 +4063,7 @@ int bt_conn_le_conn_update(struct bt_conn *conn,
 	conn_update->conn_latency = sys_cpu_to_le16(param->latency);
 	conn_update->supervision_timeout = sys_cpu_to_le16(param->timeout);
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_CONN_UPDATE, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_CONN_UPDATE, buf, NULL);
 }
 
 #if defined(CONFIG_BT_SMP) || defined(CONFIG_BT_CLASSIC)
@@ -4428,7 +4428,7 @@ int bt_conn_enter_sniff_mode(struct bt_conn *conn, uint16_t min_interval, uint16
 	cp->attempt = sys_cpu_to_le16(attempt);
 	cp->timeout = sys_cpu_to_le16(timeout);
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_SNIFF_MODE, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_SNIFF_MODE, buf, NULL);
 }
 
 int bt_conn_exit_sniff_mode(struct bt_conn *conn)
@@ -4452,7 +4452,7 @@ int bt_conn_exit_sniff_mode(struct bt_conn *conn)
 	cp = net_buf_add(buf, sizeof(*cp));
 	cp->handle = sys_cpu_to_le16(conn->handle);
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_EXIT_SNIFF_MODE, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_EXIT_SNIFF_MODE, buf, NULL);
 }
 
 void bt_conn_notify_mode_changed(struct bt_conn *conn, uint8_t mode, uint16_t interval)
@@ -4490,7 +4490,7 @@ int bt_conn_role_discovery(struct bt_conn *conn, uint8_t *role)
 	}
 
 	net_buf_add_le16(buf, conn->handle);
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_ROLE_DISCOVERY, buf, &rsp);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_ROLE_DISCOVERY, buf, &rsp);
 	if (err) {
 		return err;
 	}
@@ -4526,7 +4526,7 @@ int bt_conn_switch_role(struct bt_conn *conn, uint8_t role)
 	memcpy(&cp->bdaddr, &conn->br.dst, sizeof(cp->bdaddr));
 	cp->role = role;
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_SWITCH_ROLE, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_SWITCH_ROLE, buf, NULL);
 }
 
 void bt_conn_notify_role_changed(struct bt_conn *conn, uint8_t role)
@@ -4559,7 +4559,7 @@ int bt_conn_set_supervision_timeout(struct bt_conn *conn, uint16_t timeout)
 	net_buf_add_le16(buf, conn->handle);
 	net_buf_add_le16(buf, timeout);
 
-	return bt_hci_cmd_send(BT_HCI_OP_WRITE_LINK_SUPERVISION_TIMEOUT, buf);
+	return bt_hci_cmd_send(&bt_dev, BT_HCI_OP_WRITE_LINK_SUPERVISION_TIMEOUT, buf);
 }
 
 int bt_conn_set_link_policy_settings(struct bt_conn* conn, uint16_t policy)
@@ -4575,7 +4575,7 @@ int bt_conn_set_link_policy_settings(struct bt_conn* conn, uint16_t policy)
 	net_buf_add_le16(buf, conn->handle);
 	net_buf_add_le16(buf, policy);
 
-	return bt_hci_cmd_send(BT_HCI_OP_WRITE_LINK_POLICY_SETTINGS, buf);
+	return bt_hci_cmd_send(&bt_dev, BT_HCI_OP_WRITE_LINK_POLICY_SETTINGS, buf);
 }
 #endif /* CONFIG_BT_CLASSIC */
 #endif /* CONFIG_BT_CONN */
