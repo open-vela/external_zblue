@@ -20,6 +20,8 @@
 extern "C" {
 #endif
 
+struct bt_dev;
+
 /** Converts a HCI error to string.
  *
  * The error codes are described in the Bluetooth Core specification,
@@ -71,12 +73,13 @@ struct net_buf *bt_hci_cmd_create(uint16_t opcode, uint8_t param_len);
   * If synchronous behavior, and retrieval of the Command Complete parameters
   * is desired, the bt_hci_cmd_send_sync() API should be used instead.
   *
+  * @param hdev   The Bluetooth device.
   * @param opcode Command OpCode.
   * @param buf    Command buffer or NULL (if no parameters).
   *
   * @return 0 on success or negative error value on failure.
   */
-int bt_hci_cmd_send(uint16_t opcode, struct net_buf *buf);
+int bt_hci_cmd_send(struct bt_dev *hdev, uint16_t opcode, struct net_buf *buf);
 
 /** Send a HCI command synchronously.
   *
@@ -91,6 +94,7 @@ int bt_hci_cmd_send(uint16_t opcode, struct net_buf *buf);
   * was given, this parameter will be set to point to a buffer containing
   * the response parameters.
   *
+  * @param hdev   The Bluetooth device.
   * @param opcode Command OpCode.
   * @param buf    Command buffer or NULL (if no parameters).
   * @param rsp    Place to store a reference to the command response. May
@@ -101,8 +105,8 @@ int bt_hci_cmd_send(uint16_t opcode, struct net_buf *buf);
   *
   * @return 0 on success or negative error value on failure.
   */
-int bt_hci_cmd_send_sync(uint16_t opcode, struct net_buf *buf,
-			 struct net_buf **rsp);
+ int bt_hci_cmd_send_sync(struct bt_dev *hdev, uint16_t opcode,
+              struct net_buf *buf, struct net_buf **rsp);
 
 /** @brief Get connection handle for a connection.
  *

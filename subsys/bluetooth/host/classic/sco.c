@@ -272,7 +272,7 @@ static int accept_sco_conn(const bt_addr_t *bdaddr, struct bt_conn *sco_conn)
 	cp->retrans_effort = 0x01;
 	cp->content_format = BT_VOICE_CVSD_16BIT;
 
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_ACCEPT_SYNC_CONN_REQ, buf, NULL);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_ACCEPT_SYNC_CONN_REQ, buf, NULL);
 	if (err) {
 		return err;
 	}
@@ -353,7 +353,7 @@ static int sco_setup_sync_conn(struct bt_conn *sco_conn)
 	cp->retrans_effort = 0x01;
 	cp->content_format = BT_VOICE_CVSD_16BIT;
 
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_SETUP_SYNC_CONN, buf, NULL);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_SETUP_SYNC_CONN, buf, NULL);
 	if (err < 0) {
 		return err;
 	}

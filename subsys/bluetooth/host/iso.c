@@ -239,7 +239,7 @@ static int hci_le_setup_iso_data_path(const struct bt_conn *iso, uint8_t dir,
 	if (path->cc_len) {
 		memcpy(cc, path->cc, path->cc_len);
 	}
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_LE_SETUP_ISO_PATH, buf, &rsp);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_SETUP_ISO_PATH, buf, &rsp);
 	if (err) {
 		return err;
 	}
@@ -1022,7 +1022,7 @@ int bt_iso_chan_get_tx_sync(const struct bt_iso_chan *chan, struct bt_iso_tx_inf
 	cp = net_buf_add(buf, sizeof(*cp));
 	cp->handle = sys_cpu_to_le16(chan->iso->handle);
 
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_LE_READ_ISO_TX_SYNC, buf, &rsp);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_READ_ISO_TX_SYNC, buf, &rsp);
 	if (err) {
 		return err;
 	}
@@ -1329,7 +1329,7 @@ static int hci_le_reject_cis(uint16_t handle, uint8_t reason)
 	cp->handle = sys_cpu_to_le16(handle);
 	cp->reason = reason;
 
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_LE_REJECT_CIS, buf, NULL);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_REJECT_CIS, buf, NULL);
 	if (err) {
 		return err;
 	}
@@ -1351,7 +1351,7 @@ static int hci_le_accept_cis(uint16_t handle)
 	cp = net_buf_add(buf, sizeof(*cp));
 	cp->handle = sys_cpu_to_le16(handle);
 
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_LE_ACCEPT_CIS, buf, NULL);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_ACCEPT_CIS, buf, NULL);
 	if (err) {
 		return err;
 	}
@@ -1493,7 +1493,7 @@ static int hci_le_remove_iso_data_path(struct bt_conn *iso, uint8_t dir)
 	cp->handle = sys_cpu_to_le16(iso->handle);
 	cp->path_dir = dir;
 
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_LE_REMOVE_ISO_PATH, buf, &rsp);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_REMOVE_ISO_PATH, buf, &rsp);
 	if (err) {
 		return err;
 	}
@@ -1597,7 +1597,7 @@ static int hci_le_remove_cig(uint8_t cig_id)
 
 	req->cig_id = cig_id;
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_REMOVE_CIG, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_REMOVE_CIG, buf, NULL);
 }
 
 static struct net_buf *hci_le_set_cig_params(const struct bt_iso_cig *cig,
@@ -1680,7 +1680,7 @@ static struct net_buf *hci_le_set_cig_params(const struct bt_iso_cig *cig,
 			cis_param->p_phy, cis_param->p_sdu, cis_param->p_rtn);
 	}
 
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_LE_SET_CIG_PARAMS, buf, &rsp);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_SET_CIG_PARAMS, buf, &rsp);
 	if (err) {
 		return NULL;
 	}
@@ -1775,7 +1775,7 @@ static struct net_buf *hci_le_set_cig_test_params(const struct bt_iso_cig *cig,
 			cis_param->c_bn, cis_param->p_bn);
 	}
 
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_LE_SET_CIG_PARAMS_TEST, buf, &rsp);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_SET_CIG_PARAMS_TEST, buf, &rsp);
 	if (err) {
 		return NULL;
 	}
@@ -2382,7 +2382,7 @@ static int hci_le_create_cis(const struct bt_iso_connect_param *param, size_t co
 		return -ECANCELED;
 	}
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_CREATE_CIS, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_CREATE_CIS, buf, NULL);
 }
 
 #if defined(CONFIG_BT_SMP)
@@ -2686,7 +2686,7 @@ static int hci_le_create_big(struct bt_le_ext_adv *padv, struct bt_iso_big *big,
 	}
 
 	bt_hci_cmd_state_set_init(buf, &state, big->flags, BT_BIG_PENDING, true);
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_LE_CREATE_BIG, buf, NULL);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_CREATE_BIG, buf, NULL);
 
 	if (err) {
 		return err;
@@ -2752,7 +2752,7 @@ static int hci_le_create_big_test(const struct bt_le_ext_adv *padv, struct bt_is
 		req->framing, req->bn, req->irc, req->pto, req->encryption);
 
 	bt_hci_cmd_state_set_init(buf, &state, big->flags, BT_BIG_PENDING, true);
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_LE_CREATE_BIG_TEST, buf, NULL);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_CREATE_BIG_TEST, buf, NULL);
 	if (err) {
 		return err;
 	}
@@ -3063,7 +3063,7 @@ static int hci_le_terminate_big(struct bt_iso_big *big)
 	req->big_handle = big->handle;
 	req->reason = BT_HCI_ERR_REMOTE_USER_TERM_CONN;
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_TERMINATE_BIG, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_TERMINATE_BIG, buf, NULL);
 }
 
 static int hci_le_big_sync_term(struct bt_iso_big *big)
@@ -3081,7 +3081,7 @@ static int hci_le_big_sync_term(struct bt_iso_big *big)
 
 	req = net_buf_add(buf, sizeof(*req));
 	req->big_handle = big->handle;
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_LE_BIG_TERMINATE_SYNC, buf, &rsp);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_BIG_TERMINATE_SYNC, buf, &rsp);
 	if (err) {
 		return err;
 	}
@@ -3272,7 +3272,7 @@ static int hci_le_big_create_sync(const struct bt_le_per_adv_sync *sync, struct 
 	}
 
 	bt_hci_cmd_state_set_init(buf, &state, big->flags, BT_BIG_SYNCING, true);
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_LE_BIG_CREATE_SYNC, buf, NULL);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_BIG_CREATE_SYNC, buf, NULL);
 
 	return err;
 }

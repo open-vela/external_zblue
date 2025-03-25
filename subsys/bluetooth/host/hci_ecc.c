@@ -406,7 +406,7 @@ static void le_p256_pub_key(struct net_buf *buf)
 	send_cmd_status(BT_HCI_OP_LE_P256_PUBLIC_KEY, status);
 }
 
-int bt_hci_ecc_send(struct net_buf *buf)
+int bt_hci_ecc_send(struct bt_dev *hdev, struct net_buf *buf)
 {
 	if (bt_buf_get_type(buf) == BT_BUF_CMD) {
 		struct bt_hci_cmd_hdr *chdr = (void *)buf->data;
