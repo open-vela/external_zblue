@@ -85,28 +85,28 @@ struct bt_iso_big {
 #define iso(buf) ((struct iso_data *)net_buf_user_data(buf))
 
 /* Process ISO buffer */
-void hci_iso(struct net_buf *buf);
+void hci_iso(struct bt_dev *hdev, struct net_buf *buf);
 
 /* Allocates RX buffer */
 struct net_buf *bt_iso_get_rx(k_timeout_t timeout);
 
 /* Process CIS Established event */
-void hci_le_cis_established(struct net_buf *buf);
+void hci_le_cis_established(struct bt_dev *hdev, struct net_buf *buf);
 
 /* Process CIS Request event */
-void hci_le_cis_req(struct net_buf *buf);
+void hci_le_cis_req(struct bt_dev *hdev, struct net_buf *buf);
 
 /** Process BIG complete event */
-void hci_le_big_complete(struct net_buf *buf);
+void hci_le_big_complete(struct bt_dev *hdev, struct net_buf *buf);
 
 /** Process BIG terminate event */
-void hci_le_big_terminate(struct net_buf *buf);
+void hci_le_big_terminate(struct bt_dev *hdev, struct net_buf *buf);
 
 /** Process BIG sync established event */
-void hci_le_big_sync_established(struct net_buf *buf);
+void hci_le_big_sync_established(struct bt_dev *hdev, struct net_buf *buf);
 
 /** Process BIG sync lost event */
-void hci_le_big_sync_lost(struct net_buf *buf);
+void hci_le_big_sync_lost(struct bt_dev *hdev, struct net_buf *buf);
 
 /* Notify ISO channels of a new connection */
 void bt_iso_connected(struct bt_conn *iso);
