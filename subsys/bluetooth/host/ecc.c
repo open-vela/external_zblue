@@ -86,7 +86,7 @@ int bt_pub_key_gen(struct bt_pub_key_cb *new_cb)
 
 	atomic_clear_bit(bt_dev.flags, BT_DEV_HAS_PUB_KEY);
 
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_LE_P256_PUBLIC_KEY, NULL, NULL);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_P256_PUBLIC_KEY, NULL, NULL);
 	if (err) {
 
 		LOG_ERR("Sending LE P256 Public Key command failed");
@@ -147,7 +147,7 @@ static int hci_generate_dhkey_v1(const uint8_t *remote_pk)
 	cp = net_buf_add(buf, sizeof(*cp));
 	memcpy(cp->key, remote_pk, sizeof(cp->key));
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_GENERATE_DHKEY, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_GENERATE_DHKEY, buf, NULL);
 }
 
 static int hci_generate_dhkey_v2(const uint8_t *remote_pk, uint8_t key_type)
@@ -164,7 +164,7 @@ static int hci_generate_dhkey_v2(const uint8_t *remote_pk, uint8_t key_type)
 	memcpy(cp->key, remote_pk, sizeof(cp->key));
 	cp->key_type = key_type;
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_GENERATE_DHKEY_V2, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_GENERATE_DHKEY_V2, buf, NULL);
 }
 
 int bt_dh_key_gen(const uint8_t remote_pk[BT_PUB_KEY_LEN], bt_dh_key_cb_t cb)
