@@ -1828,7 +1828,13 @@ uint8_t bt_le_per_adv_sync_get_index(struct bt_le_per_adv_sync *per_adv_sync);
  *
  * @return The periodic advertising sync object of the array index or NULL if invalid index.
  */
-struct bt_le_per_adv_sync *bt_le_per_adv_sync_lookup_index(uint8_t index);
+struct bt_le_per_adv_sync *bt_le_per_adv_sync_lookup_index_mc(uint8_t dev_id, uint8_t index);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline struct bt_le_per_adv_sync *bt_le_per_adv_sync_lookup_index(uint8_t index)
+{
+	return bt_le_per_adv_sync_lookup_index_mc(0, index);
+}
+#endif
 
 /** @brief Advertising set info structure. */
 struct bt_le_per_adv_sync_info {
@@ -1864,8 +1870,15 @@ int bt_le_per_adv_sync_get_info(struct bt_le_per_adv_sync *per_adv_sync,
  *
  * @return Periodic advertising sync object or NULL if not found.
  */
-struct bt_le_per_adv_sync *bt_le_per_adv_sync_lookup_addr(const bt_addr_le_t *adv_addr,
-							  uint8_t sid);
+struct bt_le_per_adv_sync *bt_le_per_adv_sync_lookup_addr_mc(uint8_t dev_id, const bt_addr_le_t *adv_addr,
+	uint8_t sid);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline struct bt_le_per_adv_sync *bt_le_per_adv_sync_lookup_addr(const bt_addr_le_t *adv_addr,
+							  uint8_t sid)
+{
+	return bt_le_per_adv_sync_lookup_addr_mc(0, adv_addr, sid);
+}
+#endif
 
 /**
  * @brief Create a periodic advertising sync object.
@@ -1883,8 +1896,15 @@ struct bt_le_per_adv_sync *bt_le_per_adv_sync_lookup_addr(const bt_addr_le_t *ad
  *
  * @return Zero on success or (negative) error code otherwise.
  */
-int bt_le_per_adv_sync_create(const struct bt_le_per_adv_sync_param *param,
-			      struct bt_le_per_adv_sync **out_sync);
+int bt_le_per_adv_sync_create_mc(uint8_t dev_id, const struct bt_le_per_adv_sync_param *param,
+	struct bt_le_per_adv_sync **out_sync);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_le_per_adv_sync_create(const struct bt_le_per_adv_sync_param *param,
+			      struct bt_le_per_adv_sync **out_sync)
+{
+	return bt_le_per_adv_sync_create_mc(0, param, out_sync);
+}
+#endif
 
 /**
  * @brief Delete periodic advertising sync.
@@ -1918,7 +1938,13 @@ int bt_le_per_adv_sync_delete(struct bt_le_per_adv_sync *per_adv_sync);
  * @retval 0 Success.
  * @retval -EEXIST if @p cb was already registered.
  */
-int bt_le_per_adv_sync_cb_register(struct bt_le_per_adv_sync_cb *cb);
+int bt_le_per_adv_sync_cb_register_mc(uint8_t dev_id, struct bt_le_per_adv_sync_cb *cb);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_le_per_adv_sync_cb_register(struct bt_le_per_adv_sync_cb *cb)
+{
+	return bt_le_per_adv_sync_cb_register_mc(0, cb);
+}
+#endif
 
 /**
  * @brief Enables receiving periodic advertising reports for a sync.
@@ -2089,7 +2115,13 @@ int bt_le_per_adv_sync_transfer_unsubscribe(const struct bt_conn *conn);
  *
  * @return Zero on success or (negative) error code otherwise.
  */
-int bt_le_per_adv_list_add(const bt_addr_le_t *addr, uint8_t sid);
+int bt_le_per_adv_list_add_mc(uint8_t dev_id, const bt_addr_le_t *addr, uint8_t sid);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_le_per_adv_list_add(const bt_addr_le_t *addr, uint8_t sid)
+{
+	return bt_le_per_adv_list_add_mc(0, addr, sid);
+}
+#endif
 
 /**
  * @brief Remove a device from the periodic advertising list.
@@ -2102,7 +2134,13 @@ int bt_le_per_adv_list_add(const bt_addr_le_t *addr, uint8_t sid);
  *
  * @return Zero on success or (negative) error code otherwise.
  */
-int bt_le_per_adv_list_remove(const bt_addr_le_t *addr, uint8_t sid);
+int bt_le_per_adv_list_remove_mc(uint8_t dev_id, const bt_addr_le_t *addr, uint8_t sid);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_le_per_adv_list_remove(const bt_addr_le_t *addr, uint8_t sid)
+{
+	return bt_le_per_adv_list_remove_mc(0, addr, sid);
+}
+#endif
 
 /**
  * @brief Clear the periodic advertising list.
@@ -2111,7 +2149,13 @@ int bt_le_per_adv_list_remove(const bt_addr_le_t *addr, uint8_t sid);
  *
  * @return Zero on success or (negative) error code otherwise.
  */
-int bt_le_per_adv_list_clear(void);
+int bt_le_per_adv_list_clear_mc(uint8_t dev_id);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_le_per_adv_list_clear(void)
+{
+	return bt_le_per_adv_list_clear_mc(0);
+}
+#endif
 
 
 enum {
@@ -2204,6 +2248,9 @@ struct bt_le_scan_param {
 
 /** LE advertisement and scan response packet information */
 struct bt_le_scan_recv_info {
+	/* Local device identity */
+	uint8_t dev_id;
+
 	/**
 	 * @brief Advertiser LE address and type.
 	 *
@@ -2402,7 +2449,13 @@ BUILD_ASSERT(BT_GAP_SCAN_FAST_WINDOW == BT_GAP_SCAN_FAST_INTERVAL_MIN,
  *         protocol error or negative (POSIX) in case of stack internal error.
  * @retval -EBUSY if the scanner is already being started in a different thread.
  */
-int bt_le_scan_start(const struct bt_le_scan_param *param, bt_le_scan_cb_t cb);
+int bt_le_scan_start_mc(uint8_t dev_id, const struct bt_le_scan_param *param, bt_le_scan_cb_t cb);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_le_scan_start(const struct bt_le_scan_param *param, bt_le_scan_cb_t cb)
+{
+	return bt_le_scan_start_mc(0, param, cb);
+}
+#endif
 
 /**
  * @brief Stop (LE) scanning.
@@ -2412,7 +2465,13 @@ int bt_le_scan_start(const struct bt_le_scan_param *param, bt_le_scan_cb_t cb);
  * @return Zero on success or error code otherwise, positive in case of
  *         protocol error or negative (POSIX) in case of stack internal error.
  */
-int bt_le_scan_stop(void);
+int bt_le_scan_stop_mc(uint8_t dev_id);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_le_scan_stop(void)
+{
+	return bt_le_scan_stop_mc(0);
+}
+#endif
 
 /**
  * @brief Register scanner packet callbacks.
@@ -2428,7 +2487,13 @@ int bt_le_scan_stop(void);
  * @retval 0 Success.
  * @retval -EEXIST if @p cb was already registered.
  */
-int bt_le_scan_cb_register(struct bt_le_scan_cb *cb);
+int bt_le_scan_cb_register_mc(uint8_t dev_id, struct bt_le_scan_cb *cb);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_le_scan_cb_register(struct bt_le_scan_cb *cb)
+{
+	return bt_le_scan_cb_register_mc(0, cb);
+}
+#endif
 
 /**
  * @brief Unregister scanner packet callbacks.
@@ -2437,7 +2502,13 @@ int bt_le_scan_cb_register(struct bt_le_scan_cb *cb);
  *
  * @param cb Callback struct. Must point to memory that remains valid.
  */
-void bt_le_scan_cb_unregister(struct bt_le_scan_cb *cb);
+void bt_le_scan_cb_unregister_mc(uint8_t dev_id, struct bt_le_scan_cb *cb);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline void bt_le_scan_cb_unregister(struct bt_le_scan_cb *cb)
+{
+	bt_le_scan_cb_unregister_mc(0, cb);
+}
+#endif
 
 /**
  * @brief Add device (LE) to filter accept list.
