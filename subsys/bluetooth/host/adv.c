@@ -1447,9 +1447,9 @@ int bt_le_adv_stop(void)
 	    !IS_ENABLED(CONFIG_BT_SCAN_WITH_IDENTITY)) {
 		/* If scan is ongoing set back NRPA */
 		if (atomic_test_bit(bt_dev.flags, BT_DEV_SCANNING)) {
-			bt_le_scan_set_enable(BT_HCI_LE_SCAN_DISABLE);
+			bt_le_scan_set_enable(&bt_dev, BT_HCI_LE_SCAN_DISABLE);
 			bt_id_set_private_addr(BT_ID_DEFAULT);
-			bt_le_scan_set_enable(BT_HCI_LE_SCAN_ENABLE);
+			bt_le_scan_set_enable(&bt_dev, BT_HCI_LE_SCAN_ENABLE);
 		}
 	}
 #endif /* defined(CONFIG_BT_OBSERVER) */

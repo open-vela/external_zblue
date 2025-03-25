@@ -212,6 +212,9 @@ enum {
 };
 
 struct bt_le_per_adv_sync {
+	/** Hci device this sync belongs to */
+	struct bt_dev *hdev;
+
 	/** Periodic Advertiser Address */
 	bt_addr_le_t addr;
 
@@ -318,6 +321,7 @@ struct bt_dev_br {
 #endif
 
 struct bt_dev_conn_ctx;
+struct bt_dev_scan_ctx;
 
 /* The theoretical max for these is 8 and 64, but there's no point
  * in allocating the full memory if we only support a small subset.
@@ -440,11 +444,12 @@ struct bt_dev {
 #endif
 
 	/* Connection context */
-  struct bt_dev_conn_ctx *conn_ctx;
+	struct bt_dev_conn_ctx *conn_ctx;
 #if defined(CONFIG_BT_SMP) || defined(CONFIG_BT_CLASSIC)
 	const struct bt_conn_auth_cb *bt_auth;
 	sys_slist_t bt_auth_info_cbs;
 #endif
+	struct bt_dev_scan_ctx *scan_ctx;
 };
 
 extern struct bt_dev bt_dev;

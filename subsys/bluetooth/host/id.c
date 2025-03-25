@@ -605,7 +605,7 @@ static void le_update_private_addr(void)
 	if (atomic_test_bit(bt_dev.flags, BT_DEV_SCANNING) &&
 	    !(IS_ENABLED(CONFIG_BT_EXT_ADV) &&
 	      atomic_test_bit(bt_dev.flags, BT_DEV_SCAN_LIMITED))) {
-		bt_le_scan_set_enable(BT_HCI_LE_SCAN_DISABLE);
+		bt_le_scan_set_enable(&bt_dev, BT_HCI_LE_SCAN_DISABLE);
 		scan_enabled = true;
 	}
 #endif
@@ -654,7 +654,7 @@ static void le_update_private_addr(void)
 
 #if defined(CONFIG_BT_OBSERVER)
 	if (scan_enabled) {
-		bt_le_scan_set_enable(BT_HCI_LE_SCAN_ENABLE);
+		bt_le_scan_set_enable(&bt_dev, BT_HCI_LE_SCAN_ENABLE);
 	}
 #endif
 }
@@ -1049,7 +1049,7 @@ void bt_id_add(struct bt_keys *keys)
 
 #if defined(CONFIG_BT_OBSERVER)
 	if (scan_enabled) {
-		bt_le_scan_set_enable(BT_HCI_LE_SCAN_DISABLE);
+		bt_le_scan_set_enable(&bt_dev, BT_HCI_LE_SCAN_DISABLE);
 	}
 #endif /* CONFIG_BT_OBSERVER */
 
@@ -1109,7 +1109,7 @@ done:
 
 #if defined(CONFIG_BT_OBSERVER)
 	if (scan_enabled) {
-		bt_le_scan_set_enable(BT_HCI_LE_SCAN_ENABLE);
+		bt_le_scan_set_enable(&bt_dev, BT_HCI_LE_SCAN_ENABLE);
 	}
 #endif /* CONFIG_BT_OBSERVER */
 
@@ -1197,7 +1197,7 @@ void bt_id_del(struct bt_keys *keys)
 
 #if defined(CONFIG_BT_OBSERVER)
 	if (scan_enabled) {
-		bt_le_scan_set_enable(BT_HCI_LE_SCAN_DISABLE);
+		bt_le_scan_set_enable(&bt_dev, BT_HCI_LE_SCAN_DISABLE);
 	}
 #endif /* CONFIG_BT_OBSERVER */
 
@@ -1237,7 +1237,7 @@ done:
 
 #if defined(CONFIG_BT_OBSERVER)
 	if (scan_enabled) {
-		bt_le_scan_set_enable(BT_HCI_LE_SCAN_ENABLE);
+		bt_le_scan_set_enable(&bt_dev, BT_HCI_LE_SCAN_ENABLE);
 	}
 #endif /* CONFIG_BT_OBSERVER */
 
@@ -1956,7 +1956,7 @@ int bt_id_set_adv_own_addr(struct bt_le_ext_adv *adv, uint32_t options,
 			    !IS_ENABLED(CONFIG_BT_SCAN_WITH_IDENTITY) &&
 			    atomic_test_bit(bt_dev.flags, BT_DEV_SCANNING)) {
 				scan_enabled = true;
-				bt_le_scan_set_enable(BT_HCI_LE_SCAN_DISABLE);
+				bt_le_scan_set_enable(&bt_dev, BT_HCI_LE_SCAN_DISABLE);
 			}
 #endif /* defined(CONFIG_BT_OBSERVER) */
 			err = bt_id_set_adv_private_addr(adv);
@@ -1964,7 +1964,7 @@ int bt_id_set_adv_own_addr(struct bt_le_ext_adv *adv, uint32_t options,
 
 #if defined(CONFIG_BT_OBSERVER)
 			if (scan_enabled) {
-				bt_le_scan_set_enable(BT_HCI_LE_SCAN_ENABLE);
+				bt_le_scan_set_enable(&bt_dev, BT_HCI_LE_SCAN_ENABLE);
 			}
 #endif /* defined(CONFIG_BT_OBSERVER) */
 		} else {

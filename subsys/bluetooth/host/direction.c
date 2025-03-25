@@ -383,7 +383,7 @@ int hci_df_prepare_connectionless_iq_report(struct bt_dev *hdev, struct net_buf 
 
 	evt = net_buf_pull_mem(buf, sizeof(*evt));
 
-	per_adv_sync = bt_hci_per_adv_sync_lookup_handle(sys_le16_to_cpu(evt->sync_handle));
+	per_adv_sync = bt_hci_per_adv_sync_lookup_by_handle(hdev, sys_le16_to_cpu(evt->sync_handle));
 
 	if (!per_adv_sync) {
 		LOG_ERR("Unknown handle 0x%04X for iq samples report",
@@ -431,7 +431,7 @@ int hci_df_vs_prepare_connectionless_iq_report(struct bt_dev *hdev, struct net_b
 
 	evt = net_buf_pull_mem(buf, sizeof(*evt));
 
-	per_adv_sync = bt_hci_per_adv_sync_lookup_handle(sys_le16_to_cpu(evt->sync_handle));
+	per_adv_sync = bt_hci_per_adv_sync_lookup_by_handle(hdev, sys_le16_to_cpu(evt->sync_handle));
 
 	if (!per_adv_sync) {
 		LOG_ERR("Unknown handle 0x%04X for iq samples report",

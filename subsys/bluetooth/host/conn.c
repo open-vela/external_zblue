@@ -1307,7 +1307,7 @@ void bt_conn_set_state(struct bt_conn *conn, bt_conn_state_t state)
 			 * timeout set by bt_conn_le_create_param.timeout.
 			 */
 			if (IS_ENABLED(CONFIG_BT_CENTRAL)) {
-				int err = bt_le_scan_user_remove(BT_LE_SCAN_USER_CONN);
+				int err = bt_le_scan_user_remove(conn->hdev, BT_LE_SCAN_USER_CONN);
 
 				if (err) {
 					LOG_WRN("Error while removing conn user from scanner (%d)",
@@ -1907,7 +1907,7 @@ int bt_conn_disconnect(struct bt_conn *conn, uint8_t reason)
 		conn->err = reason;
 		bt_conn_set_state(conn, BT_CONN_DISCONNECTED);
 		if (IS_ENABLED(CONFIG_BT_CENTRAL)) {
-			return bt_le_scan_user_add(BT_LE_SCAN_USER_CONN);
+			return bt_le_scan_user_add(conn->hdev, BT_LE_SCAN_USER_CONN);
 		}
 		return 0;
 	case BT_CONN_INITIATING:
@@ -3874,7 +3874,7 @@ static int conn_le_create_common_checks(struct bt_dev *hdev, const bt_addr_le_t 
 		return -EINVAL;
 	}
 
-	if (!BT_LE_STATES_SCAN_INIT(hdev->le.states) && bt_le_explicit_scanner_running()) {
+	if (!BT_LE_STATES_SCAN_INIT(hdev->le.states) && bt_le_explicit_scanner_running(hdev)) {
 		LOG_DBG("Conn check failed: scanner was explicitly requested.");
 		return -EAGAIN;
 	}
@@ -3966,9 +3966,9 @@ int bt_conn_le_create_mc(uint8_t dev_id, const bt_addr_le_t *peer, const struct 
 		/* Use host-based identity resolving. */
 		bt_conn_set_state(conn, BT_CONN_SCAN_BEFORE_INITIATING);
 
-		err = bt_le_scan_user_add(BT_LE_SCAN_USER_CONN);
+		err = bt_le_scan_user_add(hdev, BT_LE_SCAN_USER_CONN);
 		if (err) {
-			bt_le_scan_user_remove(BT_LE_SCAN_USER_CONN);
+			bt_le_scan_user_remove(hdev, BT_LE_SCAN_USER_CONN);
 			bt_conn_set_state(conn, BT_CONN_DISCONNECTED);
 			bt_conn_unref(conn);
 
@@ -3989,7 +3989,7 @@ int bt_conn_le_create_mc(uint8_t dev_id, const bt_addr_le_t *peer, const struct 
 		bt_conn_unref(conn);
 
 		/* Best-effort attempt to inform the scanner that the initiator stopped. */
-		int scan_check_err = bt_le_scan_user_add(BT_LE_SCAN_USER_NONE);
+		int scan_check_err = bt_le_scan_user_add(hdev, BT_LE_SCAN_USER_NONE);
 
 		if (scan_check_err) {
 			LOG_WRN("Error while updating the scanner (%d)", scan_check_err);
@@ -4122,7 +4122,7 @@ int bt_le_set_auto_conn_mc(uint8_t dev_id, const bt_addr_le_t *addr,
 	    atomic_test_bit(hdev->flags, BT_DEV_READY)) {
 		if (param) {
 			bt_conn_set_state(conn, BT_CONN_SCAN_BEFORE_INITIATING);
-			err = bt_le_scan_user_add(BT_LE_SCAN_USER_CONN);
+			err = bt_le_scan_user_add(hdev, BT_LE_SCAN_USER_CONN);
 		}
 	}
 
