@@ -50,7 +50,7 @@ int bt_reject_conn(const bt_addr_t *bdaddr, uint8_t reason)
 	bt_addr_copy(&cp->bdaddr, bdaddr);
 	cp->reason = reason;
 
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_REJECT_CONN_REQ, buf, NULL);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_REJECT_CONN_REQ, buf, NULL);
 	if (err) {
 		return err;
 	}
@@ -73,7 +73,7 @@ int bt_accept_conn(const bt_addr_t *bdaddr)
 	bt_addr_copy(&cp->bdaddr, bdaddr);
 	cp->role = BT_HCI_ROLE_PERIPHERAL;
 
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_ACCEPT_CONN_REQ, buf, NULL);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_ACCEPT_CONN_REQ, buf, NULL);
 	if (err) {
 		return err;
 	}
@@ -137,7 +137,7 @@ static bool br_sufficient_key_size(struct bt_conn *conn)
 	cp = net_buf_add(buf, sizeof(*cp));
 	cp->handle = sys_cpu_to_le16(conn->handle);
 
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_READ_ENCRYPTION_KEY_SIZE, buf, &rsp);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_READ_ENCRYPTION_KEY_SIZE, buf, &rsp);
 	if (err) {
 		LOG_ERR("Failed to read encryption key size (err %d)", err);
 		return false;
@@ -289,7 +289,7 @@ void bt_hci_conn_complete(struct bt_dev *hdev, struct net_buf *buf)
 	cp = net_buf_add(buf, sizeof(*cp));
 	cp->handle = evt->handle;
 
-	bt_hci_cmd_send_sync(BT_HCI_OP_READ_REMOTE_FEATURES, buf, NULL);
+	bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_READ_REMOTE_FEATURES, buf, NULL);
 }
 
 static int request_name(const bt_addr_t *addr, uint8_t pscan, uint16_t offset)
@@ -309,7 +309,7 @@ static int request_name(const bt_addr_t *addr, uint8_t pscan, uint16_t offset)
 	cp->reserved = 0x00; /* reserved, should be set to 0x00 */
 	cp->clock_offset = offset;
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_REMOTE_NAME_REQUEST, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_REMOTE_NAME_REQUEST, buf, NULL);
 }
 
 #define EIR_SHORT_NAME    0x08
@@ -681,7 +681,7 @@ void bt_hci_read_remote_features_complete(struct bt_dev *hdev, struct net_buf *b
 	cp->handle = evt->handle;
 	cp->page = 0x01;
 
-	bt_hci_cmd_send_sync(BT_HCI_OP_READ_REMOTE_EXT_FEATURES, buf, NULL);
+	bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_READ_REMOTE_EXT_FEATURES, buf, NULL);
 
 done:
 	bt_conn_unref(conn);
@@ -782,7 +782,7 @@ static int read_ext_features(void)
 		cp = net_buf_add(buf, sizeof(*cp));
 		cp->page = i;
 
-		err = bt_hci_cmd_send_sync(BT_HCI_OP_READ_LOCAL_EXT_FEATURES, buf, &rsp);
+		err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_READ_LOCAL_EXT_FEATURES, buf, &rsp);
 		if (err) {
 			return err;
 		}
@@ -878,7 +878,7 @@ int bt_br_init(void)
 	device_supported_pkt_type();
 
 	/* Get BR/EDR buffer size */
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_READ_BUFFER_SIZE, NULL, &buf);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_READ_BUFFER_SIZE, NULL, &buf);
 	if (err) {
 		return err;
 	}
@@ -894,7 +894,7 @@ int bt_br_init(void)
 
 	ssp_cp = net_buf_add(buf, sizeof(*ssp_cp));
 	ssp_cp->mode = 0x01;
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_WRITE_SSP_MODE, buf, NULL);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_WRITE_SSP_MODE, buf, NULL);
 	if (err) {
 		return err;
 	}
@@ -907,7 +907,7 @@ int bt_br_init(void)
 
 	inq_cp = net_buf_add(buf, sizeof(*inq_cp));
 	inq_cp->mode = 0x02;
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_WRITE_INQUIRY_MODE, buf, NULL);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_WRITE_INQUIRY_MODE, buf, NULL);
 	if (err) {
 		return err;
 	}
@@ -921,7 +921,7 @@ int bt_br_init(void)
 	name_cp = net_buf_add(buf, sizeof(*name_cp));
 	strncpy((char *)name_cp->local_name, CONFIG_BT_DEVICE_NAME, sizeof(name_cp->local_name));
 
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_WRITE_LOCAL_NAME, buf, NULL);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_WRITE_LOCAL_NAME, buf, NULL);
 	if (err) {
 		return err;
 	}
@@ -934,7 +934,7 @@ int bt_br_init(void)
 
 	net_buf_add_le24(buf, CONFIG_BT_COD);
 
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_WRITE_CLASS_OF_DEVICE, buf, NULL);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_WRITE_CLASS_OF_DEVICE, buf, NULL);
 	if (err) {
 		return err;
 	}
@@ -947,7 +947,7 @@ int bt_br_init(void)
 
 	net_buf_add_le16(buf, CONFIG_BT_PAGE_TIMEOUT);
 
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_WRITE_PAGE_TIMEOUT, buf, NULL);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_WRITE_PAGE_TIMEOUT, buf, NULL);
 	if (err) {
 		return err;
 	}
@@ -964,7 +964,7 @@ int bt_br_init(void)
 		sc_cp = net_buf_add(buf, sizeof(*sc_cp));
 		sc_cp->sc_support = 0x01;
 
-		err = bt_hci_cmd_send_sync(BT_HCI_OP_WRITE_SC_HOST_SUPP, buf, NULL);
+		err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_WRITE_SC_HOST_SUPP, buf, NULL);
 		if (err) {
 			return err;
 		}
@@ -994,7 +994,7 @@ static int br_start_inquiry(const struct bt_br_discovery_param *param)
 		cp->lap[0] = 0x00;
 	}
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_INQUIRY, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_INQUIRY, buf, NULL);
 }
 
 static bool valid_br_discov_param(const struct bt_br_discovery_param *param, size_t num_results)
@@ -1052,7 +1052,7 @@ int bt_br_discovery_stop(void)
 		return -EALREADY;
 	}
 
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_INQUIRY_CANCEL, NULL, NULL);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_INQUIRY_CANCEL, NULL, NULL);
 	if (err) {
 		return err;
 	}
@@ -1076,7 +1076,7 @@ int bt_br_discovery_stop(void)
 		cp = net_buf_add(buf, sizeof(*cp));
 		bt_addr_copy(&cp->bdaddr, &discovery_results[i].addr);
 
-		bt_hci_cmd_send_sync(BT_HCI_OP_REMOTE_NAME_CANCEL, buf, NULL);
+		bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_REMOTE_NAME_CANCEL, buf, NULL);
 	}
 
 	atomic_clear_bit(bt_dev.flags, BT_DEV_INQUIRY);
@@ -1111,7 +1111,7 @@ static int write_scan_enable(uint8_t scan)
 	}
 
 	net_buf_add_u8(buf, scan);
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_WRITE_SCAN_ENABLE, buf, NULL);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_WRITE_SCAN_ENABLE, buf, NULL);
 	if (err) {
 		return err;
 	}
@@ -1204,7 +1204,7 @@ static int write_scan_activity(uint16_t opcode, uint16_t interval, uint16_t wind
 	cp->interval = sys_cpu_to_le16(interval);
 	cp->windown = sys_cpu_to_le16(windown);
 
-	return bt_hci_cmd_send(opcode, buf);
+	return bt_hci_cmd_send(&bt_dev, opcode, buf);
 }
 
 int bt_br_write_page_scan_activity(uint16_t interval, uint16_t window)
@@ -1235,7 +1235,7 @@ static int write_scan_type(uint16_t opcode, uint8_t type)
 	cp = net_buf_add(buf, sizeof(*cp));
 	cp->type = type;
 
-	err = bt_hci_cmd_send_sync(opcode, buf, NULL);
+	err = bt_hci_cmd_send_sync(&bt_dev, opcode, buf, NULL);
 	if (err) {
 		return err;
 	}
@@ -1272,7 +1272,7 @@ int bt_br_set_class_of_device(uint32_t local_cod)
 	class_cp->class_of_device[1] = (uint8_t)(local_cod >> 8);
 	class_cp->class_of_device[2] = (uint8_t)(local_cod >> 16);
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_WRITE_CLASS_OF_DEVICE, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_WRITE_CLASS_OF_DEVICE, buf, NULL);
 }
 
 int bt_br_write_local_name(const char *name)
@@ -1294,7 +1294,7 @@ int bt_br_write_local_name(const char *name)
 	memset(name_cp, 0, sizeof(*name_cp));
 	memcpy((char *)name_cp->local_name, name, name_len);
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_WRITE_LOCAL_NAME, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_WRITE_LOCAL_NAME, buf, NULL);
 }
 
 int bt_br_read_ext_inq_response(uint8_t *status, uint8_t *fec_required, uint8_t *eir)
@@ -1307,7 +1307,7 @@ int bt_br_read_ext_inq_response(uint8_t *status, uint8_t *fec_required, uint8_t 
 		return -ENOTSUP;
 	}
 
-	err = bt_hci_cmd_send_sync(BT_HCI_OP_READ_EXTENDED_INQUIRY_RESPONSE, NULL, &rsp);
+	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_READ_EXTENDED_INQUIRY_RESPONSE, NULL, &rsp);
 	if (err) {
 		return err;
 	}
@@ -1369,7 +1369,7 @@ int bt_br_write_ext_inq_response(uint8_t fec_required)
 	p = net_buf_add(buf, eir_len);
 	memset(p, 0, eir_len);
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_WRITE_EXTENDED_INQUIRY_RESPONSE, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_WRITE_EXTENDED_INQUIRY_RESPONSE, buf, NULL);
 }
 
 int bt_br_remote_name_request(const bt_addr_t *bdaddr, bt_br_remote_name_req_cb_t cb)
@@ -1429,7 +1429,7 @@ int bt_br_delete_stored_link_key(const bt_addr_t *bdaddr, bool delete_all)
 	bt_addr_copy(&cp->bdaddr, bdaddr);
 	cp->delete_all = delete_all;
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_DELETE_STORED_LINK_KEY, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_DELETE_STORED_LINK_KEY, buf, NULL);
 }
 
 int bt_br_unpair(bt_addr_t *bdaddr)
