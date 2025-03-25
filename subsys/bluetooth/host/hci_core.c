@@ -70,9 +70,10 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(bt_hci_core);
 
-#define BT_HCI_DEV  DT_CHOSEN(zephyr_bt_hci)
-#define BT_HCI_BUS  BT_DT_HCI_BUS_GET(BT_HCI_DEV)
-#define BT_HCI_NAME BT_DT_HCI_NAME_GET(BT_HCI_DEV)
+#define BT_HCI_NODE(index)	DT_CAT(zephyr_bt_hci, index)
+#define BT_HCI_DEV(index)  DT_CHOSEN(BT_HCI_NODE(index))
+#define BT_HCI_BUS  BT_DT_HCI_BUS_GET(BT_HCI_DEV(0))
+#define BT_HCI_NAME BT_DT_HCI_NAME_GET(BT_HCI_DEV(0))
 
 void bt_tx_irq_raise(struct bt_dev *hdev);
 
@@ -101,7 +102,7 @@ struct bt_dev bt_dev = {
 	.appearance = CONFIG_BT_DEVICE_APPEARANCE,
 #endif
 #if DT_HAS_CHOSEN(zephyr_bt_hci)
-	.hci = DEVICE_DT_GET(BT_HCI_DEV),
+	.hci = DEVICE_DT_GET(BT_HCI_DEV(0)),
 #endif
 };
 #endif
