@@ -530,7 +530,8 @@ extern const struct init_entry __init_bas_init;
 extern const struct init_entry __init_bt_nus_auto_start;
 extern const struct init_entry __init_bt_gatt_ots_l2cap_init;
 extern const struct init_entry __init_bt_gatt_ots_instances_prepare;
-extern const struct init_entry __init___device_dts_ord_DT_N_INST_0_zephyr_bt_hci_ttyHCI_ORD;
+extern const struct init_entry __init___device_dts_ord_DT_N_INST_0_zephyr_bt_hci_ttyHCI0_ORD;
+extern const struct init_entry __init___device_dts_ord_DT_N_INST_1_zephyr_bt_hci_ttyHCI1_ORD;
 
 const struct init_entry *_init_entry_list[] = {
 	&__init_init_mem_slab_obj_core_list,
@@ -563,7 +564,8 @@ const struct init_entry *_init_entry_list[] = {
 	&__init_bt_monitor_init,
 #endif /* CONFIG_BT_MONITOR */
 #if defined(CONFIG_BT_H4)
-	&__init___device_dts_ord_DT_N_INST_0_zephyr_bt_hci_ttyHCI_ORD,
+	&__init___device_dts_ord_DT_N_INST_0_zephyr_bt_hci_ttyHCI0_ORD,
+	&__init___device_dts_ord_DT_N_INST_1_zephyr_bt_hci_ttyHCI1_ORD,
 #endif /* CONFIG_BT_H4 */
 	NULL,
 };
