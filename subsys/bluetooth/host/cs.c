@@ -289,7 +289,7 @@ int bt_le_cs_read_remote_supported_capabilities(struct bt_conn *conn)
 	cp = net_buf_add(buf, sizeof(*cp));
 	cp->handle = sys_cpu_to_le16(conn->handle);
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_CS_READ_REMOTE_SUPPORTED_CAPABILITIES, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_CS_READ_REMOTE_SUPPORTED_CAPABILITIES, buf, NULL);
 }
 
 void bt_hci_le_cs_read_remote_supported_capabilities_complete(struct bt_dev *hdev, struct net_buf *buf)
@@ -433,7 +433,7 @@ int bt_le_cs_set_default_settings(struct bt_conn *conn,
 		cp->role_enable |= BT_HCI_OP_LE_CS_REFLECTOR_ROLE_MASK;
 	}
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_CS_SET_DEFAULT_SETTINGS, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_CS_SET_DEFAULT_SETTINGS, buf, NULL);
 }
 
 int bt_le_cs_read_remote_fae_table(struct bt_conn *conn)
@@ -449,7 +449,7 @@ int bt_le_cs_read_remote_fae_table(struct bt_conn *conn)
 	cp = net_buf_add(buf, sizeof(*cp));
 	cp->handle = sys_cpu_to_le16(conn->handle);
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_CS_READ_REMOTE_FAE_TABLE, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_CS_READ_REMOTE_FAE_TABLE, buf, NULL);
 }
 
 void bt_hci_le_cs_read_remote_fae_table_complete(struct bt_dev *hdev, struct net_buf *buf)
@@ -588,7 +588,7 @@ int bt_le_cs_start_test(const struct bt_le_cs_test_param *params)
 
 	cp->override_parameters_length = override_parameters_length;
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_CS_TEST, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_CS_TEST, buf, NULL);
 }
 #endif /* CONFIG_BT_CHANNEL_SOUNDING_TEST */
 
@@ -876,7 +876,7 @@ int bt_le_cs_create_config(struct bt_conn *conn, struct bt_le_cs_create_config_p
 	cp->reserved = 0;
 	memcpy(cp->channel_map, params->channel_map, ARRAY_SIZE(cp->channel_map));
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_CS_CREATE_CONFIG, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_CS_CREATE_CONFIG, buf, NULL);
 }
 
 int bt_le_cs_remove_config(struct bt_conn *conn, uint8_t config_id)
@@ -893,7 +893,7 @@ int bt_le_cs_remove_config(struct bt_conn *conn, uint8_t config_id)
 	cp->handle = sys_cpu_to_le16(conn->handle);
 	cp->config_id = config_id;
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_CS_REMOVE_CONFIG, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_CS_REMOVE_CONFIG, buf, NULL);
 }
 
 int bt_le_cs_security_enable(struct bt_conn *conn)
@@ -909,7 +909,7 @@ int bt_le_cs_security_enable(struct bt_conn *conn)
 	cp = net_buf_add(buf, sizeof(*cp));
 	cp->handle = sys_cpu_to_le16(conn->handle);
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_CS_SECURITY_ENABLE, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_CS_SECURITY_ENABLE, buf, NULL);
 }
 
 int bt_le_cs_procedure_enable(struct bt_conn *conn,
@@ -928,7 +928,7 @@ int bt_le_cs_procedure_enable(struct bt_conn *conn,
 	cp->config_id = params->config_id;
 	cp->enable = params->enable;
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_CS_PROCEDURE_ENABLE, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_CS_PROCEDURE_ENABLE, buf, NULL);
 }
 
 int bt_le_cs_set_procedure_parameters(struct bt_conn *conn,
@@ -958,7 +958,7 @@ int bt_le_cs_set_procedure_parameters(struct bt_conn *conn,
 	cp->snr_control_initiator = params->snr_control_initiator;
 	cp->snr_control_reflector = params->snr_control_reflector;
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_CS_SET_PROCEDURE_PARAMETERS, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_CS_SET_PROCEDURE_PARAMETERS, buf, NULL);
 }
 
 int bt_le_cs_set_channel_classification(uint8_t channel_classification[10])
@@ -974,7 +974,7 @@ int bt_le_cs_set_channel_classification(uint8_t channel_classification[10])
 	cp = net_buf_add(buf, 10);
 	memcpy(cp, channel_classification, 10);
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_CS_SET_CHANNEL_CLASSIFICATION, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_CS_SET_CHANNEL_CLASSIFICATION, buf, NULL);
 }
 
 int bt_le_cs_read_local_supported_capabilities(struct bt_conn_le_cs_capabilities *ret)
@@ -983,7 +983,7 @@ int bt_le_cs_read_local_supported_capabilities(struct bt_conn_le_cs_capabilities
 	struct net_buf *rsp;
 
 	int err =
-		bt_hci_cmd_send_sync(BT_HCI_OP_LE_CS_READ_LOCAL_SUPPORTED_CAPABILITIES, NULL, &rsp);
+		bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_CS_READ_LOCAL_SUPPORTED_CAPABILITIES, NULL, &rsp);
 
 	if (err) {
 		return err;
@@ -1168,7 +1168,7 @@ int bt_le_cs_write_cached_remote_supported_capabilities(
 	cp->t_sw_time_supported = params->t_sw_time;
 	cp->tx_snr_capability = params->tx_snr_capability;
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_CS_WRITE_CACHED_REMOTE_SUPPORTED_CAPABILITIES, buf,
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_CS_WRITE_CACHED_REMOTE_SUPPORTED_CAPABILITIES, buf,
 				    NULL);
 }
 
@@ -1187,7 +1187,7 @@ int bt_le_cs_write_cached_remote_fae_table(struct bt_conn *conn, int8_t remote_f
 	cp->handle = sys_cpu_to_le16(conn->handle);
 	memcpy(cp->remote_fae_table, remote_fae_table, sizeof(cp->remote_fae_table));
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_CS_WRITE_CACHED_REMOTE_FAE_TABLE, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_CS_WRITE_CACHED_REMOTE_FAE_TABLE, buf, NULL);
 }
 
 void bt_hci_le_cs_security_enable_complete(struct bt_dev *hdev, struct net_buf *buf)
@@ -1278,7 +1278,7 @@ int bt_le_cs_stop_test(void)
 		return -ENOBUFS;
 	}
 
-	return bt_hci_cmd_send_sync(BT_HCI_OP_LE_CS_TEST_END, buf, NULL);
+	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_CS_TEST_END, buf, NULL);
 }
 
 void bt_hci_le_cs_test_end_complete(struct bt_dev *hdev, struct net_buf *buf)
