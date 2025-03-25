@@ -49,12 +49,13 @@ struct h4_data {
 	int fd;
 	pthread_mutex_t mutex;
 	bt_hci_recv_t recv;
+	void *hci_data;
+	struct k_thread rx_thread_data;
+	K_KERNEL_STACK_DEFINE(rx_thread_stack, 3072);
+	uint8_t frame[512];
 };
 
 #define HCI_DEBUG 0
-
-static K_KERNEL_STACK_DEFINE(rx_thread_stack, 3072);
-static struct k_thread rx_thread_data;
 
 static void h4_data_dump(const char *tag, uint8_t type, uint8_t *data, uint32_t len)
 {
@@ -226,12 +227,11 @@ static void h4_rx_thread(void *p1, void *p2, void *p3)
 	ssize_t frame_size = 0;
 
 	while (1) {
-		static uint8_t frame[1026];
 		struct net_buf *buf;
 		size_t buf_tailroom;
 		size_t buf_add_len;
 		ssize_t len;
-		const uint8_t *frame_start = frame;
+		const uint8_t *frame_start = h4->frame;
 
 #if 1
 		if (!h4_ready(h4)) {
@@ -242,7 +242,7 @@ static void h4_rx_thread(void *p1, void *p2, void *p3)
 
 		LOG_DBG("calling read()");
 
-		len = read(h4->fd, frame + frame_size, sizeof(frame) - frame_size);
+		len = read(h4->fd, h4->frame + frame_size, sizeof(h4->frame) - frame_size);
 		if (len < 0) {
 			if (errno == EINTR) {
 				continue;
@@ -273,15 +273,15 @@ static void h4_rx_thread(void *p1, void *p2, void *p3)
 			}
 
 			if (decoded_len == 0) {
-				if (frame_size == sizeof(frame)) {
+				if (frame_size == sizeof(h4->frame)) {
 					LOG_ERR("HCI Packet (%d bytes) is too big for frame (%d "
 						"bytes)",
-						decoded_len, sizeof(frame));
+						decoded_len, sizeof(h4->frame));
 					frame_size = 0; /* Drop buffer */
 					break;
 				}
-				if (frame_start != frame) {
-					memmove(frame, frame_start, frame_size);
+				if (frame_start != h4->frame) {
+					memmove(h4->frame, frame_start, frame_size);
 				}
 				/* Read more */
 				break;
@@ -313,7 +313,7 @@ static void h4_rx_thread(void *p1, void *p2, void *p3)
 			LOG_DBG("Calling bt_recv(%p)", buf);
 
 			h4_data_dump("BT RX", packet_type, buf->data, buf_add_len);
-			h4->recv(dev, buf);
+			h4->recv(dev, buf, h4->hci_data);
 		}
 	}
 }
@@ -359,21 +359,33 @@ static int h4_send(const struct device *dev, struct net_buf *buf)
 	return ret < 0 ? ret : 0;
 }
 
-static int h4_open(const struct device *dev, bt_hci_recv_t recv)
+static int h4_open(const struct device *dev, bt_hci_recv_t recv, void *hci_data)
 {
 	int ret;
 	struct h4_data *h4 = dev->data;
+	char dev_name[32];
 
-	ret = open(CONFIG_BT_UART_ON_DEV_NAME, O_RDWR | O_BINARY | O_CLOEXEC);
+	if (dev->name == NULL) {
+		LOG_ERR("No device name");
+		return -EINVAL;
+	}
+
+	ret = snprintf(dev_name, sizeof(dev_name), "/dev/%s", dev->name);
+	if (ret < 0 || ret >= sizeof(dev_name)) {
+		LOG_ERR("dev_name:%s snprintf failed, ret %d, ", dev->name, ret);
+		return -EINVAL;
+	}
+
+	ret = open(dev_name, O_RDWR | O_BINARY | O_CLOEXEC);
 	if (ret < 0) {
 		goto bail;
 	}
 
 	h4->fd = ret;
-	LOG_DBG("H4: %s opened as fd %d", CONFIG_BT_UART_ON_DEV_NAME, h4->fd);
+	LOG_DBG("H4: %s opened as fd %d", dev_name, h4->fd);
 
-	ret = (int)k_thread_create(&rx_thread_data, rx_thread_stack,
-				   K_THREAD_STACK_SIZEOF(rx_thread_stack), h4_rx_thread, (void *)dev, NULL,
+	ret = (int)k_thread_create(&h4->rx_thread_data, h4->rx_thread_stack,
+				   K_THREAD_STACK_SIZEOF(h4->rx_thread_stack), h4_rx_thread, (void *)dev, NULL,
 				   NULL, K_PRIO_COOP(CONFIG_BT_RX_PRIO), 0, K_NO_WAIT);
 
 	if (ret < 0) {
@@ -383,8 +395,10 @@ static int h4_open(const struct device *dev, bt_hci_recv_t recv)
 	}
 
 	h4->recv = recv;
+	h4->hci_data = hci_data;
 
-	k_thread_name_set(&rx_thread_data, "BT Driver");
+	snprintf(dev_name, sizeof(dev_name), "BT Driver %s", dev->name);
+	k_thread_name_set(&h4->rx_thread_data, dev_name);
 	LOG_DBG("returning");
 
 	return 0;
@@ -403,16 +417,20 @@ static const struct bt_hci_driver_api h4_drv_api = {
 
 static int h4_init(const struct device *dev)
 {
-	LOG_INF("Bluetooth H4 driver");
+	LOG_INF("Bluetooth H4 driver %s", dev->name);
+
 	return 0;
 }
+
+#define DT_HCI_INST(node, inst) DT_CAT(node, inst)
 
 #define H4_DEVICE_INIT(inst)                                                                       \
 	static struct h4_data h4_data_##inst = {                                                   \
 		.fd = -1,                                                                             \
 		.mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP,                                   \
 	};                                                                                         \
-	DEVICE_DT_INST_DEFINE(inst, h4_init, NULL, &h4_data_##inst, NULL, POST_KERNEL,             \
+	DEVICE_DT_DEFINE(DT_HCI_INST(DT_DRV_INST(inst), inst), h4_init, NULL, &h4_data_##inst, NULL, POST_KERNEL,             \
 			      CONFIG_KERNEL_INIT_PRIORITY_DEVICE, &h4_drv_api)
 
 H4_DEVICE_INIT(0);
+H4_DEVICE_INIT(1);
