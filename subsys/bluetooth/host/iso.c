@@ -104,7 +104,7 @@ static void bt_iso_sent_cb(struct bt_conn *iso, void *user_data, int err)
 #endif /* CONFIG_BT_ISO_TX */
 }
 
-void hci_iso(struct net_buf *buf)
+void hci_iso(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_iso_hdr *hdr;
 	uint16_t handle, len;
@@ -1134,7 +1134,7 @@ static void store_cis_info(const struct bt_hci_evt_le_cis_established *evt,
 	peripheral->flush_timeout = info->iso_interval * evt->p_ft;
 }
 
-void hci_le_cis_established(struct net_buf *buf)
+void hci_le_cis_established(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_le_cis_established *evt = (void *)buf->data;
 	uint16_t handle = sys_le16_to_cpu(evt->conn_handle);
@@ -1376,7 +1376,7 @@ static uint8_t iso_server_check_security(struct bt_conn *conn)
 #endif /* CONFIG_BT_SMP */
 }
 
-void hci_le_cis_req(struct net_buf *buf)
+void hci_le_cis_req(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_le_cis_req *evt = (void *)buf->data;
 	uint16_t acl_handle = sys_le16_to_cpu(evt->acl_handle);
@@ -2984,7 +2984,7 @@ static void store_bis_broadcaster_info(const struct bt_hci_evt_le_big_complete *
 	info->can_recv = false;
 }
 
-void hci_le_big_complete(struct net_buf *buf)
+void hci_le_big_complete(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_le_big_complete *evt = (void *)buf->data;
 	struct bt_iso_chan *bis;
@@ -3030,7 +3030,7 @@ void hci_le_big_complete(struct net_buf *buf)
 	}
 }
 
-void hci_le_big_terminate(struct net_buf *buf)
+void hci_le_big_terminate(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_le_big_terminate *evt = (void *)buf->data;
 	struct bt_iso_big *big;
@@ -3165,7 +3165,7 @@ static void store_bis_sync_receiver_info(const struct bt_hci_evt_le_big_sync_est
 	info->can_recv = true;
 }
 
-void hci_le_big_sync_established(struct net_buf *buf)
+void hci_le_big_sync_established(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_le_big_sync_established *evt = (void *)buf->data;
 	struct bt_iso_chan *bis;
@@ -3210,7 +3210,7 @@ void hci_le_big_sync_established(struct net_buf *buf)
 	}
 }
 
-void hci_le_big_sync_lost(struct net_buf *buf)
+void hci_le_big_sync_lost(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_le_big_sync_lost *evt = (void *)buf->data;
 	struct bt_iso_big *big;

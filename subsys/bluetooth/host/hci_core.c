@@ -170,7 +170,7 @@ NET_BUF_POOL_FIXED_DEFINE(hci_cmd_pool, CONFIG_BT_BUF_CMD_TX_COUNT,
 struct event_handler {
 	uint8_t event;
 	uint8_t min_len;
-	void (*handler)(struct net_buf *buf);
+	void (*handler)(struct bt_dev *hdev, struct net_buf *buf);
 };
 
 #define EVENT_HANDLER(_evt, _handler, _min_len) \
@@ -180,7 +180,7 @@ struct event_handler {
 	.min_len = _min_len, \
 }
 
-static int handle_event_common(uint8_t event, struct net_buf *buf,
+static int handle_event_common(struct bt_dev *hdev, uint8_t event, struct net_buf *buf,
 			       const struct event_handler *handlers, size_t num_handlers)
 {
 	size_t i;
@@ -197,19 +197,19 @@ static int handle_event_common(uint8_t event, struct net_buf *buf,
 			return -EINVAL;
 		}
 
-		handler->handler(buf);
+		handler->handler(hdev, buf);
 		return 0;
 	}
 
 	return -EOPNOTSUPP;
 }
 
-static void handle_event(uint8_t event, struct net_buf *buf, const struct event_handler *handlers,
-			 size_t num_handlers)
+static void handle_event(struct bt_dev *hdev, uint8_t event, struct net_buf *buf,
+			 const struct event_handler *handlers, size_t num_handlers)
 {
 	int err;
 
-	err = handle_event_common(event, buf, handlers, num_handlers);
+	err = handle_event_common(hdev, event, buf, handlers, num_handlers);
 	if (err == -EOPNOTSUPP) {
 		LOG_WRN("Unhandled event 0x%02x len %u: %s", event, buf->len,
 			bt_hex(buf->data, buf->len));
@@ -218,12 +218,12 @@ static void handle_event(uint8_t event, struct net_buf *buf, const struct event_
 	/* Other possible errors are handled by handle_event_common function */
 }
 
-static void handle_vs_event(uint8_t event, struct net_buf *buf,
+static void handle_vs_event(struct bt_dev *hdev, uint8_t event, struct net_buf *buf,
 			    const struct event_handler *handlers, size_t num_handlers)
 {
 	int err;
 
-	err = handle_event_common(event, buf, handlers, num_handlers);
+	err = handle_event_common(hdev, event, buf, handlers, num_handlers);
 	if (err == -EOPNOTSUPP) {
 		LOG_WRN("Unhandled vendor-specific event 0x%02x len %u: %s", event, buf->len,
 			bt_hex(buf->data, buf->len));
@@ -267,13 +267,13 @@ void bt_send_one_host_num_completed_packets(uint16_t handle)
 }
 
 #if defined(CONFIG_BT_TESTING)
-__weak void bt_testing_trace_event_acl_pool_destroy(struct net_buf *buf)
+__weak void bt_testing_trace_event_acl_pool_destroy(struct bt_dev *hdev, struct net_buf *buf)
 {
 }
 #endif
 
 #if defined(CONFIG_BT_HCI_ACL_FLOW_CONTROL)
-void bt_hci_host_num_completed_packets(struct net_buf *buf)
+void bt_hci_host_num_completed_packets(struct bt_dev *hdev, struct net_buf *buf)
 {
 	uint16_t handle = acl(buf)->handle;
 	struct bt_conn *conn;
@@ -565,7 +565,7 @@ int bt_get_df_cte_type(uint8_t hci_cte_type)
 }
 
 #if defined(CONFIG_BT_CONN_TX)
-static void hci_num_completed_packets(struct net_buf *buf)
+static void hci_num_completed_packets(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_num_completed_packets *evt = (void *)buf->data;
 	int i;
@@ -627,7 +627,7 @@ static void hci_num_completed_packets(struct net_buf *buf)
 #endif /* CONFIG_BT_CONN_TX */
 
 #if defined(CONFIG_BT_CONN)
-static void hci_acl(struct net_buf *buf)
+static void hci_acl(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_acl_hdr *hdr;
 	uint16_t handle, len;
@@ -670,7 +670,7 @@ static void hci_acl(struct net_buf *buf)
 	bt_conn_unref(conn);
 }
 
-static void hci_data_buf_overflow(struct net_buf *buf)
+static void hci_data_buf_overflow(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_data_buf_overflow *evt = (void *)buf->data;
 
@@ -953,7 +953,7 @@ static uint8_t conn_handle_is_disconnected(uint16_t handle)
 	return 0;
 }
 
-static void hci_disconn_complete_prio(struct net_buf *buf)
+static void hci_disconn_complete_prio(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_disconn_complete *evt = (void *)buf->data;
 	uint16_t handle = sys_le16_to_cpu(evt->handle);
@@ -981,7 +981,7 @@ static void hci_disconn_complete_prio(struct net_buf *buf)
 	bt_conn_unref(conn);
 }
 
-static void hci_disconn_complete(struct net_buf *buf)
+static void hci_disconn_complete(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_disconn_complete *evt = (void *)buf->data;
 	uint16_t handle = sys_le16_to_cpu(evt->handle);
@@ -1300,7 +1300,7 @@ static void le_conn_complete_adv_timeout(void)
 	}
 }
 
-static void enh_conn_complete(struct bt_hci_evt_le_enh_conn_complete *evt)
+static void enh_conn_complete(struct bt_dev *hdev, struct bt_hci_evt_le_enh_conn_complete *evt)
 {
 #if defined(CONFIG_BT_CONN) && (CONFIG_BT_EXT_ADV_MAX_ADV_SET > 1)
 	if (IS_ENABLED(CONFIG_BT_PERIPHERAL) &&
@@ -1328,7 +1328,7 @@ static void enh_conn_complete(struct bt_hci_evt_le_enh_conn_complete *evt)
 		return;
 	}
 #endif
-	bt_hci_le_enh_conn_complete(evt);
+	bt_hci_le_enh_conn_complete(hdev, evt);
 }
 
 static void translate_addrs(bt_addr_le_t *peer_addr, bt_addr_le_t *id_addr,
@@ -1368,7 +1368,7 @@ static void update_conn(struct bt_conn *conn, const bt_addr_le_t *id_addr,
 #endif
 }
 
-void bt_hci_le_enh_conn_complete(struct bt_hci_evt_le_enh_conn_complete *evt)
+void bt_hci_le_enh_conn_complete(struct bt_dev *hdev, struct bt_hci_evt_le_enh_conn_complete *evt)
 {
 	__ASSERT_NO_MSG(evt->status == BT_HCI_ERR_SUCCESS);
 
@@ -1387,7 +1387,7 @@ void bt_hci_le_enh_conn_complete(struct bt_hci_evt_le_enh_conn_complete *evt)
 	bt_id_pending_keys_update();
 #endif
 
-	id = evt->role == BT_HCI_ROLE_PERIPHERAL ? bt_dev.adv_conn_id : BT_ID_DEFAULT;
+	id = evt->role == BT_HCI_ROLE_PERIPHERAL ? hdev->adv_conn_id : BT_ID_DEFAULT;
 	translate_addrs(&peer_addr, &id_addr, evt, id);
 
 	conn = find_pending_connect(evt->role, &id_addr);
@@ -1395,7 +1395,7 @@ void bt_hci_le_enh_conn_complete(struct bt_hci_evt_le_enh_conn_complete *evt)
 	if (IS_ENABLED(CONFIG_BT_PERIPHERAL) &&
 	    evt->role == BT_HCI_ROLE_PERIPHERAL &&
 	    !(IS_ENABLED(CONFIG_BT_EXT_ADV) &&
-	      BT_DEV_FEAT_LE_EXT_ADV(bt_dev.le.features))) {
+	      BT_DEV_FEAT_LE_EXT_ADV(hdev->le.features))) {
 		struct bt_le_ext_adv *adv = bt_le_adv_lookup_legacy();
 		/* Clear advertising even if we are not able to add connection
 		 * object to keep host in sync with controller state.
@@ -1409,7 +1409,7 @@ void bt_hci_le_enh_conn_complete(struct bt_hci_evt_le_enh_conn_complete *evt)
 		/* Clear initiating even if we are not able to add connection
 		 * object to keep the host in sync with controller state.
 		 */
-		atomic_clear_bit(bt_dev.flags, BT_DEV_INITIATING);
+		atomic_clear_bit(hdev->flags, BT_DEV_INITIATING);
 	}
 
 	if (!conn) {
@@ -1434,7 +1434,7 @@ void bt_hci_le_enh_conn_complete(struct bt_hci_evt_le_enh_conn_complete *evt)
 		bt_addr_le_copy(&conn->le.init_addr, &peer_addr);
 
 		if (!(IS_ENABLED(CONFIG_BT_EXT_ADV) &&
-		      BT_DEV_FEAT_LE_EXT_ADV(bt_dev.le.features))) {
+		      BT_DEV_FEAT_LE_EXT_ADV(hdev->le.features))) {
 			struct bt_le_ext_adv *adv = bt_le_adv_lookup_legacy();
 
 			if (IS_ENABLED(CONFIG_BT_PRIVACY) &&
@@ -1445,11 +1445,11 @@ void bt_hci_le_enh_conn_complete(struct bt_hci_evt_le_enh_conn_complete *evt)
 						     &evt->local_rpa);
 				} else {
 					bt_addr_copy(&conn->le.resp_addr.a,
-						     &bt_dev.random_addr.a);
+						     &hdev->random_addr.a);
 				}
 			} else {
 				bt_addr_le_copy(&conn->le.resp_addr,
-						&bt_dev.id_addr[conn->id]);
+						&hdev->id_addr[conn->id]);
 			}
 		} else {
 			/* Copy the local RPA and handle this in advertising set
@@ -1463,12 +1463,12 @@ void bt_hci_le_enh_conn_complete(struct bt_hci_evt_le_enh_conn_complete *evt)
 		 * check for connectable advertising state is sufficient as
 		 * this is how this le connection complete for peripheral occurred.
 		 */
-		if (BT_LE_STATES_PER_CONN_ADV(bt_dev.le.states)) {
+		if (BT_LE_STATES_PER_CONN_ADV(hdev->le.states)) {
 			bt_le_adv_resume();
 		}
 
 		if (IS_ENABLED(CONFIG_BT_EXT_ADV) &&
-		    !BT_DEV_FEAT_LE_EXT_ADV(bt_dev.le.features)) {
+		    !BT_DEV_FEAT_LE_EXT_ADV(hdev->le.features)) {
 			struct bt_le_ext_adv *adv = bt_le_adv_lookup_legacy();
 			/* No advertising set terminated event, must be a
 			 * legacy advertiser set.
@@ -1490,17 +1490,17 @@ void bt_hci_le_enh_conn_complete(struct bt_hci_evt_le_enh_conn_complete *evt)
 					     &evt->local_rpa);
 			} else {
 				bt_addr_copy(&conn->le.init_addr.a,
-					     &bt_dev.random_addr.a);
+					     &hdev->random_addr.a);
 			}
 		} else {
 			bt_addr_le_copy(&conn->le.init_addr,
-					&bt_dev.id_addr[conn->id]);
+					&hdev->id_addr[conn->id]);
 		}
 	}
 
 #if defined(CONFIG_BT_USER_PHY_UPDATE)
 	if (IS_ENABLED(CONFIG_BT_EXT_ADV) &&
-	    BT_DEV_FEAT_LE_EXT_ADV(bt_dev.le.features)) {
+	    BT_DEV_FEAT_LE_EXT_ADV(hdev->le.features)) {
 		int err;
 
 		err = hci_le_read_phy(conn);
@@ -1536,7 +1536,7 @@ void bt_hci_le_enh_conn_complete(struct bt_hci_evt_le_enh_conn_complete *evt)
 }
 
 #if defined(CONFIG_BT_PER_ADV_SYNC_RSP)
-void bt_hci_le_enh_conn_complete_sync(struct bt_hci_evt_le_enh_conn_complete_v2 *evt,
+void bt_hci_le_enh_conn_complete_sync(struct bt_dev *hdev, struct bt_hci_evt_le_enh_conn_complete_v2 *evt,
 				      struct bt_le_per_adv_sync *sync)
 {
 	__ASSERT_NO_MSG(evt->status == BT_HCI_ERR_SUCCESS);
@@ -1594,7 +1594,7 @@ void bt_hci_le_enh_conn_complete_sync(struct bt_hci_evt_le_enh_conn_complete_v2 
 		conn->le.resp_addr.type = BT_ADDR_LE_RANDOM;
 		bt_addr_copy(&conn->le.resp_addr.a, &evt->local_rpa);
 	} else {
-		bt_addr_le_copy(&conn->le.resp_addr, &bt_dev.id_addr[conn->id]);
+		bt_addr_le_copy(&conn->le.resp_addr, &hdev->id_addr[conn->id]);
 	}
 
 	bt_conn_set_state(conn, BT_CONN_CONNECTED);
@@ -1646,7 +1646,7 @@ static void enh_conn_complete_error_handle(uint8_t status)
 	LOG_WRN("Unexpected status 0x%02x %s", status, bt_hci_err_to_str(status));
 }
 
-static void le_enh_conn_complete(struct net_buf *buf)
+static void le_enh_conn_complete(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_le_enh_conn_complete *evt =
 		(struct bt_hci_evt_le_enh_conn_complete *)buf->data;
@@ -1656,11 +1656,11 @@ static void le_enh_conn_complete(struct net_buf *buf)
 		return;
 	}
 
-	enh_conn_complete(evt);
+	enh_conn_complete(hdev, evt);
 }
 
 #if defined(CONFIG_BT_PER_ADV_RSP) || defined(CONFIG_BT_PER_ADV_SYNC_RSP)
-static void le_enh_conn_complete_v2(struct net_buf *buf)
+static void le_enh_conn_complete_v2(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_le_enh_conn_complete_v2 *evt =
 		(struct bt_hci_evt_le_enh_conn_complete_v2 *)buf->data;
@@ -1673,13 +1673,13 @@ static void le_enh_conn_complete_v2(struct net_buf *buf)
 	if (evt->adv_handle == BT_HCI_ADV_HANDLE_INVALID &&
 	    evt->sync_handle == BT_HCI_SYNC_HANDLE_INVALID) {
 		/* The connection was not created via PAwR, handle the event like v1 */
-		enh_conn_complete((struct bt_hci_evt_le_enh_conn_complete *)evt);
+		enh_conn_complete(hdev, (struct bt_hci_evt_le_enh_conn_complete *)evt);
 	}
 #if defined(CONFIG_BT_PER_ADV_RSP)
 	else if (evt->adv_handle != BT_HCI_ADV_HANDLE_INVALID &&
 		 evt->sync_handle == BT_HCI_SYNC_HANDLE_INVALID) {
 		/* The connection was created via PAwR advertiser, it can be handled like v1 */
-		enh_conn_complete((struct bt_hci_evt_le_enh_conn_complete *)evt);
+		enh_conn_complete(hdev, (struct bt_hci_evt_le_enh_conn_complete *)evt);
 	}
 #endif /* CONFIG_BT_PER_ADV_RSP */
 #if defined(CONFIG_BT_PER_ADV_SYNC_RSP)
@@ -1695,7 +1695,7 @@ static void le_enh_conn_complete_v2(struct net_buf *buf)
 			return;
 		}
 
-		bt_hci_le_enh_conn_complete_sync(evt, sync);
+		bt_hci_le_enh_conn_complete_sync(hdev, evt, sync);
 	}
 #endif /* CONFIG_BT_PER_ADV_SYNC_RSP */
 	else {
@@ -1704,7 +1704,7 @@ static void le_enh_conn_complete_v2(struct net_buf *buf)
 }
 #endif /* CONFIG_BT_PER_ADV_RSP || CONFIG_BT_PER_ADV_SYNC_RSP */
 
-static void le_legacy_conn_complete(struct net_buf *buf)
+static void le_legacy_conn_complete(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_le_conn_complete *evt = (void *)buf->data;
 	struct bt_hci_evt_le_enh_conn_complete enh;
@@ -1736,10 +1736,10 @@ static void le_legacy_conn_complete(struct net_buf *buf)
 
 	bt_addr_copy(&enh.peer_rpa, BT_ADDR_ANY);
 
-	enh_conn_complete(&enh);
+	enh_conn_complete(hdev, &enh);
 }
 
-static void le_remote_feat_complete(struct net_buf *buf)
+static void le_remote_feat_complete(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_le_remote_feat_complete *evt = (void *)buf->data;
 	uint16_t handle = sys_le16_to_cpu(evt->handle);
@@ -1767,7 +1767,7 @@ static void le_remote_feat_complete(struct net_buf *buf)
 }
 
 #if defined(CONFIG_BT_DATA_LEN_UPDATE)
-static void le_data_len_change(struct net_buf *buf)
+static void le_data_len_change(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_le_data_len_change *evt = (void *)buf->data;
 	uint16_t handle = sys_le16_to_cpu(evt->handle);
@@ -1813,7 +1813,7 @@ static void le_data_len_change(struct net_buf *buf)
 #endif /* CONFIG_BT_DATA_LEN_UPDATE */
 
 #if defined(CONFIG_BT_PHY_UPDATE)
-static void le_phy_update_complete(struct net_buf *buf)
+static void le_phy_update_complete(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_le_phy_update_complete *evt = (void *)buf->data;
 	uint16_t handle = sys_le16_to_cpu(evt->handle);
@@ -1907,7 +1907,7 @@ static int le_conn_param_req_reply(uint16_t handle,
 	return bt_hci_cmd_send(BT_HCI_OP_LE_CONN_PARAM_REQ_REPLY, buf);
 }
 
-static void le_conn_param_req(struct net_buf *buf)
+static void le_conn_param_req(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_le_conn_param_req *evt = (void *)buf->data;
 	struct bt_le_conn_param param;
@@ -1936,7 +1936,7 @@ static void le_conn_param_req(struct net_buf *buf)
 	bt_conn_unref(conn);
 }
 
-static void le_conn_update_complete(struct net_buf *buf)
+static void le_conn_update_complete(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_le_conn_update_complete *evt = (void *)buf->data;
 	struct bt_conn *conn;
@@ -2175,7 +2175,7 @@ static bool update_sec_level(struct bt_conn *conn)
 #endif /* CONFIG_BT_SMP */
 
 #if defined(CONFIG_BT_SMP) || defined(CONFIG_BT_CLASSIC)
-static void hci_encrypt_change(struct net_buf *buf)
+static void hci_encrypt_change(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_encrypt_change *evt = (void *)buf->data;
 	uint16_t handle = sys_le16_to_cpu(evt->handle);
@@ -2257,7 +2257,7 @@ static void hci_encrypt_change(struct net_buf *buf)
 	bt_conn_unref(conn);
 }
 
-static void hci_encrypt_key_refresh_complete(struct net_buf *buf)
+static void hci_encrypt_key_refresh_complete(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_encrypt_key_refresh_complete *evt = (void *)buf->data;
 	uint8_t status = evt->status;
@@ -2317,7 +2317,7 @@ static void hci_encrypt_key_refresh_complete(struct net_buf *buf)
 #endif /* CONFIG_BT_SMP || CONFIG_BT_CLASSIC */
 
 #if defined(CONFIG_BT_REMOTE_VERSION)
-static void bt_hci_evt_read_remote_version_complete(struct net_buf *buf)
+static void bt_hci_evt_read_remote_version_complete(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_remote_version_info *evt;
 	struct bt_conn *conn;
@@ -2348,7 +2348,7 @@ static void bt_hci_evt_read_remote_version_complete(struct net_buf *buf)
 }
 #endif /* CONFIG_BT_REMOTE_VERSION */
 
-static void hci_hardware_error(struct net_buf *buf)
+static void hci_hardware_error(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_hardware_error *evt;
 
@@ -2395,7 +2395,7 @@ static void le_ltk_reply(uint16_t handle, uint8_t *ltk)
 	bt_hci_cmd_send(BT_HCI_OP_LE_LTK_REQ_REPLY, buf);
 }
 
-static void le_ltk_request(struct net_buf *buf)
+static void le_ltk_request(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_le_ltk_request *evt = (void *)buf->data;
 	struct bt_conn *conn;
@@ -2505,7 +2505,7 @@ exit:
 	}
 }
 
-static void hci_cmd_complete(struct net_buf *buf)
+static void hci_cmd_complete(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_cmd_complete *evt;
 	uint8_t status, ncmd;
@@ -2540,7 +2540,7 @@ static void hci_cmd_complete(struct net_buf *buf)
 	}
 }
 
-static void hci_cmd_status(struct net_buf *buf)
+static void hci_cmd_status(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_cmd_status *evt;
 	uint16_t opcode;
@@ -2605,7 +2605,7 @@ int bt_hci_register_vnd_evt_cb(bt_hci_vnd_evt_cb_t cb)
 #endif /* CONFIG_BT_HCI_VS_EVT_USER */
 
 #if defined(CONFIG_BT_TRANSMIT_POWER_CONTROL)
-void bt_hci_le_transmit_power_report(struct net_buf *buf)
+void bt_hci_le_transmit_power_report(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_le_transmit_power_report *evt;
 	struct bt_conn_le_tx_power_report report;
@@ -2632,7 +2632,7 @@ void bt_hci_le_transmit_power_report(struct net_buf *buf)
 #endif /* CONFIG_BT_TRANSMIT_POWER_CONTROL */
 
 #if defined(CONFIG_BT_PATH_LOSS_MONITORING)
-void bt_hci_le_path_loss_threshold_event(struct net_buf *buf)
+void bt_hci_le_path_loss_threshold_event(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_le_path_loss_threshold *evt;
 	struct bt_conn_le_path_loss_threshold_report report;
@@ -2668,7 +2668,7 @@ void bt_hci_le_path_loss_threshold_event(struct net_buf *buf)
 #endif /* CONFIG_BT_PATH_LOSS_MONITORING */
 
 #if defined(CONFIG_BT_SUBRATING)
-void bt_hci_le_subrate_change_event(struct net_buf *buf)
+void bt_hci_le_subrate_change_event(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_le_subrate_change *evt;
 	struct bt_conn_le_subrate_changed params;
@@ -2735,7 +2735,7 @@ static const struct event_handler vs_events[] = {
 #endif /* CONFIG_BT_DF_VS_CONN_IQ_REPORT_16_BITS_IQ_SAMPLES */
 };
 
-static void hci_vendor_event(struct net_buf *buf)
+static void hci_vendor_event(struct bt_dev *hdev, struct net_buf *buf)
 {
 	bool handled = false;
 
@@ -2758,7 +2758,7 @@ static void hci_vendor_event(struct net_buf *buf)
 
 		LOG_DBG("subevent 0x%02x", evt->subevent);
 
-		handle_vs_event(evt->subevent, buf, vs_events, ARRAY_SIZE(vs_events));
+		handle_vs_event(hdev, evt->subevent, buf, vs_events, ARRAY_SIZE(vs_events));
 	}
 }
 
@@ -2934,7 +2934,7 @@ static const struct event_handler meta_events[] = {
 
 };
 
-static void hci_le_meta_event(struct net_buf *buf)
+static void hci_le_meta_event(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_le_meta_event *evt;
 
@@ -2942,7 +2942,7 @@ static void hci_le_meta_event(struct net_buf *buf)
 
 	LOG_DBG("subevent 0x%02x", evt->subevent);
 
-	handle_event(evt->subevent, buf, meta_events, ARRAY_SIZE(meta_events));
+	handle_event(hdev, evt->subevent, buf, meta_events, ARRAY_SIZE(meta_events));
 }
 
 static const struct event_handler normal_events[] = {
@@ -3056,7 +3056,7 @@ static inline uint8_t bt_hci_evt_get_flags(uint8_t evt)
 	}
 }
 
-static void hci_event(struct net_buf *buf)
+static void hci_event(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_hdr *hdr;
 
@@ -3070,7 +3070,7 @@ static void hci_event(struct net_buf *buf)
 	LOG_DBG("event 0x%02x", hdr->evt);
 	BT_ASSERT(bt_hci_evt_get_flags(hdr->evt) & BT_HCI_EVT_FLAG_RECV);
 
-	handle_event(hdr->evt, buf, normal_events, ARRAY_SIZE(normal_events));
+	handle_event(hdev, hdr->evt, buf, normal_events, ARRAY_SIZE(normal_events));
 
 	net_buf_unref(buf);
 }
@@ -4136,7 +4136,7 @@ static const struct event_handler prio_events[] = {
 #endif /* CONFIG_BT_CONN_TX */
 };
 
-void hci_event_prio(struct net_buf *buf)
+void hci_event_prio(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct net_buf_simple_state state;
 	struct bt_hci_evt_hdr *hdr;
@@ -4154,7 +4154,7 @@ void hci_event_prio(struct net_buf *buf)
 	evt_flags = bt_hci_evt_get_flags(hdr->evt);
 	BT_ASSERT(evt_flags & BT_HCI_EVT_FLAG_RECV_PRIO);
 
-	handle_event(hdr->evt, buf, prio_events, ARRAY_SIZE(prio_events));
+	handle_event(hdev, hdr->evt, buf, prio_events, ARRAY_SIZE(prio_events));
 
 	if (evt_flags & BT_HCI_EVT_FLAG_RECV) {
 		net_buf_simple_restore(&buf->b, &state);
@@ -4163,7 +4163,7 @@ void hci_event_prio(struct net_buf *buf)
 	}
 }
 
-static void rx_queue_put(struct net_buf *buf)
+static void rx_queue_put(struct bt_dev *hdev, struct net_buf *buf)
 {
 	net_buf_slist_put(&bt_dev.rx_queue, buf);
 
@@ -4177,7 +4177,7 @@ static void rx_queue_put(struct net_buf *buf)
 	}
 }
 
-static int bt_recv_unsafe(struct net_buf *buf)
+static int bt_recv_unsafe(struct bt_dev *hdev, struct net_buf *buf)
 {
 	bt_monitor_send(bt_monitor_opcode(buf), buf->data, buf->len);
 
@@ -4186,7 +4186,7 @@ static int bt_recv_unsafe(struct net_buf *buf)
 	switch (bt_buf_get_type(buf)) {
 #if defined(CONFIG_BT_CONN)
 	case BT_BUF_ACL_IN:
-		rx_queue_put(buf);
+		rx_queue_put(hdev, buf);
 		return 0;
 #endif /* BT_CONN */
 	case BT_BUF_EVT:
@@ -4195,18 +4195,18 @@ static int bt_recv_unsafe(struct net_buf *buf)
 		uint8_t evt_flags = bt_hci_evt_get_flags(hdr->evt);
 
 		if (evt_flags & BT_HCI_EVT_FLAG_RECV_PRIO) {
-			hci_event_prio(buf);
+			hci_event_prio(hdev, buf);
 		}
 
 		if (evt_flags & BT_HCI_EVT_FLAG_RECV) {
-			rx_queue_put(buf);
+			rx_queue_put(hdev, buf);
 		}
 
 		return 0;
 	}
 #if defined(CONFIG_BT_ISO)
 	case BT_BUF_ISO_IN:
-		rx_queue_put(buf);
+		rx_queue_put(hdev, buf);
 		return 0;
 #endif /* CONFIG_BT_ISO */
 	default:
@@ -4225,9 +4225,10 @@ int bt_recv(struct net_buf *buf)
 {
 #endif
 	int err;
+	struct bt_dev *hdev = hci_data;
 
 	k_sched_lock();
-	err = bt_recv_unsafe(buf);
+	err = bt_recv_unsafe(hdev, buf);
 	k_sched_unlock();
 
 	return err;
@@ -4316,7 +4317,7 @@ static void init_work(struct k_work *work)
 static void rx_work_handler(struct k_work *work)
 {
 	int err;
-
+	struct bt_dev *hdev = &bt_dev;
 	struct net_buf *buf;
 
 	LOG_DBG("Getting net_buf from queue");
@@ -4330,16 +4331,16 @@ static void rx_work_handler(struct k_work *work)
 	switch (bt_buf_get_type(buf)) {
 #if defined(CONFIG_BT_CONN)
 	case BT_BUF_ACL_IN:
-		hci_acl(buf);
+		hci_acl(hdev, buf);
 		break;
 #endif /* CONFIG_BT_CONN */
 #if defined(CONFIG_BT_ISO)
 	case BT_BUF_ISO_IN:
-		hci_iso(buf);
+		hci_iso(hdev, buf);
 		break;
 #endif /* CONFIG_BT_ISO */
 	case BT_BUF_EVT:
-		hci_event(buf);
+		hci_event(hdev, buf);
 		break;
 	default:
 		LOG_ERR("Unknown buf type %u", bt_buf_get_type(buf));

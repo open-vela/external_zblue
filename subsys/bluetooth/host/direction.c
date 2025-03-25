@@ -369,7 +369,7 @@ static int hci_df_set_cl_cte_rx_enable(struct bt_le_per_adv_sync *sync, bool ena
 	return err;
 }
 
-int hci_df_prepare_connectionless_iq_report(struct net_buf *buf,
+int hci_df_prepare_connectionless_iq_report(struct bt_dev *hdev, struct net_buf *buf,
 					    struct bt_df_per_adv_sync_iq_samples_report *report,
 					    struct bt_le_per_adv_sync **per_adv_sync_to_report)
 {
@@ -417,7 +417,7 @@ int hci_df_prepare_connectionless_iq_report(struct net_buf *buf,
 	return 0;
 }
 
-int hci_df_vs_prepare_connectionless_iq_report(struct net_buf *buf,
+int hci_df_vs_prepare_connectionless_iq_report(struct bt_dev *hdev, struct net_buf *buf,
 					       struct bt_df_per_adv_sync_iq_samples_report *report,
 					       struct bt_le_per_adv_sync **per_adv_sync_to_report)
 {
@@ -666,7 +666,7 @@ static int hci_df_set_conn_cte_rx_enable(struct bt_conn *conn, bool enable,
 	return err;
 }
 
-int hci_df_prepare_connection_iq_report(struct net_buf *buf,
+int hci_df_prepare_connection_iq_report(struct bt_dev *hdev, struct net_buf *buf,
 					 struct bt_df_conn_iq_samples_report *report,
 					 struct bt_conn **conn_to_report)
 {
@@ -718,7 +718,7 @@ int hci_df_prepare_connection_iq_report(struct net_buf *buf,
 	return 0;
 }
 
-int hci_df_vs_prepare_connection_iq_report(struct net_buf *buf,
+int hci_df_vs_prepare_connection_iq_report(struct bt_dev *hdev, struct net_buf *buf,
 					   struct bt_df_conn_iq_samples_report *report,
 					   struct bt_conn **conn_to_report)
 {
@@ -843,7 +843,7 @@ static int hci_df_set_conn_cte_req_enable(struct bt_conn *conn, bool enable,
 	return err;
 }
 
-int hci_df_prepare_conn_cte_req_failed(struct net_buf *buf,
+int hci_df_prepare_conn_cte_req_failed(struct bt_dev *hdev, struct net_buf *buf,
 				       struct bt_df_conn_iq_samples_report *report,
 				       struct bt_conn **conn_to_report)
 {
