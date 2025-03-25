@@ -1037,7 +1037,7 @@ static void hci_disconn_complete(struct bt_dev *hdev, struct net_buf *buf)
 	if (atomic_test_bit(conn->flags, BT_CONN_AUTO_CONNECT)) {
 		bt_conn_set_state(conn, BT_CONN_SCAN_BEFORE_INITIATING);
 		/* Just a best-effort check if the scanner should be started. */
-		int err = bt_le_scan_user_remove(BT_LE_SCAN_USER_NONE);
+		int err = bt_le_scan_user_remove(&bt_dev, BT_LE_SCAN_USER_NONE);
 
 		if (err) {
 			LOG_WRN("Error while updating the scanner (%d)", err);
@@ -1538,7 +1538,7 @@ void bt_hci_le_enh_conn_complete(struct bt_dev *hdev, struct bt_hci_evt_le_enh_c
 		int err;
 
 		/* Just a best-effort check if the scanner should be started. */
-		err = bt_le_scan_user_remove(BT_LE_SCAN_USER_NONE);
+		err = bt_le_scan_user_remove(&bt_dev, BT_LE_SCAN_USER_NONE);
 		if (err) {
 			LOG_WRN("Error while updating the scanner (%d)", err);
 		}
@@ -1636,7 +1636,7 @@ static void enh_conn_complete_error_handle(uint8_t status)
 
 	if (IS_ENABLED(CONFIG_BT_CENTRAL) && status == BT_HCI_ERR_UNKNOWN_CONN_ID) {
 		le_conn_complete_cancel(status);
-		int err = bt_le_scan_user_remove(BT_LE_SCAN_USER_NONE);
+		int err = bt_le_scan_user_remove(&bt_dev, BT_LE_SCAN_USER_NONE);
 
 		if (err) {
 			LOG_WRN("Error while updating the scanner (%d)", err);
@@ -2444,7 +2444,7 @@ static void hci_reset_complete(struct net_buf *buf)
 	}
 
 	if (IS_ENABLED(CONFIG_BT_OBSERVER)) {
-		bt_scan_reset();
+		bt_scan_reset(&bt_dev);
 	}
 
 #if defined(CONFIG_BT_CLASSIC)
@@ -4272,7 +4272,7 @@ void bt_finalize_init(void)
 	atomic_set_bit(bt_dev.flags, BT_DEV_READY);
 
 	if (IS_ENABLED(CONFIG_BT_OBSERVER)) {
-		bt_scan_reset();
+		bt_scan_reset(&bt_dev);
 	}
 
 	bt_dev_show_info();
@@ -4503,7 +4503,7 @@ int bt_disable(void)
 #endif /* CONFIG_BT_PRIVACY */
 
 #if defined(CONFIG_BT_PER_ADV_SYNC)
-	bt_periodic_sync_disable();
+	bt_periodic_sync_disable(&bt_dev);
 #endif /* CONFIG_BT_PER_ADV_SYNC */
 
 #if defined(CONFIG_BT_CONN)
