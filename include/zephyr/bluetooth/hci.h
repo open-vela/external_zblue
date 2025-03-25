@@ -163,7 +163,13 @@ int bt_hci_get_adv_sync_handle(const struct bt_le_per_adv_sync *sync, uint16_t *
  * @retval The corresponding periodic advertising sync set object on success,
  *         NULL if it does not exist.
  */
-struct bt_le_per_adv_sync *bt_hci_per_adv_sync_lookup_handle(uint16_t handle);
+struct bt_le_per_adv_sync *bt_hci_per_adv_sync_lookup_handle_mc(uint8_t dev_id, uint16_t handle);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline struct bt_le_per_adv_sync *bt_hci_per_adv_sync_lookup_handle(uint16_t handle)
+{
+  return bt_hci_per_adv_sync_lookup_handle_mc(0, handle);
+}
+#endif
 
 /** @brief Obtain the version string given a core version number.
  *
