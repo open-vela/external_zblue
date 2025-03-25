@@ -89,6 +89,7 @@ static K_KERNEL_STACK_DEFINE(rx_thread_stack, CONFIG_BT_RX_STACK_SIZE);
 static void init_work(struct k_work *work);
 
 struct bt_dev bt_dev = {
+	.dev_id        = 0,
 	.init          = Z_WORK_INITIALIZER(init_work),
 #if defined(CONFIG_BT_PRIVACY)
 	.rpa_timeout   = CONFIG_BT_RPA_TIMEOUT,
@@ -126,6 +127,15 @@ struct cmd_data {
 
 #define cmd(buf) ((struct cmd_data *)net_buf_user_data(buf))
 #define acl(buf) ((struct acl_data *)net_buf_user_data(buf))
+
+struct bt_dev *bt_dev_get(uint8_t dev_id)
+{
+	if (dev_id >= CONFIG_BT_NUM_CTLRS) {
+		return NULL;
+	}
+
+	return &bt_dev;
+}
 
 #if DT_HAS_CHOSEN(zephyr_bt_hci)
 static bool drv_quirk_no_reset(void)
