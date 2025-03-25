@@ -448,7 +448,7 @@ extern const struct bt_conn_auth_cb *le_auth;
 #endif /* CONFIG_BT_SMP*/
 
 #if DT_HAS_CHOSEN(zephyr_bt_hci)
-int bt_hci_recv(const struct device *dev, struct net_buf *buf);
+int bt_hci_recv(const struct device *dev, struct net_buf *buf, void *hci_data);
 #endif
 
 /* Data type to store state related with command to be updated

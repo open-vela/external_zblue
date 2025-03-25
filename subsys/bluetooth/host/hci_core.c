@@ -4217,7 +4217,7 @@ static int bt_recv_unsafe(struct net_buf *buf)
 }
 
 #if DT_HAS_CHOSEN(zephyr_bt_hci)
-int bt_hci_recv(const struct device *dev, struct net_buf *buf)
+int bt_hci_recv(const struct device *dev, struct net_buf *buf, void *hci_data)
 {
 	ARG_UNUSED(dev);
 #else
@@ -4442,7 +4442,7 @@ int bt_enable(bt_ready_cb_t cb)
 #endif
 
 #if DT_HAS_CHOSEN(zephyr_bt_hci)
-	err = bt_hci_open(bt_dev.hci, bt_hci_recv);
+	err = bt_hci_open(bt_dev.hci, bt_hci_recv, &bt_dev);
 #else
 	err = bt_dev.drv->open();
 #endif
