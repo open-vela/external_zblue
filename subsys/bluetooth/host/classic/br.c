@@ -91,7 +91,7 @@ void bt_hci_conn_req(struct bt_dev *hdev, struct net_buf *buf)
 	if (evt->link_type != BT_HCI_ACL) {
 		uint8_t err;
 
-		err = bt_esco_conn_req(evt);
+		err = bt_esco_conn_req(hdev, evt);
 		if (err != BT_HCI_ERR_SUCCESS) {
 			bt_reject_conn(hdev, &evt->bdaddr, err);
 		}
