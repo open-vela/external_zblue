@@ -309,7 +309,7 @@ void bt_hci_le_cs_read_remote_supported_capabilities_complete(struct bt_dev *hde
 		return;
 	}
 
-	conn = bt_conn_lookup_handle(sys_le16_to_cpu(evt->conn_handle), BT_CONN_TYPE_LE);
+	conn = bt_conn_lookup_handle(hdev, sys_le16_to_cpu(evt->conn_handle), BT_CONN_TYPE_LE);
 	if (!conn) {
 		LOG_ERR("Could not lookup connection handle when reading remote CS capabilities");
 		return;
@@ -469,7 +469,7 @@ void bt_hci_le_cs_read_remote_fae_table_complete(struct bt_dev *hdev, struct net
 		return;
 	}
 
-	conn = bt_conn_lookup_handle(sys_le16_to_cpu(evt->conn_handle), BT_CONN_TYPE_LE);
+	conn = bt_conn_lookup_handle(hdev, sys_le16_to_cpu(evt->conn_handle), BT_CONN_TYPE_LE);
 	if (!conn) {
 		LOG_ERR("Could not lookup connection handle when reading remote FAE Table");
 		return;
@@ -618,7 +618,7 @@ void bt_hci_le_cs_subevent_result(struct bt_dev *hdev, struct net_buf *buf)
 	} else
 #endif /* CONFIG_BT_CHANNEL_SOUNDING_TEST */
 	{
-		conn = bt_conn_lookup_handle(conn_handle, BT_CONN_TYPE_LE);
+		conn = bt_conn_lookup_handle(hdev, conn_handle, BT_CONN_TYPE_LE);
 		if (!conn) {
 			LOG_ERR("Unknown connection handle when processing subevent results");
 			return;
@@ -726,7 +726,7 @@ void bt_hci_le_cs_subevent_result_continue(struct bt_dev *hdev, struct net_buf *
 	} else
 #endif /* CONFIG_BT_CHANNEL_SOUNDING_TEST */
 	{
-		conn = bt_conn_lookup_handle(conn_handle, BT_CONN_TYPE_LE);
+		conn = bt_conn_lookup_handle(hdev, conn_handle, BT_CONN_TYPE_LE);
 		if (!conn) {
 			LOG_ERR("Unknown connection handle when processing subevent results");
 			return;
@@ -809,7 +809,7 @@ void bt_hci_le_cs_config_complete_event(struct bt_dev *hdev, struct net_buf *buf
 		return;
 	}
 
-	conn = bt_conn_lookup_handle(sys_le16_to_cpu(evt->handle), BT_CONN_TYPE_LE);
+	conn = bt_conn_lookup_handle(hdev, sys_le16_to_cpu(evt->handle), BT_CONN_TYPE_LE);
 	if (!conn) {
 		LOG_ERR("Could not lookup connection handle when reading CS configuration");
 		return;
@@ -1207,7 +1207,7 @@ void bt_hci_le_cs_security_enable_complete(struct bt_dev *hdev, struct net_buf *
 		return;
 	}
 
-	conn = bt_conn_lookup_handle(sys_le16_to_cpu(evt->handle), BT_CONN_TYPE_LE);
+	conn = bt_conn_lookup_handle(hdev, sys_le16_to_cpu(evt->handle), BT_CONN_TYPE_LE);
 	if (!conn) {
 		LOG_ERR("Can't lookup conn handle when reading Security Enable Complete event");
 		return;
@@ -1236,7 +1236,7 @@ void bt_hci_le_cs_procedure_enable_complete(struct bt_dev *hdev, struct net_buf 
 		return;
 	}
 
-	conn = bt_conn_lookup_handle(sys_le16_to_cpu(evt->handle), BT_CONN_TYPE_LE);
+	conn = bt_conn_lookup_handle(hdev, sys_le16_to_cpu(evt->handle), BT_CONN_TYPE_LE);
 	if (!conn) {
 		LOG_ERR("Can't lookup conn handle when reading Procedure Enable Complete event");
 		return;
