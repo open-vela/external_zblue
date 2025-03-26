@@ -88,7 +88,7 @@ int bt_conn_auth_pincode_entry(struct bt_conn *conn, const char *pin)
 {
 	size_t len;
 
-	if (!bt_auth) {
+	if (!bt_dev.bt_auth) {
 		return -EINVAL;
 	}
 
@@ -120,7 +120,7 @@ int bt_conn_auth_pincode_entry(struct bt_conn *conn, const char *pin)
 
 static void pin_code_req(struct bt_conn *conn)
 {
-	if (bt_auth && bt_auth->pincode_entry) {
+	if (bt_dev.bt_auth && bt_dev.bt_auth->pincode_entry) {
 		bool secure = false;
 
 		if (conn->required_sec_level == BT_SECURITY_L3) {
@@ -129,7 +129,7 @@ static void pin_code_req(struct bt_conn *conn)
 
 		atomic_set_bit(conn->flags, BT_CONN_USER);
 		atomic_set_bit(conn->flags, BT_CONN_BR_PAIRING);
-		bt_auth->pincode_entry(conn, secure);
+		bt_dev.bt_auth->pincode_entry(conn, secure);
 	} else {
 		pin_code_neg_reply(&conn->br.dst);
 	}
@@ -137,19 +137,19 @@ static void pin_code_req(struct bt_conn *conn)
 
 static uint8_t get_io_capa(void)
 {
-	if (!bt_auth) {
+	if (!bt_dev.bt_auth) {
 		return BT_IO_NO_INPUT_OUTPUT;
 	}
 
-	if (bt_auth->passkey_confirm && bt_auth->passkey_display) {
+	if (bt_dev.bt_auth->passkey_confirm && bt_dev.bt_auth->passkey_display) {
 		return BT_IO_DISPLAY_YESNO;
 	}
 
-	if (bt_auth->passkey_entry) {
+	if (bt_dev.bt_auth->passkey_entry) {
 		return BT_IO_KEYBOARD_ONLY;
 	}
 
-	if (bt_auth->passkey_display) {
+	if (bt_dev.bt_auth->passkey_display) {
 		return BT_IO_DISPLAY_ONLY;
 	}
 
@@ -230,7 +230,7 @@ static void ssp_pairing_complete(struct bt_conn *conn, uint8_t status)
 		bool bond = !atomic_test_bit(conn->flags, BT_CONN_BR_NOBOND);
 		struct bt_conn_auth_info_cb *listener, *next;
 
-		SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&bt_auth_info_cbs, listener,
+		SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&bt_dev.bt_auth_info_cbs, listener,
 						  next, node) {
 			if (listener->pairing_complete) {
 				listener->pairing_complete(conn, bond);
@@ -239,7 +239,7 @@ static void ssp_pairing_complete(struct bt_conn *conn, uint8_t status)
 	} else {
 		struct bt_conn_auth_info_cb *listener, *next;
 
-		SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&bt_auth_info_cbs, listener,
+		SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&bt_dev.bt_auth_info_cbs, listener,
 						  next, node) {
 			if (listener->pairing_failed) {
 				listener->pairing_failed(conn, status);
@@ -252,7 +252,7 @@ static void ssp_link_key_notify(struct bt_conn *conn, uint8_t *key, uint8_t key_
 {
 	struct bt_conn_auth_info_cb *listener, *next;
 
-	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&bt_auth_info_cbs, listener,
+	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&bt_dev.bt_auth_info_cbs, listener,
 						next, node) {
 		if (listener->link_key_notify) {
 			listener->link_key_notify(conn, key, key_type);
@@ -278,15 +278,15 @@ static void ssp_auth(struct bt_conn *conn, uint32_t passkey)
 	switch (conn->br.pairing_method) {
 	case PASSKEY_CONFIRM:
 		atomic_set_bit(conn->flags, BT_CONN_USER);
-		bt_auth->passkey_confirm(conn, passkey);
+		bt_dev.bt_auth->passkey_confirm(conn, passkey);
 		break;
 	case PASSKEY_DISPLAY:
 		atomic_set_bit(conn->flags, BT_CONN_USER);
-		bt_auth->passkey_display(conn, passkey);
+		bt_dev.bt_auth->passkey_display(conn, passkey);
 		break;
 	case PASSKEY_INPUT:
 		atomic_set_bit(conn->flags, BT_CONN_USER);
-		bt_auth->passkey_entry(conn);
+		bt_dev.bt_auth->passkey_entry(conn);
 		break;
 	case JUST_WORKS:
 		/*
@@ -294,11 +294,11 @@ static void ssp_auth(struct bt_conn *conn, uint32_t passkey)
 		 * model is applied then notify user about such pairing request.
 		 * [BT Core 4.2 table 5.7, Vol 3, Part C, 5.2.2.6]
 		 */
-		if (bt_auth && bt_auth->pairing_confirm &&
+		if (bt_dev.bt_auth && bt_dev.bt_auth->pairing_confirm &&
 		    !atomic_test_bit(conn->flags,
 				     BT_CONN_BR_PAIRING_INITIATOR)) {
 			atomic_set_bit(conn->flags, BT_CONN_USER);
-			bt_auth->pairing_confirm(conn);
+			bt_dev.bt_auth->pairing_confirm(conn);
 			break;
 		}
 		ssp_confirm_reply(conn);
@@ -822,7 +822,7 @@ void bt_hci_auth_complete(struct bt_dev *hdev, struct net_buf *buf)
 
 	LOG_DBG("status 0x%02x, handle %u", evt->status, handle);
 
-	conn = bt_conn_lookup_handle(handle, BT_CONN_TYPE_BR);
+	conn = bt_conn_lookup_handle(hdev, handle, BT_CONN_TYPE_BR);
 	if (!conn) {
 		LOG_ERR("Can't find conn for handle %u", handle);
 		return;

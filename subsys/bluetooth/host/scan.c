@@ -550,7 +550,7 @@ static void check_pending_conn(const bt_addr_le_t *id_addr,
 		return;
 	}
 
-	conn = bt_conn_lookup_state_le(BT_ID_DEFAULT, id_addr,
+	conn = bt_conn_lookup_state_le(&bt_dev, BT_ID_DEFAULT, id_addr,
 				       BT_CONN_SCAN_BEFORE_INITIATING);
 	if (!conn) {
 		return;
@@ -1437,7 +1437,7 @@ static void bt_hci_le_past_received_common(struct bt_dev *hdev, struct net_buf *
 		return;
 	}
 
-	sync_info.conn = bt_conn_lookup_handle(
+	sync_info.conn = bt_conn_lookup_handle(hdev,
 				sys_le16_to_cpu(evt->conn_handle),
 				BT_CONN_TYPE_LE);
 

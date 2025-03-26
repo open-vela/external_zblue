@@ -35,7 +35,7 @@ static sys_slist_t discovery_cbs = SYS_SLIST_STATIC_INIT(&discovery_cbs);
 /* remote name request callback */
 static struct bt_br_rnr_cb rnr_cb;
 
-int bt_reject_conn(const bt_addr_t *bdaddr, uint8_t reason)
+int bt_reject_conn(struct bt_dev *hdev, const bt_addr_t *bdaddr, uint8_t reason)
 {
 	struct bt_hci_cp_reject_conn_req *cp;
 	struct net_buf *buf;
@@ -50,7 +50,7 @@ int bt_reject_conn(const bt_addr_t *bdaddr, uint8_t reason)
 	bt_addr_copy(&cp->bdaddr, bdaddr);
 	cp->reason = reason;
 
-	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_REJECT_CONN_REQ, buf, NULL);
+	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_REJECT_CONN_REQ, buf, NULL);
 	if (err) {
 		return err;
 	}
@@ -58,7 +58,7 @@ int bt_reject_conn(const bt_addr_t *bdaddr, uint8_t reason)
 	return 0;
 }
 
-int bt_accept_conn(const bt_addr_t *bdaddr)
+int bt_accept_conn(struct bt_dev *hdev, const bt_addr_t *bdaddr)
 {
 	struct bt_hci_cp_accept_conn_req *cp;
 	struct net_buf *buf;
@@ -73,7 +73,7 @@ int bt_accept_conn(const bt_addr_t *bdaddr)
 	bt_addr_copy(&cp->bdaddr, bdaddr);
 	cp->role = BT_HCI_ROLE_PERIPHERAL;
 
-	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_ACCEPT_CONN_REQ, buf, NULL);
+	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_ACCEPT_CONN_REQ, buf, NULL);
 	if (err) {
 		return err;
 	}
@@ -93,19 +93,19 @@ void bt_hci_conn_req(struct bt_dev *hdev, struct net_buf *buf)
 
 		err = bt_esco_conn_req(evt);
 		if (err != BT_HCI_ERR_SUCCESS) {
-			bt_reject_conn(&evt->bdaddr, err);
+			bt_reject_conn(hdev, &evt->bdaddr, err);
 		}
 		return;
 	}
 
-	conn = bt_conn_add_br(&evt->bdaddr);
+	conn = bt_conn_add_br(hdev, &evt->bdaddr);
 	if (!conn) {
-		bt_reject_conn(&evt->bdaddr, BT_HCI_ERR_INSUFFICIENT_RESOURCES);
+		bt_reject_conn(hdev, &evt->bdaddr, BT_HCI_ERR_INSUFFICIENT_RESOURCES);
 		return;
 	}
 
 #if defined(CONFIG_BT_CONN_REQ_AUTO_HANDLE)
-	if (bt_accept_conn(&evt->bdaddr)) {
+	if (bt_accept_conn(hdev, &evt->bdaddr)) {
 		LOG_ERR("Error accepting connection from %s",
 		       bt_addr_str(&evt->bdaddr));
 		bt_conn_unref(conn);
@@ -207,7 +207,7 @@ void bt_hci_synchronous_conn_complete(struct bt_dev *hdev, struct net_buf *buf)
 
 	LOG_DBG("status 0x%02x, handle %u, type 0x%02x", evt->status, handle, evt->link_type);
 
-	sco_conn = bt_conn_lookup_addr_sco(&evt->bdaddr);
+	sco_conn = bt_conn_lookup_addr_sco(hdev, &evt->bdaddr);
 	if (!sco_conn) {
 		LOG_ERR("Unable to find conn for %s", bt_addr_str(&evt->bdaddr));
 		return;
@@ -655,7 +655,7 @@ void bt_hci_read_remote_features_complete(struct bt_dev *hdev, struct net_buf *b
 
 	LOG_DBG("status 0x%02x handle %u", evt->status, handle);
 
-	conn = bt_conn_lookup_handle(handle, BT_CONN_TYPE_BR);
+	conn = bt_conn_lookup_handle(hdev, handle, BT_CONN_TYPE_BR);
 	if (!conn) {
 		LOG_ERR("Can't find conn for handle %u", handle);
 		return;
@@ -695,7 +695,7 @@ void bt_hci_read_remote_ext_features_complete(struct bt_dev *hdev, struct net_bu
 
 	LOG_DBG("status 0x%02x handle %u", evt->status, handle);
 
-	conn = bt_conn_lookup_handle(handle, BT_CONN_TYPE_BR);
+	conn = bt_conn_lookup_handle(hdev, handle, BT_CONN_TYPE_BR);
 	if (!conn) {
 		LOG_ERR("Can't find conn for handle %u", handle);
 		return;
@@ -743,7 +743,7 @@ void bt_hci_link_mode_change(struct bt_dev *hdev, struct net_buf *buf)
 	uint16_t interval = sys_le16_to_cpu(evt->interval);
 	struct bt_conn *conn;
 
-	conn = bt_conn_lookup_handle(handle, BT_CONN_TYPE_BR);
+	conn = bt_conn_lookup_handle(hdev, handle, BT_CONN_TYPE_BR);
 	if (!conn) {
 		LOG_ERR("Can't find conn for handle 0x%x", handle);
 		return;
@@ -1458,7 +1458,7 @@ int bt_br_unpair(bt_addr_t *bdaddr)
 	addr.type = BT_ADDR_LE_PUBLIC;
 	memcpy(&addr, bdaddr, sizeof(addr));
 
-	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&bt_auth_info_cbs, listener,
+	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&bt_dev.bt_auth_info_cbs, listener,
 					  next, node) {
 		if (listener->bond_deleted) {
 			listener->bond_deleted(0, &addr);

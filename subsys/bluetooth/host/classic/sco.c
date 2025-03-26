@@ -290,7 +290,7 @@ uint8_t bt_esco_conn_req(struct bt_hci_evt_conn_request *evt)
 		return BT_HCI_ERR_UNSPECIFIED;
 	}
 
-	sco_conn = bt_conn_add_sco(&evt->bdaddr, evt->link_type);
+	sco_conn = bt_conn_add_sco(&bt_dev, &evt->bdaddr, evt->link_type);
 	if (!sco_conn) {
 		return BT_HCI_ERR_INSUFFICIENT_RESOURCES;
 	}
@@ -365,7 +365,7 @@ struct bt_conn *bt_conn_create_sco(const bt_addr_t *peer, struct bt_sco_chan *ch
 	struct bt_conn *sco_conn;
 	int link_type;
 
-	sco_conn = bt_conn_lookup_addr_sco(peer);
+	sco_conn = bt_conn_lookup_addr_sco(&bt_dev, peer);
 	if (sco_conn) {
 		switch (sco_conn->state) {
 		case BT_CONN_INITIATING:
@@ -383,7 +383,7 @@ struct bt_conn *bt_conn_create_sco(const bt_addr_t *peer, struct bt_sco_chan *ch
 		link_type = BT_HCI_SCO;
 	}
 
-	sco_conn = bt_conn_add_sco(peer, link_type);
+	sco_conn = bt_conn_add_sco(&bt_dev, peer, link_type);
 	if (!sco_conn) {
 		return NULL;
 	}
