@@ -135,7 +135,7 @@ void hci_iso(struct bt_dev *hdev, struct net_buf *buf)
 		return;
 	}
 
-	iso = bt_conn_lookup_handle(iso(buf)->handle, BT_CONN_TYPE_ISO);
+	iso = bt_conn_lookup_handle(hdev, iso(buf)->handle, BT_CONN_TYPE_ISO);
 	if (iso == NULL) {
 		LOG_ERR("Unable to find conn for handle %u", iso(buf)->handle);
 		net_buf_unref(buf);
@@ -168,7 +168,7 @@ static void iso_get_and_clear_cb(struct bt_conn *conn, struct net_buf *buf, bt_c
 
 static struct bt_conn *iso_new(void)
 {
-	struct bt_conn *iso = bt_conn_new(iso_conns, ARRAY_SIZE(iso_conns));
+	struct bt_conn *iso = bt_conn_new(&bt_dev, iso_conns, ARRAY_SIZE(iso_conns));
 
 	if (iso) {
 		iso->type = BT_CONN_TYPE_ISO;
@@ -1143,7 +1143,7 @@ void hci_le_cis_established(struct bt_dev *hdev, struct net_buf *buf)
 	LOG_DBG("status 0x%02x %s handle %u", evt->status, bt_hci_err_to_str(evt->status), handle);
 
 	/* ISO connection handles are already assigned at this point */
-	iso = bt_conn_lookup_handle(handle, BT_CONN_TYPE_ISO);
+	iso = bt_conn_lookup_handle(hdev, handle, BT_CONN_TYPE_ISO);
 	if (!iso) {
 		/* If it is a local disconnect, then we may have received the disconnect complete
 		 * event before this event, and in which case we do not expect to find the CIS
@@ -1395,7 +1395,7 @@ void hci_le_cis_req(struct bt_dev *hdev, struct net_buf *buf)
 	}
 
 	/* Lookup existing connection with same handle */
-	iso = bt_conn_lookup_handle(cis_handle, BT_CONN_TYPE_ISO);
+	iso = bt_conn_lookup_handle(hdev, cis_handle, BT_CONN_TYPE_ISO);
 	if (iso) {
 		LOG_ERR("Invalid ISO handle %u", cis_handle);
 		hci_le_reject_cis(cis_handle, BT_HCI_ERR_CONN_LIMIT_EXCEEDED);
@@ -1404,7 +1404,7 @@ void hci_le_cis_req(struct bt_dev *hdev, struct net_buf *buf)
 	}
 
 	/* Lookup ACL connection to attach */
-	acl = bt_conn_lookup_handle(acl_handle, BT_CONN_TYPE_LE);
+	acl = bt_conn_lookup_handle(hdev, acl_handle, BT_CONN_TYPE_LE);
 	if (!acl) {
 		LOG_ERR("Invalid ACL handle %u", acl_handle);
 		hci_le_reject_cis(cis_handle, BT_HCI_ERR_UNKNOWN_CONN_ID);

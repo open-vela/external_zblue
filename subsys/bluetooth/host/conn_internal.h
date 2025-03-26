@@ -202,6 +202,7 @@ struct bt_conn_tx {
 };
 
 struct acl_data {
+	struct bt_dev *hdev;
 	/* Extend the bt_buf user data */
 	struct bt_buf_data buf_data;
 
@@ -218,6 +219,8 @@ struct acl_data {
 };
 
 struct bt_conn {
+	/* Hci device this connection belongs to */
+	struct bt_dev 		*hdev;
 	uint16_t			handle;
 	enum bt_conn_type	type;
 	uint8_t			role;
@@ -368,6 +371,8 @@ static inline void *closure_data(void *storage)
 	return ((struct closure *)storage)->data;
 }
 
+struct bt_dev *bt_conn_get_dev(struct bt_conn *conn);
+
 void bt_conn_tx_notify(struct bt_conn *conn, bool wait_for_completion);
 
 void bt_conn_reset_rx_state(struct bt_conn *conn);
@@ -395,10 +400,10 @@ int bt_conn_send_iso_cb(struct bt_conn *conn, struct net_buf *buf,
 			bt_conn_tx_cb_t cb, bool has_ts);
 
 /* Check if a connection object with the peer already exists */
-bool bt_conn_exists_le(uint8_t id, const bt_addr_le_t *peer);
+bool bt_conn_exists_le(struct bt_dev *hdev, uint8_t id, const bt_addr_le_t *peer);
 
 /* Add a new LE connection */
-struct bt_conn *bt_conn_add_le(uint8_t id, const bt_addr_le_t *peer);
+struct bt_conn *bt_conn_add_le(struct bt_dev *hdev, uint8_t id, const bt_addr_le_t *peer);
 
 /** Connection parameters for ISO connections */
 struct bt_iso_create_param {
@@ -408,7 +413,7 @@ struct bt_iso_create_param {
 	struct bt_iso_chan	**chans;
 };
 
-int bt_conn_iso_init(void);
+int bt_conn_iso_init(struct bt_dev *hdev);
 
 /* Cleanup ISO references */
 void bt_iso_cleanup_acl(struct bt_conn *iso_conn);
@@ -416,16 +421,16 @@ void bt_iso_cleanup_acl(struct bt_conn *iso_conn);
 void bt_iso_reset(void);
 
 /* Add a new BR/EDR connection */
-struct bt_conn *bt_conn_add_br(const bt_addr_t *peer);
+struct bt_conn *bt_conn_add_br(struct bt_dev *hdev, const bt_addr_t *peer);
 
 /* Add a new SCO connection */
-struct bt_conn *bt_conn_add_sco(const bt_addr_t *peer, int link_type);
+struct bt_conn *bt_conn_add_sco(struct bt_dev *hdev, const bt_addr_t *peer, int link_type);
 
 /* Accept incoming ACL connection */
-int bt_accept_conn(const bt_addr_t *bdaddr);
+int bt_accept_conn(struct bt_dev *hdev, const bt_addr_t *bdaddr);
 
 /* Reject incoming ACL connection */
-int bt_reject_conn(const bt_addr_t *bdaddr, uint8_t reason);
+int bt_reject_conn(struct bt_dev *hdev, const bt_addr_t *bdaddr, uint8_t reason);
 
 /* Cleanup SCO ACL reference */
 void bt_sco_cleanup_acl(struct bt_conn *sco_conn);
@@ -434,7 +439,7 @@ void bt_sco_cleanup_acl(struct bt_conn *sco_conn);
 void bt_sco_cleanup(struct bt_conn *sco_conn);
 
 /* Look up an existing sco connection by BT address */
-struct bt_conn *bt_conn_lookup_addr_sco(const bt_addr_t *peer);
+struct bt_conn *bt_conn_lookup_addr_sco(struct bt_dev *hdev, const bt_addr_t *peer);
 
 /* Look up an existing connection by BT address */
 struct bt_conn *bt_conn_lookup_addr_br(const bt_addr_t *peer);
@@ -442,10 +447,10 @@ struct bt_conn *bt_conn_lookup_addr_br(const bt_addr_t *peer);
 void bt_conn_disconnect_all(uint8_t id);
 
 /* Allocate new connection object */
-struct bt_conn *bt_conn_new(struct bt_conn *conns, size_t size);
+struct bt_conn *bt_conn_new(struct bt_dev *hdev, struct bt_conn *conns, size_t size);
 
 /* Look up an existing connection */
-struct bt_conn *bt_conn_lookup_handle(uint16_t handle, enum bt_conn_type type);
+struct bt_conn *bt_conn_lookup_handle(struct bt_dev *hdev, uint16_t handle, enum bt_conn_type type);
 
 static inline bool bt_conn_is_handle_valid(struct bt_conn *conn)
 {
@@ -475,12 +480,13 @@ bool bt_conn_is_peer_addr_le(const struct bt_conn *conn, uint8_t id,
  * e.g. as the handle since that's assigned to us by the controller.
  */
 #define BT_CONN_INDEX_INVALID 0xff
-struct bt_conn *bt_conn_lookup_index(uint8_t index);
+struct bt_conn *bt_conn_lookup_index(struct bt_dev *hdev, uint8_t index);
 
 /* Look up a connection state. For BT_ADDR_LE_ANY, returns the first connection
  * with the specific state
  */
-struct bt_conn *bt_conn_lookup_state_le(uint8_t id, const bt_addr_le_t *peer,
+struct bt_conn *bt_conn_lookup_state_le(struct bt_dev *hdev,
+					uint8_t id, const bt_addr_le_t *peer,
 					const bt_conn_state_t state);
 
 /* Set connection object in certain state and perform action related to state */
@@ -597,15 +603,15 @@ struct net_buf *bt_conn_create_frag_timeout(size_t reserve,
 #endif
 
 /* Initialize connection management */
-int bt_conn_init(void);
+int bt_conn_init(struct bt_dev *hdev);
 
 /* Reset states of connections and set state to BT_CONN_DISCONNECTED. */
-void bt_conn_cleanup_all(void);
+void bt_conn_cleanup_all(struct bt_dev *hdev);
 
 /* Selects based on connection type right semaphore for ACL packets */
 struct k_sem *bt_conn_get_pkts(struct bt_conn *conn);
 
-void bt_conn_tx_processor(void);
+void bt_conn_tx_processor(struct bt_dev *hdev);
 
 /* To be called by upper layers when they want to send something.
  * Functions just like an IRQ.
