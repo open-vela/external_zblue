@@ -923,7 +923,7 @@ static int le_adv_start_add_conn(const struct bt_le_ext_adv *adv,
 
 	if (!adv_is_directed(adv)) {
 		/* Undirected advertising */
-		conn = bt_conn_add_le(adv->id, BT_ADDR_LE_NONE);
+		conn = bt_conn_add_le(&bt_dev, adv->id, BT_ADDR_LE_NONE);
 		if (!conn) {
 			return -ENOMEM;
 		}
@@ -933,11 +933,11 @@ static int le_adv_start_add_conn(const struct bt_le_ext_adv *adv,
 		return 0;
 	}
 
-	if (bt_conn_exists_le(adv->id, &adv->target_addr)) {
+	if (bt_conn_exists_le(&bt_dev, adv->id, &adv->target_addr)) {
 		return -EINVAL;
 	}
 
-	conn = bt_conn_add_le(adv->id, &adv->target_addr);
+	conn = bt_conn_add_le(&bt_dev, adv->id, &adv->target_addr);
 	if (!conn) {
 		return -ENOMEM;
 	}
@@ -952,10 +952,10 @@ static void le_adv_stop_free_conn(const struct bt_le_ext_adv *adv, uint8_t statu
 	struct bt_conn *conn;
 
 	if (!adv_is_directed(adv)) {
-		conn = bt_conn_lookup_state_le(adv->id, BT_ADDR_LE_NONE,
+		conn = bt_conn_lookup_state_le(&bt_dev, adv->id, BT_ADDR_LE_NONE,
 					       BT_CONN_ADV_CONNECTABLE);
 	} else {
-		conn = bt_conn_lookup_state_le(adv->id, &adv->target_addr,
+		conn = bt_conn_lookup_state_le(&bt_dev, adv->id, &adv->target_addr,
 					       BT_CONN_ADV_DIR_CONNECTABLE);
 	}
 
@@ -2206,7 +2206,7 @@ void bt_hci_le_adv_set_terminated(struct bt_dev *hdev, struct net_buf *buf)
 	}
 
 	if (IS_ENABLED(CONFIG_BT_CONN) && !evt->status) {
-		struct bt_conn *conn = bt_conn_lookup_handle(conn_handle, BT_CONN_TYPE_LE);
+		struct bt_conn *conn = bt_conn_lookup_handle(hdev, conn_handle, BT_CONN_TYPE_LE);
 
 		if (conn) {
 			if (IS_ENABLED(CONFIG_BT_PRIVACY) &&

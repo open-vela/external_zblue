@@ -2785,7 +2785,7 @@ static uint8_t notify_cb(const struct bt_gatt_attr *attr, uint16_t handle,
 				continue;
 			}
 
-			conn = bt_conn_lookup_state_le(cfg->id, &cfg->peer,
+			conn = bt_conn_lookup_state_le(&bt_dev, cfg->id, &cfg->peer,
 						       BT_CONN_CONNECTED);
 			if (!conn) {
 				struct sc_data *sc;
