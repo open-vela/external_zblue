@@ -286,10 +286,10 @@ static void le_rpa_invalidate(void)
 		}
 		bool rpa_expired_data[bt_dev.id_count];
 
-		bt_le_ext_adv_foreach(adv_rpa_invalidate, &rpa_expired_data);
+		bt_le_ext_adv_foreach(&bt_dev, adv_rpa_invalidate, &rpa_expired_data);
 #if defined(CONFIG_BT_RPA_SHARING)
 		/* rpa_expired data collected. now clear data based on data collected. */
-		bt_le_ext_adv_foreach(adv_rpa_clear_data, &rpa_expired_data);
+		bt_le_ext_adv_foreach(&bt_dev, adv_rpa_clear_data, &rpa_expired_data);
 #endif
 	}
 }
@@ -440,7 +440,7 @@ int bt_id_set_adv_private_addr(struct bt_le_ext_adv *adv)
 		return 0;
 	}
 
-	if (adv == bt_le_adv_lookup_legacy() && adv->id == BT_ID_DEFAULT) {
+	if (adv == bt_le_adv_lookup_legacy(&bt_dev) && adv->id == BT_ID_DEFAULT) {
 		/* Make sure that a Legacy advertiser using default ID has same
 		 * RPA address as scanner roles.
 		 */
@@ -565,10 +565,10 @@ static bool le_adv_rpa_timeout(void)
 		if (IS_ENABLED(CONFIG_BT_EXT_ADV) &&
 		    BT_DEV_FEAT_LE_EXT_ADV(bt_dev.le.features)) {
 			/* Pause all advertising sets using RPAs */
-			bt_le_ext_adv_foreach(adv_pause_rpa, &adv_enabled);
+			bt_le_ext_adv_foreach(&bt_dev, adv_pause_rpa, &adv_enabled);
 		} else {
 			/* Check if advertising set is enabled */
-			bt_le_ext_adv_foreach(adv_is_private_enabled, &adv_enabled);
+			bt_le_ext_adv_foreach(&bt_dev, adv_is_private_enabled, &adv_enabled);
 		}
 	}
 
@@ -620,7 +620,7 @@ static void le_update_private_addr(void)
 	if (IS_ENABLED(CONFIG_BT_BROADCASTER) &&
 	    !(IS_ENABLED(CONFIG_BT_EXT_ADV) &&
 	      BT_DEV_FEAT_LE_EXT_ADV(bt_dev.le.features))) {
-		adv = bt_le_adv_lookup_legacy();
+		adv = bt_le_adv_lookup_legacy(&bt_dev);
 
 		if (adv &&
 		    atomic_test_bit(adv->flags, BT_ADV_ENABLED) &&
@@ -644,7 +644,7 @@ static void le_update_private_addr(void)
 	if (IS_ENABLED(CONFIG_BT_BROADCASTER) &&
 	    IS_ENABLED(CONFIG_BT_EXT_ADV) &&
 	    BT_DEV_FEAT_LE_EXT_ADV(bt_dev.le.features)) {
-		bt_le_ext_adv_foreach(adv_enable_rpa, NULL);
+		bt_le_ext_adv_foreach(&bt_dev, adv_enable_rpa, NULL);
 	}
 
 	if (IS_ENABLED(CONFIG_BT_BROADCASTER) &&
@@ -717,7 +717,7 @@ bool bt_id_scan_random_addr_check(void)
 		return true;
 	}
 
-	adv = bt_le_adv_lookup_legacy();
+	adv = bt_le_adv_lookup_legacy(&bt_dev);
 	if (!adv) {
 		return true;
 	}
@@ -1026,7 +1026,7 @@ void bt_id_add(struct bt_keys *keys)
 	    IS_ENABLED(CONFIG_BT_EXT_ADV)) {
 		bool adv_enabled = false;
 
-		bt_le_ext_adv_foreach(adv_is_limited_enabled, &adv_enabled);
+		bt_le_ext_adv_foreach(&bt_dev, adv_is_limited_enabled, &adv_enabled);
 		if (adv_enabled) {
 			bt_id_pending_keys_update_set(keys,
 						   BT_KEYS_ID_PENDING_ADD);
@@ -1044,7 +1044,7 @@ void bt_id_add(struct bt_keys *keys)
 #endif
 
 	if (IS_ENABLED(CONFIG_BT_BROADCASTER)) {
-		bt_le_ext_adv_foreach(adv_pause_enabled, NULL);
+		bt_le_ext_adv_foreach(&bt_dev, adv_pause_enabled, NULL);
 	}
 
 #if defined(CONFIG_BT_OBSERVER)
@@ -1114,7 +1114,7 @@ done:
 #endif /* CONFIG_BT_OBSERVER */
 
 	if (IS_ENABLED(CONFIG_BT_BROADCASTER)) {
-		bt_le_ext_adv_foreach(adv_unpause_enabled, NULL);
+		bt_le_ext_adv_foreach(&bt_dev, adv_unpause_enabled, NULL);
 	}
 }
 
@@ -1175,7 +1175,7 @@ void bt_id_del(struct bt_keys *keys)
 	    IS_ENABLED(CONFIG_BT_EXT_ADV)) {
 		bool adv_enabled = false;
 
-		bt_le_ext_adv_foreach(adv_is_limited_enabled, &adv_enabled);
+		bt_le_ext_adv_foreach(&bt_dev, adv_is_limited_enabled, &adv_enabled);
 		if (adv_enabled) {
 			bt_id_pending_keys_update_set(keys, BT_KEYS_ID_PENDING_DEL);
 			return;
@@ -1192,7 +1192,7 @@ void bt_id_del(struct bt_keys *keys)
 #endif /* CONFIG_BT_OBSERVER */
 
 	if (IS_ENABLED(CONFIG_BT_BROADCASTER)) {
-		bt_le_ext_adv_foreach(adv_pause_enabled, NULL);
+		bt_le_ext_adv_foreach(&bt_dev, adv_pause_enabled, NULL);
 	}
 
 #if defined(CONFIG_BT_OBSERVER)
@@ -1242,7 +1242,7 @@ done:
 #endif /* CONFIG_BT_OBSERVER */
 
 	if (IS_ENABLED(CONFIG_BT_BROADCASTER)) {
-		bt_le_ext_adv_foreach(adv_unpause_enabled, NULL);
+		bt_le_ext_adv_foreach(&bt_dev, adv_unpause_enabled, NULL);
 	}
 }
 #endif /* defined(CONFIG_BT_SMP) */
@@ -1418,7 +1418,7 @@ int bt_id_reset(uint8_t id, bt_addr_le_t *addr, uint8_t *irk)
 			.adv_enabled = false,
 		};
 
-		bt_le_ext_adv_foreach(adv_id_check_func, &check_data);
+		bt_le_ext_adv_foreach(&bt_dev, adv_id_check_func, &check_data);
 		if (check_data.adv_enabled) {
 			return -EBUSY;
 		}
@@ -1456,7 +1456,7 @@ int bt_id_delete(uint8_t id)
 			.adv_enabled = false,
 		};
 
-		bt_le_ext_adv_foreach(adv_id_check_func, &check_data);
+		bt_le_ext_adv_foreach(&bt_dev, adv_id_check_func, &check_data);
 		if (check_data.adv_enabled) {
 			return -EBUSY;
 		}
@@ -1785,7 +1785,7 @@ static bool is_adv_using_rand_addr(void)
 		return false;
 	}
 
-	adv = bt_le_adv_lookup_legacy();
+	adv = bt_le_adv_lookup_legacy(&bt_dev);
 
 	return adv && atomic_test_bit(adv->flags, BT_ADV_ENABLED);
 }
@@ -2011,7 +2011,7 @@ int bt_le_oob_get_local(uint8_t id, struct bt_le_oob *oob)
 	}
 
 	if (IS_ENABLED(CONFIG_BT_BROADCASTER)) {
-		adv = bt_le_adv_lookup_legacy();
+		adv = bt_le_adv_lookup_legacy(&bt_dev);
 	}
 
 	if (IS_ENABLED(CONFIG_BT_PRIVACY) &&

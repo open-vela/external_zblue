@@ -155,7 +155,11 @@ enum {
 	BT_ADV_NUM_FLAGS,
 };
 
+struct bt_dev;
 struct bt_le_ext_adv {
+	/* Hci device this advertiser belongs to */
+	struct bt_dev *hdev;
+
 	/* ID Address used for advertising */
 	uint8_t                 id;
 
@@ -212,7 +216,7 @@ enum {
 };
 
 struct bt_le_per_adv_sync {
-	/** Hci device this sync belongs to */
+	/* Hci device this advertiser belongs to */
 	struct bt_dev *hdev;
 
 	/** Periodic Advertiser Address */
@@ -345,6 +349,9 @@ struct bt_dev {
 	/* Legacy advertiser */
 	struct bt_le_ext_adv    adv;
 #else
+	/* Pool of advertising sets */
+	struct bt_le_ext_adv adv_pool[CONFIG_BT_EXT_ADV_MAX_ADV_SET];
+
 	/* Pointer to reserved advertising set */
 	struct bt_le_ext_adv    *adv;
 #if defined(CONFIG_BT_CONN) && (CONFIG_BT_EXT_ADV_MAX_ADV_SET > 1)
