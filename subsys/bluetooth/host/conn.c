@@ -1575,7 +1575,7 @@ void bt_conn_unref(struct bt_conn *conn)
 
 	if (IS_ENABLED(CONFIG_BT_PERIPHERAL) && conn_type == BT_CONN_TYPE_LE &&
 	    conn_role == BT_CONN_ROLE_PERIPHERAL && deallocated) {
-		bt_le_adv_resume();
+		bt_le_adv_resume(hdev);
 	}
 }
 
@@ -4025,7 +4025,7 @@ int bt_conn_le_create_synced(const struct bt_le_ext_adv *adv,
 		}
 	}
 
-	err = conn_le_create_common_checks(&bt_dev, synced_param->peer, conn_param);
+	err = conn_le_create_common_checks(adv->hdev, synced_param->peer, conn_param);
 	if (err) {
 		return err;
 	}
@@ -4034,7 +4034,7 @@ int bt_conn_le_create_synced(const struct bt_le_ext_adv *adv,
 		return -EINVAL;
 	}
 
-	if (!BT_FEAT_LE_PAWR_ADVERTISER(bt_dev.le.features)) {
+	if (!BT_FEAT_LE_PAWR_ADVERTISER(adv->hdev->le.features)) {
 		return -ENOTSUP;
 	}
 
@@ -4042,7 +4042,7 @@ int bt_conn_le_create_synced(const struct bt_le_ext_adv *adv,
 		return -EINVAL;
 	}
 
-	conn = conn_le_create_helper(&bt_dev, synced_param->peer, conn_param);
+	conn = conn_le_create_helper(adv->hdev, synced_param->peer, conn_param);
 	if (!conn) {
 		return -ENOMEM;
 	}
@@ -4052,7 +4052,7 @@ int bt_conn_le_create_synced(const struct bt_le_ext_adv *adv,
 	 * within a periodic interval. We do not know the periodic interval
 	 * used, so disable the timeout.
 	 */
-	bt_dev.create_param.timeout = 0;
+	adv->hdev->create_param.timeout = 0;
 	bt_conn_set_state(conn, BT_CONN_INITIATING);
 
 	err = bt_le_create_conn_synced(conn, adv, synced_param->subevent);

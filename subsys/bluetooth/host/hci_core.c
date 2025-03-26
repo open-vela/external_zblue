@@ -1277,7 +1277,7 @@ static void le_conn_complete_adv_timeout(void)
 {
 	if (!(IS_ENABLED(CONFIG_BT_EXT_ADV) &&
 	      BT_DEV_FEAT_LE_EXT_ADV(bt_dev.le.features))) {
-		struct bt_le_ext_adv *adv = bt_le_adv_lookup_legacy();
+		struct bt_le_ext_adv *adv = bt_le_adv_lookup_legacy(&bt_dev);
 		struct bt_conn *conn;
 
 		/* Handle advertising timeout after high duty cycle directed
@@ -1291,7 +1291,7 @@ static void le_conn_complete_adv_timeout(void)
 			/* No advertising set terminated event, must be a
 			 * legacy advertiser set.
 			 */
-			bt_le_adv_delete_legacy();
+			bt_le_adv_delete_legacy(&bt_dev);
 		}
 
 		/* There is no need to check ID address as only one
@@ -1406,7 +1406,7 @@ void bt_hci_le_enh_conn_complete(struct bt_dev *hdev, struct bt_hci_evt_le_enh_c
 	    evt->role == BT_HCI_ROLE_PERIPHERAL &&
 	    !(IS_ENABLED(CONFIG_BT_EXT_ADV) &&
 	      BT_DEV_FEAT_LE_EXT_ADV(hdev->le.features))) {
-		struct bt_le_ext_adv *adv = bt_le_adv_lookup_legacy();
+		struct bt_le_ext_adv *adv = bt_le_adv_lookup_legacy(hdev);
 		/* Clear advertising even if we are not able to add connection
 		 * object to keep host in sync with controller state.
 		 */
@@ -1445,7 +1445,7 @@ void bt_hci_le_enh_conn_complete(struct bt_dev *hdev, struct bt_hci_evt_le_enh_c
 
 		if (!(IS_ENABLED(CONFIG_BT_EXT_ADV) &&
 		      BT_DEV_FEAT_LE_EXT_ADV(hdev->le.features))) {
-			struct bt_le_ext_adv *adv = bt_le_adv_lookup_legacy();
+			struct bt_le_ext_adv *adv = bt_le_adv_lookup_legacy(hdev);
 
 			if (IS_ENABLED(CONFIG_BT_PRIVACY) &&
 			    !atomic_test_bit(adv->flags, BT_ADV_USE_IDENTITY)) {
@@ -1474,17 +1474,17 @@ void bt_hci_le_enh_conn_complete(struct bt_dev *hdev, struct bt_hci_evt_le_enh_c
 		 * this is how this le connection complete for peripheral occurred.
 		 */
 		if (BT_LE_STATES_PER_CONN_ADV(hdev->le.states)) {
-			bt_le_adv_resume();
+			bt_le_adv_resume(hdev);
 		}
 
 		if (IS_ENABLED(CONFIG_BT_EXT_ADV) &&
 		    !BT_DEV_FEAT_LE_EXT_ADV(hdev->le.features)) {
-			struct bt_le_ext_adv *adv = bt_le_adv_lookup_legacy();
+			struct bt_le_ext_adv *adv = bt_le_adv_lookup_legacy(hdev);
 			/* No advertising set terminated event, must be a
 			 * legacy advertiser set.
 			 */
 			if (!atomic_test_bit(adv->flags, BT_ADV_PERSIST)) {
-				bt_le_adv_delete_legacy();
+				bt_le_adv_delete_legacy(&bt_dev);
 			}
 		}
 	}
@@ -4495,7 +4495,7 @@ int bt_disable(void)
 	atomic_clear_bit(bt_dev.flags, BT_DEV_READY);
 
 #if defined(CONFIG_BT_BROADCASTER)
-	bt_adv_reset_adv_pool();
+	bt_adv_reset_adv_pool(&bt_dev);
 #endif /* CONFIG_BT_BROADCASTER */
 
 #if defined(CONFIG_BT_PRIVACY)
