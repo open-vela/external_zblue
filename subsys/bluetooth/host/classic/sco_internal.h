@@ -62,12 +62,14 @@ struct bt_sco_chan {
  *  The caller gets a new reference to the connection object which must be
  *  released with bt_conn_unref() once done using the object.
  *
+ *  @param hdev  Hci device.
  *  @param peer  Remote address.
  *  @param chan  sco chan object.
  *
  *  @return Valid connection object on success or NULL otherwise.
  */
-struct bt_conn *bt_conn_create_sco(const bt_addr_t *peer, struct bt_sco_chan *chan);
+struct bt_conn *bt_conn_create_sco(struct bt_dev *hdev,
+				const bt_addr_t *peer, struct bt_sco_chan *chan);
 
 /** @brief SCO Accept Info Structure */
 struct bt_sco_accept_info {
@@ -139,7 +141,7 @@ void bt_sco_connected(struct bt_conn *sco);
  */
 void bt_sco_disconnected(struct bt_conn *sco);
 
-uint8_t bt_esco_conn_req(struct bt_hci_evt_conn_request *evt);
+uint8_t bt_esco_conn_req(struct bt_dev *hdev, struct bt_hci_evt_conn_request *evt);
 
 #if defined(CONFIG_BT_CONN_LOG_LEVEL_DBG)
 void bt_sco_chan_set_state_debug(struct bt_sco_chan *chan,
