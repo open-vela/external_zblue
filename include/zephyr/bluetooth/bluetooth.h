@@ -1249,51 +1249,80 @@ struct bt_le_per_adv_param {
  *                       controller, for other controllers code returned in
  *                       this case may be -EIO.
  */
-int bt_le_adv_start(const struct bt_le_adv_param *param,
-		    const struct bt_data *ad, size_t ad_len,
-		    const struct bt_data *sd, size_t sd_len);
+int bt_le_adv_start_mc(uint8_t dev_id, const struct bt_le_adv_param *param,
+	const struct bt_data *ad, size_t ad_len,
+	const struct bt_data *sd, size_t sd_len);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_le_adv_start(const struct bt_le_adv_param *param,
+	const struct bt_data *ad, size_t ad_len,
+	const struct bt_data *sd, size_t sd_len)
+{
+return bt_le_adv_start_mc(0, param, ad, ad_len, sd, sd_len);
+}
+#endif
 
 /**
- * @brief Update advertising
- *
- * Update advertisement and scan response data.
- *
- * @param ad Data to be used in advertisement packets.
- * @param ad_len Number of elements in ad
- * @param sd Data to be used in scan response packets.
- * @param sd_len Number of elements in sd
- *
- * @return Zero on success or (negative) error code otherwise.
- */
-int bt_le_adv_update_data(const struct bt_data *ad, size_t ad_len,
-			  const struct bt_data *sd, size_t sd_len);
+* @brief Update advertising
+*
+* Update advertisement and scan response data.
+*
+* @param ad Data to be used in advertisement packets.
+* @param ad_len Number of elements in ad
+* @param sd Data to be used in scan response packets.
+* @param sd_len Number of elements in sd
+*
+* @return Zero on success or (negative) error code otherwise.
+*/
+int bt_le_adv_update_data_mc(uint8_t dev_id, const struct bt_data *ad, size_t ad_len,
+	  const struct bt_data *sd, size_t sd_len);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_le_adv_update_data(const struct bt_data *ad, size_t ad_len,
+	  const struct bt_data *sd, size_t sd_len)
+{
+return bt_le_adv_update_data_mc(0, ad, ad_len, sd, sd_len);
+}
+#endif
 
 /**
- * @brief Stop advertising
- *
- * Stops ongoing advertising.
- *
- * @return Zero on success or (negative) error code otherwise.
- */
-int bt_le_adv_stop(void);
+* @brief Stop advertising
+*
+* Stops ongoing advertising.
+*
+* @return Zero on success or (negative) error code otherwise.
+*/
+int bt_le_adv_stop_mc(uint8_t dev_id);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_le_adv_stop(void)
+{
+return bt_le_adv_stop_mc(BT_ID_DEFAULT);
+}
+#endif
 
 /**
- * @brief Create advertising set.
- *
- * Create a new advertising set and set advertising parameters.
- * Advertising parameters can be updated with @ref bt_le_ext_adv_update_param.
- *
- * @param[in] param Advertising parameters.
- * @param[in] cb    Callback struct to notify about advertiser activity. Can be
- *                  NULL. Must point to valid memory during the lifetime of the
- *                  advertising set.
- * @param[out] adv  Valid advertising set object on success.
- *
- * @return Zero on success or (negative) error code otherwise.
- */
-int bt_le_ext_adv_create(const struct bt_le_adv_param *param,
-			 const struct bt_le_ext_adv_cb *cb,
-			 struct bt_le_ext_adv **adv);
+* @brief Create advertising set.
+*
+* Create a new advertising set and set advertising parameters.
+* Advertising parameters can be updated with @ref bt_le_ext_adv_update_param.
+*
+* @param[in] param Advertising parameters.
+* @param[in] cb    Callback struct to notify about advertiser activity. Can be
+*                  NULL. Must point to valid memory during the lifetime of the
+*                  advertising set.
+* @param[out] adv  Valid advertising set object on success.
+*
+* @return Zero on success or (negative) error code otherwise.
+*/
+int bt_le_ext_adv_create_mc(uint8_t dev_id, const struct bt_le_adv_param *param,
+	 const struct bt_le_ext_adv_cb *cb,
+	 struct bt_le_ext_adv **adv);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_le_ext_adv_create(const struct bt_le_adv_param *param,
+	 const struct bt_le_ext_adv_cb *cb,
+	 struct bt_le_ext_adv **adv)
+{
+return bt_le_ext_adv_create_mc(0, param, cb, adv);
+}
+#endif
 
 struct bt_le_ext_adv_start_param {
 	/**
