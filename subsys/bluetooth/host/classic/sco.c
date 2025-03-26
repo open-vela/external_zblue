@@ -272,7 +272,7 @@ static int accept_sco_conn(const bt_addr_t *bdaddr, struct bt_conn *sco_conn)
 	cp->retrans_effort = 0x01;
 	cp->content_format = BT_VOICE_CVSD_16BIT;
 
-	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_ACCEPT_SYNC_CONN_REQ, buf, NULL);
+	err = bt_hci_cmd_send_sync(sco_conn->hdev, BT_HCI_OP_ACCEPT_SYNC_CONN_REQ, buf, NULL);
 	if (err) {
 		return err;
 	}
@@ -280,7 +280,7 @@ static int accept_sco_conn(const bt_addr_t *bdaddr, struct bt_conn *sco_conn)
 	return 0;
 }
 
-uint8_t bt_esco_conn_req(struct bt_hci_evt_conn_request *evt)
+uint8_t bt_esco_conn_req(struct bt_dev *hdev, struct bt_hci_evt_conn_request *evt)
 {
 	struct bt_conn *sco_conn;
 	uint8_t sec_err;
@@ -290,7 +290,7 @@ uint8_t bt_esco_conn_req(struct bt_hci_evt_conn_request *evt)
 		return BT_HCI_ERR_UNSPECIFIED;
 	}
 
-	sco_conn = bt_conn_add_sco(&bt_dev, &evt->bdaddr, evt->link_type);
+	sco_conn = bt_conn_add_sco(hdev, &evt->bdaddr, evt->link_type);
 	if (!sco_conn) {
 		return BT_HCI_ERR_INSUFFICIENT_RESOURCES;
 	}
@@ -353,19 +353,20 @@ static int sco_setup_sync_conn(struct bt_conn *sco_conn)
 	cp->retrans_effort = 0x01;
 	cp->content_format = BT_VOICE_CVSD_16BIT;
 
-	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_SETUP_SYNC_CONN, buf, NULL);
+	err = bt_hci_cmd_send_sync(sco_conn->hdev, BT_HCI_OP_SETUP_SYNC_CONN, buf, NULL);
 	if (err < 0) {
 		return err;
 	}
 	return 0;
 }
 
-struct bt_conn *bt_conn_create_sco(const bt_addr_t *peer, struct bt_sco_chan *chan)
+struct bt_conn *bt_conn_create_sco(struct bt_dev *hdev,
+				const bt_addr_t *peer, struct bt_sco_chan *chan)
 {
 	struct bt_conn *sco_conn;
 	int link_type;
 
-	sco_conn = bt_conn_lookup_addr_sco(&bt_dev, peer);
+	sco_conn = bt_conn_lookup_addr_sco(hdev, peer);
 	if (sco_conn) {
 		switch (sco_conn->state) {
 		case BT_CONN_INITIATING:
@@ -377,13 +378,13 @@ struct bt_conn *bt_conn_create_sco(const bt_addr_t *peer, struct bt_sco_chan *ch
 		}
 	}
 
-	if (BT_FEAT_LMP_ESCO_CAPABLE(bt_dev.features)) {
+	if (BT_FEAT_LMP_ESCO_CAPABLE(hdev->features)) {
 		link_type = BT_HCI_ESCO;
 	} else {
 		link_type = BT_HCI_SCO;
 	}
 
-	sco_conn = bt_conn_add_sco(&bt_dev, peer, link_type);
+	sco_conn = bt_conn_add_sco(hdev, peer, link_type);
 	if (!sco_conn) {
 		return NULL;
 	}
