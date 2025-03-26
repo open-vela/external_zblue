@@ -599,7 +599,7 @@ static void hci_num_completed_packets(struct bt_dev *hdev, struct net_buf *buf)
 
 		LOG_DBG("handle %u count %u", handle, count);
 
-		conn = bt_conn_lookup_handle(handle, BT_CONN_TYPE_ALL);
+		conn = bt_conn_lookup_handle(hdev, handle, BT_CONN_TYPE_ALL);
 		if (!conn) {
 			LOG_ERR("No connection for handle %u", handle);
 			continue;
@@ -667,7 +667,7 @@ static void hci_acl(struct bt_dev *hdev, struct net_buf *buf)
 		return;
 	}
 
-	conn = bt_conn_lookup_handle(acl(buf)->handle, BT_CONN_TYPE_ALL);
+	conn = bt_conn_lookup_handle(hdev, acl(buf)->handle, BT_CONN_TYPE_ALL);
 	if (!conn) {
 		LOG_ERR("Unable to find conn for handle %u", acl(buf)->handle);
 		net_buf_unref(buf);
@@ -976,7 +976,7 @@ static void hci_disconn_complete_prio(struct bt_dev *hdev, struct net_buf *buf)
 		return;
 	}
 
-	conn = bt_conn_lookup_handle(handle, BT_CONN_TYPE_ALL);
+	conn = bt_conn_lookup_handle(hdev, handle, BT_CONN_TYPE_ALL);
 	if (!conn) {
 		/* Priority disconnect complete event received before normal
 		 * connection complete event.
@@ -1004,7 +1004,7 @@ static void hci_disconn_complete(struct bt_dev *hdev, struct net_buf *buf)
 		return;
 	}
 
-	conn = bt_conn_lookup_handle(handle, BT_CONN_TYPE_ALL);
+	conn = bt_conn_lookup_handle(hdev, handle, BT_CONN_TYPE_ALL);
 	if (!conn) {
 		LOG_ERR("Unable to look up conn with handle %u", handle);
 		return;
@@ -1201,10 +1201,10 @@ static struct bt_conn *find_pending_connect(uint8_t role, bt_addr_le_t *peer_add
 	 * CONNECT or CONNECT_AUTO state associated with passed peer LE address.
 	 */
 	if (IS_ENABLED(CONFIG_BT_CENTRAL) && role == BT_HCI_ROLE_CENTRAL) {
-		conn = bt_conn_lookup_state_le(BT_ID_DEFAULT, peer_addr,
+		conn = bt_conn_lookup_state_le(&bt_dev, BT_ID_DEFAULT, peer_addr,
 					       BT_CONN_INITIATING);
 		if (IS_ENABLED(CONFIG_BT_FILTER_ACCEPT_LIST) && !conn) {
-			conn = bt_conn_lookup_state_le(BT_ID_DEFAULT,
+			conn = bt_conn_lookup_state_le(&bt_dev, BT_ID_DEFAULT,
 						       BT_ADDR_LE_NONE,
 						       BT_CONN_INITIATING_FILTER_LIST);
 		}
@@ -1213,10 +1213,10 @@ static struct bt_conn *find_pending_connect(uint8_t role, bt_addr_le_t *peer_add
 	}
 
 	if (IS_ENABLED(CONFIG_BT_PERIPHERAL) && role == BT_HCI_ROLE_PERIPHERAL) {
-		conn = bt_conn_lookup_state_le(bt_dev.adv_conn_id, peer_addr,
+		conn = bt_conn_lookup_state_le(&bt_dev, bt_dev.adv_conn_id, peer_addr,
 					       BT_CONN_ADV_DIR_CONNECTABLE);
 		if (!conn) {
-			conn = bt_conn_lookup_state_le(bt_dev.adv_conn_id,
+			conn = bt_conn_lookup_state_le(&bt_dev, bt_dev.adv_conn_id,
 						       BT_ADDR_LE_NONE,
 						       BT_CONN_ADV_CONNECTABLE);
 		}
@@ -1755,7 +1755,7 @@ static void le_remote_feat_complete(struct bt_dev *hdev, struct net_buf *buf)
 	uint16_t handle = sys_le16_to_cpu(evt->handle);
 	struct bt_conn *conn;
 
-	conn = bt_conn_lookup_handle(handle, BT_CONN_TYPE_LE);
+	conn = bt_conn_lookup_handle(hdev, handle, BT_CONN_TYPE_LE);
 	if (!conn) {
 		LOG_ERR("Unable to lookup conn for handle %u", handle);
 		return;
@@ -1783,7 +1783,7 @@ static void le_data_len_change(struct bt_dev *hdev, struct net_buf *buf)
 	uint16_t handle = sys_le16_to_cpu(evt->handle);
 	struct bt_conn *conn;
 
-	conn = bt_conn_lookup_handle(handle, BT_CONN_TYPE_LE);
+	conn = bt_conn_lookup_handle(hdev, handle, BT_CONN_TYPE_LE);
 	if (!conn) {
 		LOG_ERR("Unable to lookup conn for handle %u", handle);
 		return;
@@ -1829,7 +1829,7 @@ static void le_phy_update_complete(struct bt_dev *hdev, struct net_buf *buf)
 	uint16_t handle = sys_le16_to_cpu(evt->handle);
 	struct bt_conn *conn;
 
-	conn = bt_conn_lookup_handle(handle, BT_CONN_TYPE_LE);
+	conn = bt_conn_lookup_handle(hdev, handle, BT_CONN_TYPE_LE);
 	if (!conn) {
 		LOG_ERR("Unable to lookup conn for handle %u", handle);
 		return;
@@ -1930,7 +1930,7 @@ static void le_conn_param_req(struct bt_dev *hdev, struct net_buf *buf)
 	param.latency = sys_le16_to_cpu(evt->latency);
 	param.timeout = sys_le16_to_cpu(evt->timeout);
 
-	conn = bt_conn_lookup_handle(handle, BT_CONN_TYPE_LE);
+	conn = bt_conn_lookup_handle(hdev, handle, BT_CONN_TYPE_LE);
 	if (!conn) {
 		LOG_ERR("Unable to lookup conn for handle %u", handle);
 		le_conn_param_neg_reply(handle, BT_HCI_ERR_UNKNOWN_CONN_ID);
@@ -1957,7 +1957,7 @@ static void le_conn_update_complete(struct bt_dev *hdev, struct net_buf *buf)
 	LOG_DBG("status 0x%02x %s, handle %u",
 		evt->status, bt_hci_err_to_str(evt->status), handle);
 
-	conn = bt_conn_lookup_handle(handle, BT_CONN_TYPE_LE);
+	conn = bt_conn_lookup_handle(hdev, handle, BT_CONN_TYPE_LE);
 	if (!conn) {
 		LOG_ERR("Unable to lookup conn for handle %u", handle);
 		return;
@@ -2102,7 +2102,7 @@ static void unpair(uint8_t id, const bt_addr_le_t *addr)
 #if defined(CONFIG_BT_SMP) || defined(CONFIG_BT_CLASSIC)
 	struct bt_conn_auth_info_cb *listener, *next;
 
-	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&bt_auth_info_cbs, listener,
+	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&bt_dev.bt_auth_info_cbs, listener,
 					  next, node) {
 		if (listener->bond_deleted) {
 			listener->bond_deleted(id, addr);
@@ -2195,7 +2195,7 @@ static void hci_encrypt_change(struct bt_dev *hdev, struct net_buf *buf)
 	LOG_DBG("status 0x%02x %s handle %u encrypt 0x%02x",
 		evt->status, bt_hci_err_to_str(evt->status), handle, evt->encrypt);
 
-	conn = bt_conn_lookup_handle(handle, BT_CONN_TYPE_ALL);
+	conn = bt_conn_lookup_handle(hdev, handle, BT_CONN_TYPE_ALL);
 	if (!conn) {
 		LOG_ERR("Unable to look up conn with handle %u", handle);
 		return;
@@ -2279,7 +2279,7 @@ static void hci_encrypt_key_refresh_complete(struct bt_dev *hdev, struct net_buf
 	LOG_DBG("status 0x%02x %s handle %u",
 		evt->status, bt_hci_err_to_str(evt->status), handle);
 
-	conn = bt_conn_lookup_handle(handle, BT_CONN_TYPE_ALL);
+	conn = bt_conn_lookup_handle(hdev, handle, BT_CONN_TYPE_ALL);
 	if (!conn) {
 		LOG_ERR("Unable to look up conn with handle %u", handle);
 		return;
@@ -2335,7 +2335,7 @@ static void bt_hci_evt_read_remote_version_complete(struct bt_dev *hdev, struct 
 
 	evt = net_buf_pull_mem(buf, sizeof(*evt));
 	handle = sys_le16_to_cpu(evt->handle);
-	conn = bt_conn_lookup_handle(handle, BT_CONN_TYPE_ALL);
+	conn = bt_conn_lookup_handle(hdev, handle, BT_CONN_TYPE_ALL);
 	if (!conn) {
 		LOG_ERR("No connection for handle %u", handle);
 		return;
@@ -2416,7 +2416,7 @@ static void le_ltk_request(struct bt_dev *hdev, struct net_buf *buf)
 
 	LOG_DBG("handle %u", handle);
 
-	conn = bt_conn_lookup_handle(handle, BT_CONN_TYPE_LE);
+	conn = bt_conn_lookup_handle(hdev, handle, BT_CONN_TYPE_LE);
 	if (!conn) {
 		LOG_ERR("Unable to lookup conn for handle %u", handle);
 		return;
@@ -2622,7 +2622,7 @@ void bt_hci_le_transmit_power_report(struct bt_dev *hdev, struct net_buf *buf)
 	struct bt_conn *conn;
 
 	evt = net_buf_pull_mem(buf, sizeof(*evt));
-	conn = bt_conn_lookup_handle(sys_le16_to_cpu(evt->handle), BT_CONN_TYPE_LE);
+	conn = bt_conn_lookup_handle(hdev, sys_le16_to_cpu(evt->handle), BT_CONN_TYPE_LE);
 	if (!conn) {
 		LOG_ERR("Unknown conn handle 0x%04X for transmit power report",
 		       sys_le16_to_cpu(evt->handle));
@@ -2656,7 +2656,7 @@ void bt_hci_le_path_loss_threshold_event(struct bt_dev *hdev, struct net_buf *bu
 		return;
 	}
 
-	conn = bt_conn_lookup_handle(sys_le16_to_cpu(evt->handle), BT_CONN_TYPE_LE);
+	conn = bt_conn_lookup_handle(hdev, sys_le16_to_cpu(evt->handle), BT_CONN_TYPE_LE);
 	if (!conn) {
 		LOG_ERR("Unknown conn handle 0x%04X for path loss threshold report",
 		       sys_le16_to_cpu(evt->handle));
@@ -2686,7 +2686,7 @@ void bt_hci_le_subrate_change_event(struct bt_dev *hdev, struct net_buf *buf)
 
 	evt = net_buf_pull_mem(buf, sizeof(*evt));
 
-	conn = bt_conn_lookup_handle(sys_le16_to_cpu(evt->handle), BT_CONN_TYPE_LE);
+	conn = bt_conn_lookup_handle(hdev, sys_le16_to_cpu(evt->handle), BT_CONN_TYPE_LE);
 	if (!conn) {
 		LOG_ERR("Unknown conn handle 0x%04X for subrating event",
 		       sys_le16_to_cpu(evt->handle));
@@ -4288,14 +4288,14 @@ static int bt_init(void)
 	}
 
 	if (IS_ENABLED(CONFIG_BT_CONN)) {
-		err = bt_conn_init();
+		err = bt_conn_init(&bt_dev);
 		if (err) {
 			return err;
 		}
 	}
 
 	if (IS_ENABLED(CONFIG_BT_ISO)) {
-		err = bt_conn_iso_init();
+		err = bt_conn_iso_init(&bt_dev);
 		if (err) {
 			return err;
 		}
@@ -4510,7 +4510,7 @@ int bt_disable(void)
 	if (IS_ENABLED(CONFIG_BT_SMP)) {
 		bt_pub_key_hci_disrupted();
 	}
-	bt_conn_cleanup_all();
+	bt_conn_cleanup_all(&bt_dev);
 	disconnected_handles_reset();
 #endif /* CONFIG_BT_CONN */
 
@@ -4852,7 +4852,7 @@ static void tx_processor(struct k_work *item)
 
 	/* Hand over control to conn to process pending data */
 	if (IS_ENABLED(CONFIG_BT_CONN_TX)) {
-		bt_conn_tx_processor();
+		bt_conn_tx_processor(&bt_dev);
 	}
 }
 

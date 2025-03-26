@@ -697,9 +697,18 @@ void bt_conn_unref(struct bt_conn *conn);
  * @param func  Function to call for each connection.
  * @param data  Data to pass to the callback function.
  */
-void bt_conn_foreach(enum bt_conn_type type,
+
+void bt_conn_foreach_mc(uint8_t dev_id, enum bt_conn_type type,
+	void (*func)(struct bt_conn *conn, void *data),
+	void *data);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline void bt_conn_foreach(enum bt_conn_type type,
 		     void (*func)(struct bt_conn *conn, void *data),
-		     void *data);
+		     void *data)
+{
+	bt_conn_foreach_mc(0, type, func, data);
+}
+#endif
 
 /** @brief Look up an existing connection by address.
  *
@@ -713,7 +722,13 @@ void bt_conn_foreach(enum bt_conn_type type,
  *
  *  @return Connection object or NULL if not found.
  */
-struct bt_conn *bt_conn_lookup_addr_le(uint8_t id, const bt_addr_le_t *peer);
+struct bt_conn *bt_conn_lookup_addr_le_mc(uint8_t dev_id, uint8_t id, const bt_addr_le_t *peer);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline struct bt_conn *bt_conn_lookup_addr_le(uint8_t id, const bt_addr_le_t *peer)
+{
+	return bt_conn_lookup_addr_le_mc(0, id, peer);
+}
+#endif
 
 /** @brief Get destination (peer) address of a connection.
  *
@@ -735,7 +750,13 @@ const bt_addr_le_t *bt_conn_get_dst(const struct bt_conn *conn);
  *
  *  @return Connection object or NULL if not found.
  */
-struct bt_conn *bt_conn_lookup_addr_br(const bt_addr_t *peer);
+struct bt_conn *bt_conn_lookup_addr_br_mc(uint8_t dev_id, const bt_addr_t *peer);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline struct bt_conn *bt_conn_lookup_addr_br(const bt_addr_t *peer)
+{
+	return bt_conn_lookup_addr_br_mc(0, peer);
+}
+#endif
 
 /** @brief Get destination (peer) address of a br or sco connection.
  *
@@ -1385,10 +1406,17 @@ struct bt_conn_le_create_param {
  *
  *  @return Zero on success or (negative) error code on failure.
  */
-int bt_conn_le_create(const bt_addr_le_t *peer,
+int bt_conn_le_create_mc(uint8_t dev_id, const bt_addr_le_t *peer, const struct bt_conn_le_create_param *create_param,
+	const struct bt_le_conn_param *conn_param, struct bt_conn **ret_conn);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_conn_le_create(const bt_addr_le_t *peer,
 		      const struct bt_conn_le_create_param *create_param,
 		      const struct bt_le_conn_param *conn_param,
-		      struct bt_conn **conn);
+		      struct bt_conn **conn)
+{
+	return bt_conn_le_create_mc(0, peer, create_param, conn_param, conn);
+}
+#endif
 
 struct bt_conn_le_create_synced_param {
 
@@ -1441,14 +1469,27 @@ int bt_conn_le_create_synced(const struct bt_le_ext_adv *adv,
  *  @return Zero on success or (negative) error code on failure.
  *  @return -ENOMEM No free connection object available.
  */
-int bt_conn_le_create_auto(const struct bt_conn_le_create_param *create_param,
-			   const struct bt_le_conn_param *conn_param);
+int bt_conn_le_create_auto_mc(uint8_t dev_id, const struct bt_conn_le_create_param *create_param,
+	const struct bt_le_conn_param *param);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_conn_le_create_auto(const struct bt_conn_le_create_param *create_param,
+			   const struct bt_le_conn_param *conn_param)
+{
+	return bt_conn_le_create_auto_mc(0, create_param, conn_param);
+}
+#endif
 
 /** @brief Stop automatic connect creation.
  *
  *  @return Zero on success or (negative) error code on failure.
  */
-int bt_conn_create_auto_stop(void);
+int bt_conn_create_auto_stop_mc(uint8_t dev_id);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_conn_create_auto_stop(void)
+{
+	return bt_conn_create_auto_stop_mc(0);
+}
+#endif
 
 /** @brief Automatically connect to remote device if it's in range.
  *
@@ -1464,8 +1505,15 @@ int bt_conn_create_auto_stop(void);
  *
  *  @return Zero on success or error code otherwise.
  */
-int bt_le_set_auto_conn(const bt_addr_le_t *addr,
-			const struct bt_le_conn_param *param);
+int bt_le_set_auto_conn_mc(uint8_t dev_id, const bt_addr_le_t *addr,
+	const struct bt_le_conn_param *param);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_le_set_auto_conn(const bt_addr_le_t *addr,
+			const struct bt_le_conn_param *param)
+{
+	return bt_le_set_auto_conn_mc(0, addr, param);
+}
+#endif
 
 /** @brief Set security level for a connection.
  *
@@ -2003,7 +2051,13 @@ struct bt_conn_cb {
  * @retval 0 Success.
  * @retval -EEXIST if @p cb was already registered.
  */
-int bt_conn_cb_register(struct bt_conn_cb *cb);
+int bt_conn_cb_register_mc(uint8_t dev_id, struct bt_conn_cb *cb);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_conn_cb_register(struct bt_conn_cb *cb)
+{
+	return bt_conn_cb_register_mc(0, cb);
+}
+#endif
 
 /**
  * @brief Unregister connection callbacks.
@@ -2016,7 +2070,13 @@ int bt_conn_cb_register(struct bt_conn_cb *cb);
  * @retval -EINVAL If @p cb is NULL
  * @retval -ENOENT if @p cb was not registered
  */
-int bt_conn_cb_unregister(struct bt_conn_cb *cb);
+int bt_conn_cb_unregister_mc(uint8_t dev_id, struct bt_conn_cb *cb);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_conn_cb_unregister(struct bt_conn_cb *cb)
+{
+	return bt_conn_cb_unregister_mc(0, cb);
+}
+#endif
 
 /**
  *  @brief Register a callback structure for connection events.
@@ -2502,7 +2562,13 @@ struct bt_conn_auth_info_cb {
  *
  * @return Valid connection object on success or NULL otherwise.
  */
-struct bt_conn *bt_conn_pair_br(bt_addr_t *bdaddr, bt_security_t security);
+struct bt_conn *bt_conn_pair_br_mc(uint8_t dev_id, bt_addr_t *bdaddr, bt_security_t security);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline struct bt_conn *bt_conn_pair_br(bt_addr_t *bdaddr, bt_security_t security)
+{
+	return bt_conn_pair_br_mc(0, bdaddr, security);
+}
+#endif
 
 /** @brief Register authentication callbacks.
  *
@@ -2513,7 +2579,13 @@ struct bt_conn *bt_conn_pair_br(bt_addr_t *bdaddr, bt_security_t security);
  *
  *  @return Zero on success or negative error code otherwise
  */
-int bt_conn_auth_cb_register(const struct bt_conn_auth_cb *cb);
+int bt_conn_auth_cb_register_mc(uint8_t dev_id, const struct bt_conn_auth_cb *cb);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_conn_auth_cb_register(const struct bt_conn_auth_cb *cb)
+{
+	return bt_conn_auth_cb_register_mc(0, cb);
+}
+#endif
 
 /** @brief Register LE authentication callbacks.
  *
@@ -2551,7 +2623,13 @@ int bt_conn_auth_cb_overlay(struct bt_conn *conn, const struct bt_conn_auth_cb *
  *
  *  @return Zero on success or negative error code otherwise
  */
-int bt_conn_auth_info_cb_register(struct bt_conn_auth_info_cb *cb);
+int bt_conn_auth_info_cb_register_mc(uint8_t dev_id, struct bt_conn_auth_info_cb *cb);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_conn_auth_info_cb_register(struct bt_conn_auth_info_cb *cb)
+{
+	return bt_conn_auth_info_cb_register_mc(0, cb);
+}
+#endif
 
 /** @brief Unregister authentication information callbacks.
  *
@@ -2561,7 +2639,13 @@ int bt_conn_auth_info_cb_register(struct bt_conn_auth_info_cb *cb);
  *
  *  @return Zero on success or negative error code otherwise
  */
-int bt_conn_auth_info_cb_unregister(struct bt_conn_auth_info_cb *cb);
+int bt_conn_auth_info_cb_unregister_mc(uint8_t dev_id, struct bt_conn_auth_info_cb *cb);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_conn_auth_info_cb_unregister(struct bt_conn_auth_info_cb *cb)
+{
+	return bt_conn_auth_info_cb_unregister_mc(0, cb);
+}
+#endif
 
 /** @brief Reply with entered passkey.
  *
@@ -2677,8 +2761,15 @@ struct bt_br_conn_param {
  *
  *  @return Valid connection object on success or NULL otherwise.
  */
-struct bt_conn *bt_conn_create_br(const bt_addr_t *peer,
-				  const struct bt_br_conn_param *param);
+struct bt_conn *bt_conn_create_br_mc(uint8_t dev_id, const bt_addr_t *peer,
+	const struct bt_br_conn_param *param);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline struct bt_conn *bt_conn_create_br(const bt_addr_t *peer,
+				  const struct bt_br_conn_param *param)
+{
+	return bt_conn_create_br_mc(0, peer, param);
+}
+#endif
 
 #if defined(CONFIG_BT_POWER_MODE_CONTROL)
 /** @brief bluetooth conn check and enter sniff mode

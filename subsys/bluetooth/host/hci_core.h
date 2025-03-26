@@ -317,6 +317,8 @@ struct bt_dev_br {
 };
 #endif
 
+struct bt_dev_conn_ctx;
+
 /* The theoretical max for these is 8 and 64, but there's no point
  * in allocating the full memory if we only support a small subset.
  * These values must be updated whenever the host implementation is
@@ -436,12 +438,17 @@ struct bt_dev {
 	/* Appearance Value */
 	uint16_t		appearance;
 #endif
+
+	/* Connection context */
+  struct bt_dev_conn_ctx *conn_ctx;
+#if defined(CONFIG_BT_SMP) || defined(CONFIG_BT_CLASSIC)
+	const struct bt_conn_auth_cb *bt_auth;
+	sys_slist_t bt_auth_info_cbs;
+#endif
 };
 
 extern struct bt_dev bt_dev;
 #if defined(CONFIG_BT_SMP) || defined(CONFIG_BT_CLASSIC)
-extern const struct bt_conn_auth_cb *bt_auth;
-extern sys_slist_t bt_auth_info_cbs;
 enum bt_security_err bt_security_err_get(uint8_t hci_err);
 #endif /* CONFIG_BT_SMP || CONFIG_BT_CLASSIC */
 
