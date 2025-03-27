@@ -17,10 +17,6 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(bt_ecc);
 
-static uint8_t pub_key[BT_PUB_KEY_LEN];
-static sys_slist_t pub_key_cb_slist;
-static bt_dh_key_cb_t dh_key_cb;
-
 static const uint8_t debug_public_key[BT_PUB_KEY_LEN] = {
 	/* X */
 	0xe6, 0x9d, 0x35, 0x0e, 0x48, 0x01, 0x03, 0xcc,
@@ -39,7 +35,7 @@ bool bt_pub_key_is_debug(uint8_t *cmp_pub_key)
 	return memcmp(cmp_pub_key, debug_public_key, BT_PUB_KEY_LEN) == 0;
 }
 
-int bt_pub_key_gen(struct bt_pub_key_cb *new_cb)
+int bt_pub_key_gen(struct bt_dev *hdev, struct bt_pub_key_cb *new_cb)
 {
 	struct bt_pub_key_cb *cb;
 	int err;
@@ -50,19 +46,19 @@ int bt_pub_key_gen(struct bt_pub_key_cb *new_cb)
 	 * ECC support. If "LE Generate DH Key" is not supported then there
 	 * is no point in reading local public key.
 	 */
-	if (!BT_CMD_TEST(bt_dev.supported_commands, 34, 1) ||
-	    !BT_CMD_TEST(bt_dev.supported_commands, 34, 2)) {
+	if (!BT_CMD_TEST(hdev->supported_commands, 34, 1) ||
+	    !BT_CMD_TEST(hdev->supported_commands, 34, 2)) {
 		LOG_WRN("ECC HCI commands not available");
 		return -ENOTSUP;
 	}
 
 	if (IS_ENABLED(CONFIG_BT_USE_DEBUG_KEYS)) {
-		if (!BT_CMD_TEST(bt_dev.supported_commands, 41, 2)) {
+		if (!BT_CMD_TEST(hdev->supported_commands, 41, 2)) {
 			LOG_WRN("ECC Debug keys HCI command not available");
 		} else {
-			atomic_set_bit(bt_dev.flags, BT_DEV_HAS_PUB_KEY);
+			atomic_set_bit(hdev->flags, BT_DEV_HAS_PUB_KEY);
 			__ASSERT_NO_MSG(new_cb->func != NULL);
-			new_cb->func(debug_public_key);
+			new_cb->func(hdev, debug_public_key);
 			return 0;
 		}
 	}
@@ -71,70 +67,70 @@ int bt_pub_key_gen(struct bt_pub_key_cb *new_cb)
 		return -EINVAL;
 	}
 
-	SYS_SLIST_FOR_EACH_CONTAINER(&pub_key_cb_slist, cb, node) {
+	SYS_SLIST_FOR_EACH_CONTAINER(&hdev->pub_key_cb_slist, cb, node) {
 		if (cb == new_cb) {
 			LOG_WRN("Callback already registered");
 			return -EALREADY;
 		}
 	}
 
-	sys_slist_prepend(&pub_key_cb_slist, &new_cb->node);
+	sys_slist_prepend(&hdev->pub_key_cb_slist, &new_cb->node);
 
-	if (atomic_test_and_set_bit(bt_dev.flags, BT_DEV_PUB_KEY_BUSY)) {
+	if (atomic_test_and_set_bit(hdev->flags, BT_DEV_PUB_KEY_BUSY)) {
 		return 0;
 	}
 
-	atomic_clear_bit(bt_dev.flags, BT_DEV_HAS_PUB_KEY);
+	atomic_clear_bit(hdev->flags, BT_DEV_HAS_PUB_KEY);
 
-	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_P256_PUBLIC_KEY, NULL, NULL);
+	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_LE_P256_PUBLIC_KEY, NULL, NULL);
 	if (err) {
 
 		LOG_ERR("Sending LE P256 Public Key command failed");
-		atomic_clear_bit(bt_dev.flags, BT_DEV_PUB_KEY_BUSY);
+		atomic_clear_bit(hdev->flags, BT_DEV_PUB_KEY_BUSY);
 
-		SYS_SLIST_FOR_EACH_CONTAINER(&pub_key_cb_slist, cb, node) {
+		SYS_SLIST_FOR_EACH_CONTAINER(&hdev->pub_key_cb_slist, cb, node) {
 			if (cb->func) {
-				cb->func(NULL);
+				cb->func(hdev, NULL);
 			}
 		}
 
-		sys_slist_init(&pub_key_cb_slist);
+		sys_slist_init(&hdev->pub_key_cb_slist);
 		return err;
 	}
 
 	return 0;
 }
 
-void bt_pub_key_hci_disrupted(void)
+void bt_pub_key_hci_disrupted(struct bt_dev *hdev)
 {
 	struct bt_pub_key_cb *cb;
 
-	atomic_clear_bit(bt_dev.flags, BT_DEV_PUB_KEY_BUSY);
+	atomic_clear_bit(hdev->flags, BT_DEV_PUB_KEY_BUSY);
 
-	SYS_SLIST_FOR_EACH_CONTAINER(&pub_key_cb_slist, cb, node) {
+	SYS_SLIST_FOR_EACH_CONTAINER(&hdev->pub_key_cb_slist, cb, node) {
 		if (cb->func) {
-			cb->func(NULL);
+			cb->func(hdev, NULL);
 		}
 	}
 
-	sys_slist_init(&pub_key_cb_slist);
+	sys_slist_init(&hdev->pub_key_cb_slist);
 }
 
-const uint8_t *bt_pub_key_get(void)
+const uint8_t *bt_pub_key_get(struct bt_dev *hdev)
 {
 	if (IS_ENABLED(CONFIG_BT_USE_DEBUG_KEYS) &&
-	    BT_CMD_TEST(bt_dev.supported_commands, 41, 2)) {
+	    BT_CMD_TEST(hdev->supported_commands, 41, 2)) {
 		return debug_public_key;
 	}
 
-	if (atomic_test_bit(bt_dev.flags, BT_DEV_HAS_PUB_KEY)) {
-		return pub_key;
+	if (atomic_test_bit(hdev->flags, BT_DEV_HAS_PUB_KEY)) {
+		return hdev->pub_key;
 	}
 
 	return NULL;
 }
 
-static int hci_generate_dhkey_v1(const uint8_t *remote_pk)
+static int hci_generate_dhkey_v1(struct bt_dev *hdev, const uint8_t *remote_pk)
 {
 	struct bt_hci_cp_le_generate_dhkey *cp;
 	struct net_buf *buf;
@@ -147,10 +143,10 @@ static int hci_generate_dhkey_v1(const uint8_t *remote_pk)
 	cp = net_buf_add(buf, sizeof(*cp));
 	memcpy(cp->key, remote_pk, sizeof(cp->key));
 
-	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_GENERATE_DHKEY, buf, NULL);
+	return bt_hci_cmd_send_sync(hdev, BT_HCI_OP_LE_GENERATE_DHKEY, buf, NULL);
 }
 
-static int hci_generate_dhkey_v2(const uint8_t *remote_pk, uint8_t key_type)
+static int hci_generate_dhkey_v2(struct bt_dev *hdev, const uint8_t *remote_pk, uint8_t key_type)
 {
 	struct bt_hci_cp_le_generate_dhkey_v2 *cp;
 	struct net_buf *buf;
@@ -164,37 +160,37 @@ static int hci_generate_dhkey_v2(const uint8_t *remote_pk, uint8_t key_type)
 	memcpy(cp->key, remote_pk, sizeof(cp->key));
 	cp->key_type = key_type;
 
-	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_GENERATE_DHKEY_V2, buf, NULL);
+	return bt_hci_cmd_send_sync(hdev, BT_HCI_OP_LE_GENERATE_DHKEY_V2, buf, NULL);
 }
 
-int bt_dh_key_gen(const uint8_t remote_pk[BT_PUB_KEY_LEN], bt_dh_key_cb_t cb)
+int bt_dh_key_gen(struct bt_dev *hdev, const uint8_t remote_pk[BT_PUB_KEY_LEN], bt_dh_key_cb_t cb)
 {
 	int err;
 
-	if (dh_key_cb == cb) {
+	if (hdev->dh_key_cb == cb) {
 		return -EALREADY;
 	}
 
-	if (dh_key_cb || atomic_test_bit(bt_dev.flags, BT_DEV_PUB_KEY_BUSY)) {
+	if (hdev->dh_key_cb || atomic_test_bit(hdev->flags, BT_DEV_PUB_KEY_BUSY)) {
 		return -EBUSY;
 	}
 
-	if (!atomic_test_bit(bt_dev.flags, BT_DEV_HAS_PUB_KEY)) {
+	if (!atomic_test_bit(hdev->flags, BT_DEV_HAS_PUB_KEY)) {
 		return -EADDRNOTAVAIL;
 	}
 
-	dh_key_cb = cb;
+	hdev->dh_key_cb = cb;
 
 	if (IS_ENABLED(CONFIG_BT_USE_DEBUG_KEYS) &&
-	    BT_CMD_TEST(bt_dev.supported_commands, 41, 2)) {
-		err = hci_generate_dhkey_v2(remote_pk,
+	    BT_CMD_TEST(hdev->supported_commands, 41, 2)) {
+		err = hci_generate_dhkey_v2(hdev, remote_pk,
 					    BT_HCI_LE_KEY_TYPE_DEBUG);
 	} else {
-		err = hci_generate_dhkey_v1(remote_pk);
+		err = hci_generate_dhkey_v1(hdev, remote_pk);
 	}
 
 	if (err) {
-		dh_key_cb = NULL;
+		hdev->dh_key_cb = NULL;
 		LOG_WRN("Failed to generate DHKey (err %d)", err);
 		return err;
 	}
@@ -209,20 +205,20 @@ void bt_hci_evt_le_pkey_complete(struct bt_dev *hdev, struct net_buf *buf)
 
 	LOG_DBG("status: 0x%02x %s", evt->status, bt_hci_err_to_str(evt->status));
 
-	atomic_clear_bit(bt_dev.flags, BT_DEV_PUB_KEY_BUSY);
+	atomic_clear_bit(hdev->flags, BT_DEV_PUB_KEY_BUSY);
 
 	if (!evt->status) {
-		memcpy(pub_key, evt->key, BT_PUB_KEY_LEN);
-		atomic_set_bit(bt_dev.flags, BT_DEV_HAS_PUB_KEY);
+		memcpy(hdev->pub_key, evt->key, BT_PUB_KEY_LEN);
+		atomic_set_bit(hdev->flags, BT_DEV_HAS_PUB_KEY);
 	}
 
-	SYS_SLIST_FOR_EACH_CONTAINER(&pub_key_cb_slist, cb, node) {
+	SYS_SLIST_FOR_EACH_CONTAINER(&hdev->pub_key_cb_slist, cb, node) {
 		if (cb->func) {
-			cb->func(evt->status ? NULL : pub_key);
+			cb->func(hdev, evt->status ? NULL : hdev->pub_key);
 		}
 	}
 
-	sys_slist_init(&pub_key_cb_slist);
+	sys_slist_init(&hdev->pub_key_cb_slist);
 }
 
 void bt_hci_evt_le_dhkey_complete(struct bt_dev *hdev, struct net_buf *buf)
@@ -231,11 +227,11 @@ void bt_hci_evt_le_dhkey_complete(struct bt_dev *hdev, struct net_buf *buf)
 
 	LOG_DBG("status: 0x%02x %s", evt->status, bt_hci_err_to_str(evt->status));
 
-	if (dh_key_cb) {
-		bt_dh_key_cb_t cb = dh_key_cb;
+	if (hdev->dh_key_cb) {
+		bt_dh_key_cb_t cb = hdev->dh_key_cb;
 
-		dh_key_cb = NULL;
-		cb(evt->status ? NULL : evt->dhkey);
+		hdev->dh_key_cb = NULL;
+		cb(hdev, evt->status ? NULL : evt->dhkey);
 	}
 }
 

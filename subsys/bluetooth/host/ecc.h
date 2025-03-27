@@ -5,6 +5,8 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+#ifndef ZEPHYR_BLUETOOTH_HOST_ECC_H_
+#define ZEPHYR_BLUETOOTH_HOST_ECC_H_
 
 /** Key size used in Bluetooth's ECC domain. */
 #define BT_ECC_KEY_SIZE            32
@@ -27,7 +29,7 @@ struct bt_pub_key_cb {
 	 *
 	 *  @param key The local public key, or NULL in case of no key.
 	 */
-	void (*func)(const uint8_t key[BT_PUB_KEY_LEN]);
+	void (*func)(struct bt_dev *hdev, const uint8_t key[BT_PUB_KEY_LEN]);
 
 	/* Internal */
 	sys_snode_t node;
@@ -53,25 +55,30 @@ bool bt_pub_key_is_debug(uint8_t *cmp_pub_key);
  *  callback. After calling all the registered callbacks the linked list
  *  is cleared.
  *
+ *  @param hdev Hci device.
  *  @param cb Callback to notify the new key.
  *
  *  @return Zero on success or negative error code otherwise
  */
-int bt_pub_key_gen(struct bt_pub_key_cb *cb);
+int bt_pub_key_gen(struct bt_dev *hdev, struct bt_pub_key_cb *cb);
 
 /*  @brief Cleanup public key callbacks when HCI is disrupted.
  *
+ *  @param hdev Hci device.
+ *
  *  Clear the pub_key_cb_slist and clear the BT_DEV_PUB_KEY_BUSY flag.
  */
-void bt_pub_key_hci_disrupted(void);
+void bt_pub_key_hci_disrupted(struct bt_dev *hdev);
 
 /*  @brief Get the current Public Key.
  *
  *  Get the current ECC Public Key.
  *
+ * 	@param hdev Hci device.
+ *
  *  @return Current key, or NULL if not available.
  */
-const uint8_t *bt_pub_key_get(void);
+const uint8_t *bt_pub_key_get(struct bt_dev *hdev);
 
 /*  @typedef bt_dh_key_cb_t
  *  @brief Callback type for DH Key calculation.
@@ -80,15 +87,17 @@ const uint8_t *bt_pub_key_get(void);
  *
  *  @param key The DH Key, or NULL in case of failure.
  */
-typedef void (*bt_dh_key_cb_t)(const uint8_t key[BT_DH_KEY_LEN]);
+typedef void (*bt_dh_key_cb_t)(struct bt_dev *hdev, const uint8_t key[BT_DH_KEY_LEN]);
 
 /*  @brief Calculate a DH Key from a remote Public Key.
  *
  *  Calculate a DH Key from the remote Public Key.
  *
+ *  @param hdev Hci device. 
  *  @param remote_pk Remote Public Key.
  *  @param cb Callback to notify the calculated key.
  *
  *  @return Zero on success or negative error code otherwise
  */
-int bt_dh_key_gen(const uint8_t remote_pk[BT_PUB_KEY_LEN], bt_dh_key_cb_t cb);
+int bt_dh_key_gen(struct bt_dev *hdev, const uint8_t remote_pk[BT_PUB_KEY_LEN], bt_dh_key_cb_t cb);
+#endif /* ZEPHYR_BLUETOOTH_HOST_ECC_H_ */
