@@ -203,8 +203,6 @@ static struct net_buf *get_data_frag(struct bt_dev *hdev, struct net_buf *outsid
 #endif /* CONFIG_BT_CONN_TX */
 
 #if defined(CONFIG_BT_ISO)
-extern struct bt_conn iso_conns[CONFIG_BT_ISO_MAX_CHAN];
-
 int bt_conn_iso_init(struct bt_dev *hdev)
 {
 	for (size_t i = 0; i < ARRAY_SIZE(hdev->conn_ctx->iso_tx); i++) {
@@ -1408,7 +1406,7 @@ struct bt_conn *bt_conn_lookup_handle(struct bt_dev *hdev, uint16_t handle, enum
 #endif /* CONFIG_BT_CONN */
 
 #if defined(CONFIG_BT_ISO)
-	conn = conn_lookup_handle(iso_conns, ARRAY_SIZE(iso_conns), handle);
+	conn = conn_lookup_handle(hdev->iso_conns, ARRAY_SIZE(hdev->iso_conns), handle);
 	if (conn) {
 		goto found;
 	}
@@ -1490,8 +1488,8 @@ void bt_conn_foreach_mc(uint8_t dev_id, enum bt_conn_type type,
 
 #if defined(CONFIG_BT_ISO)
 	if (type & BT_CONN_TYPE_ISO) {
-		for (i = 0; i < ARRAY_SIZE(iso_conns); i++) {
-			struct bt_conn *conn = bt_conn_ref(&iso_conns[i]);
+		for (i = 0; i < ARRAY_SIZE(hdev->iso_conns); i++) {
+			struct bt_conn *conn = bt_conn_ref(&hdev->iso_conns[i]);
 
 			if (!conn) {
 				continue;
@@ -1586,8 +1584,8 @@ uint8_t bt_conn_index(const struct bt_conn *conn)
 	switch (conn->type) {
 #if defined(CONFIG_BT_ISO)
 	case BT_CONN_TYPE_ISO:
-		index = conn - iso_conns;
-		__ASSERT(index >= 0 && index < ARRAY_SIZE(iso_conns),
+		index = conn - hdev->iso_conns;
+		__ASSERT(index >= 0 && index < ARRAY_SIZE(hdev->iso_conns),
 			"Invalid bt_conn pointer");
 		break;
 #endif
@@ -2165,8 +2163,8 @@ static struct bt_conn *conn_lookup_iso(struct bt_conn *conn)
 {
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(iso_conns); i++) {
-		struct bt_conn *iso = bt_conn_ref(&iso_conns[i]);
+	for (i = 0; i < ARRAY_SIZE(hdev->iso_conns); i++) {
+		struct bt_conn *iso = bt_conn_ref(&hdev->iso_conns[i]);
 
 		if (iso == NULL) {
 			continue;

@@ -418,7 +418,7 @@ int bt_conn_iso_init(struct bt_dev *hdev);
 /* Cleanup ISO references */
 void bt_iso_cleanup_acl(struct bt_conn *iso_conn);
 
-void bt_iso_reset(void);
+void bt_iso_reset(struct bt_dev *hdev);
 
 /* Add a new BR/EDR connection */
 struct bt_conn *bt_conn_add_br(struct bt_dev *hdev, const bt_addr_t *peer);
