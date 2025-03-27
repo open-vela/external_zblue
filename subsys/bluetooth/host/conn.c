@@ -4388,7 +4388,7 @@ int bt_conn_init(struct bt_dev *hdev)
 
 	bt_att_init();
 
-	err = bt_smp_init();
+	err = bt_smp_init(hdev);
 	if (err) {
 		return err;
 	}

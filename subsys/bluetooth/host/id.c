@@ -2111,7 +2111,7 @@ int bt_le_oob_get_local_mc(uint8_t dev_id, uint8_t id, struct bt_le_oob *oob)
 	}
 
 	if (IS_ENABLED(CONFIG_BT_SMP)) {
-		err = bt_smp_le_oob_generate_sc_data(&oob->le_sc_data);
+		err = bt_smp_le_oob_generate_sc_data(hdev, &oob->le_sc_data);
 		if (err && err != -ENOTSUP) {
 			return err;
 		}
@@ -2169,7 +2169,7 @@ int bt_le_ext_adv_oob_get_local(struct bt_le_ext_adv *adv,
 	}
 
 	if (IS_ENABLED(CONFIG_BT_SMP)) {
-		err = bt_smp_le_oob_generate_sc_data(&oob->le_sc_data);
+		err = bt_smp_le_oob_generate_sc_data(adv->hdev, &oob->le_sc_data);
 		if (err && err != -ENOTSUP) {
 			return err;
 		}
