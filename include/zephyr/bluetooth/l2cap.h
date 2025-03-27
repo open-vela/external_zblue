@@ -511,7 +511,13 @@ struct bt_l2cap_server {
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_l2cap_server_register(struct bt_l2cap_server *server);
+int bt_l2cap_server_register_mc(uint8_t dev_id, struct bt_l2cap_server *server);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_l2cap_server_register(struct bt_l2cap_server *server)
+{
+	return bt_l2cap_server_register_mc(0, server);
+}
+#endif
 
 /** @brief Register L2CAP server on BR/EDR oriented connection.
  *
@@ -523,7 +529,13 @@ int bt_l2cap_server_register(struct bt_l2cap_server *server);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_l2cap_br_server_register(struct bt_l2cap_server *server);
+int bt_l2cap_br_server_register_mc(uint8_t dev_id, struct bt_l2cap_server *server);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_l2cap_br_server_register(struct bt_l2cap_server *server)
+{
+	return bt_l2cap_br_server_register_mc(0, server);
+}
+#endif
 
 /** @brief Connect Enhanced Credit Based L2CAP channels
  *
