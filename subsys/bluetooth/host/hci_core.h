@@ -324,6 +324,11 @@ struct bt_dev_br {
 };
 #endif
 
+struct bt_br_rnr_cb {
+	bt_addr_t addr;
+	bt_br_remote_name_req_cb_t cb;
+} __packed;
+
 struct bt_dev_conn_ctx;
 struct bt_dev_scan_ctx;
 
@@ -471,6 +476,15 @@ struct bt_dev {
 #endif
 #endif
 	struct bt_keys_pool *keys;
+
+	/* Discovered devices */
+	struct bt_br_discovery_result *discovery_results;
+	size_t discovery_results_size;
+	size_t discovery_results_count;
+	sys_slist_t discovery_cbs;
+
+	/* remote name request callback */
+	struct bt_br_rnr_cb rnr_cb;
 };
 
 extern struct bt_dev bt_dev;
