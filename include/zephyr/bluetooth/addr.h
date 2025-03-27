@@ -155,10 +155,16 @@ static inline void bt_addr_le_copy(bt_addr_le_t *dst, const bt_addr_le_t *src)
 #define BT_ADDR_SET_STATIC(a) ((a)->val[5] |= 0xc0)
 
 /** @brief Create a Bluetooth LE random non-resolvable private address. */
+int bt_addr_le_create_nrpa_mc(uint8_t dev_id, bt_addr_le_t *addr);
+#ifdef CONFIG_BT_ORIGINAL_API
 int bt_addr_le_create_nrpa(bt_addr_le_t *addr);
+#endif
 
 /** @brief Create a Bluetooth LE random static address. */
+int bt_addr_le_create_static_mc(uint8_t dev_id, bt_addr_le_t *addr);
+#ifdef CONFIG_BT_ORIGINAL_API
 int bt_addr_le_create_static(bt_addr_le_t *addr);
+#endif
 
 /** @brief Check if a Bluetooth LE address is a random private resolvable
  *         address.

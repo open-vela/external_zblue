@@ -191,7 +191,13 @@ struct bt_br_oob {
  *
  * @param oob Out Of Band information
  */
-int bt_br_oob_get_local(struct bt_br_oob *oob);
+int bt_br_oob_get_local_mc(uint8_t dev_id, struct bt_br_oob *oob);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_br_oob_get_local(struct bt_br_oob *oob)
+{
+	return bt_br_oob_get_local_mc(0, oob);
+}
+#endif
 
 /**
  * @brief Enable/disable set controller in discoverable state.
