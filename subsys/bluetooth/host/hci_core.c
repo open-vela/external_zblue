@@ -2448,7 +2448,7 @@ static void hci_reset_complete(struct net_buf *buf)
 	}
 
 #if defined(CONFIG_BT_CLASSIC)
-	bt_br_discovery_reset();
+	bt_br_discovery_reset(&bt_dev);
 #endif /* CONFIG_BT_CLASSIC */
 
 	flags = (atomic_get(bt_dev.flags) & BT_DEV_PERSISTENT_FLAGS);
@@ -3762,7 +3762,7 @@ static int le_init(void)
 }
 
 #if !defined(CONFIG_BT_CLASSIC)
-static int bt_br_init(void)
+static int bt_br_init(struct bt_dev *hdev)
 {
 #if defined(CONFIG_BT_CONN)
 	struct net_buf *rsp;
@@ -3773,7 +3773,7 @@ static int bt_br_init(void)
 	}
 
 	/* Use BR/EDR buffer size if LE reports zero buffers */
-	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_READ_BUFFER_SIZE, NULL, &rsp);
+	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_READ_BUFFER_SIZE, NULL, &rsp);
 	if (err) {
 		return err;
 	}
@@ -4079,7 +4079,7 @@ static int hci_init(void)
 	}
 
 	if (BT_FEAT_BREDR(bt_dev.features)) {
-		err = bt_br_init();
+		err = bt_br_init(&bt_dev);
 		if (err) {
 			return err;
 		}
