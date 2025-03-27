@@ -4552,7 +4552,7 @@ int bt_disable(void)
 	bt_addr_le_copy(&bt_dev.random_addr, BT_ADDR_LE_ANY);
 
 	if (IS_ENABLED(CONFIG_BT_ISO)) {
-		bt_iso_reset();
+		bt_iso_reset(&bt_dev);
 	}
 
 	bt_monitor_send(BT_MONITOR_CLOSE_INDEX, NULL, 0);

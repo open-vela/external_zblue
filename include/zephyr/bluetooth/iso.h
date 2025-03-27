@@ -749,6 +749,9 @@ struct bt_iso_accept_info {
 
 /** @brief ISO Server structure. */
 struct bt_iso_server {
+	/* Hci device this iso server is associated with */
+	struct bt_dev *hdev;
+
 #if defined(CONFIG_BT_SMP) || defined(__DOXYGEN__)
 	/**
 	 * @brief Required minimum security level.
@@ -782,7 +785,13 @@ struct bt_iso_server {
  *
  * @return 0 in case of success or negative value in case of error.
  */
-int bt_iso_server_register(struct bt_iso_server *server);
+int bt_iso_server_register_mc(uint8_t dev_id, struct bt_iso_server *server);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_iso_server_register(struct bt_iso_server *server)
+{
+	return bt_iso_server_register_mc(0, server);
+}
+#endif
 
 /**
  * @brief Unregister ISO server.
@@ -809,7 +818,13 @@ int bt_iso_server_unregister(struct bt_iso_server *server);
  *
  * @return 0 in case of success or negative value in case of error.
  */
-int bt_iso_cig_create(const struct bt_iso_cig_param *param, struct bt_iso_cig **out_cig);
+int bt_iso_cig_create_mc(uint8_t dev_id, const struct bt_iso_cig_param *param, struct bt_iso_cig **out_cig);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_iso_cig_create(const struct bt_iso_cig_param *param, struct bt_iso_cig **out_cig)
+{
+	return bt_iso_cig_create_mc(0, param, out_cig);
+}
+#endif
 
 /**
  * @brief Reconfigure a CIG as a central
