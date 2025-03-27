@@ -3900,7 +3900,7 @@ static uint8_t smp_id_add_replace(struct bt_smp *smp, struct bt_keys *new_bond)
 	 */
 	__ASSERT_NO_MSG(!(smp->remote_dist & BT_SMP_DIST_ID_KEY));
 
-	conflict = bt_id_find_conflict(new_bond);
+	conflict = bt_id_find_conflict(&bt_dev, new_bond);
 	if (conflict) {
 		LOG_DBG("New bond conflicts with a bond on id %d.", conflict->id);
 	}
@@ -3927,7 +3927,7 @@ static uint8_t smp_id_add_replace(struct bt_smp *smp, struct bt_keys *new_bond)
 	}
 
 	__ASSERT_NO_MSG(!bt_id_find_conflict(new_bond));
-	bt_id_add(new_bond);
+	bt_id_add(&bt_dev, new_bond);
 	return 0;
 }
 

@@ -3789,7 +3789,7 @@ int bt_conn_le_create_auto_mc(uint8_t dev_id, const struct bt_conn_le_create_par
 		return -EINVAL;
 	}
 
-	if (!bt_id_scan_random_addr_check()) {
+	if (!bt_id_scan_random_addr_check(hdev)) {
 		return -EINVAL;
 	}
 
@@ -3882,7 +3882,7 @@ static int conn_le_create_common_checks(struct bt_dev *hdev, const bt_addr_le_t 
 		return -EALREADY;
 	}
 
-	if (!bt_id_scan_random_addr_check()) {
+	if (!bt_id_scan_random_addr_check(hdev)) {
 		LOG_DBG("Conn check failed: invalid random address.");
 		return -EINVAL;
 	}
@@ -3904,7 +3904,7 @@ static struct bt_conn *conn_le_create_helper(struct bt_dev *hdev, const bt_addr_
 	if (bt_addr_le_is_resolved(peer)) {
 		bt_addr_le_copy_resolved(&dst, peer);
 	} else {
-		bt_addr_le_copy(&dst, bt_lookup_id_addr(BT_ID_DEFAULT, peer));
+		bt_addr_le_copy(&dst, bt_lookup_id_addr(hdev, BT_ID_DEFAULT, peer));
 	}
 
 	/* Only default identity supported for now */
@@ -4085,7 +4085,7 @@ int bt_le_set_auto_conn_mc(uint8_t dev_id, const bt_addr_le_t *addr,
 		return -EINVAL;
 	}
 
-	if (!bt_id_scan_random_addr_check()) {
+	if (!bt_id_scan_random_addr_check(hdev)) {
 		return -EINVAL;
 	}
 
