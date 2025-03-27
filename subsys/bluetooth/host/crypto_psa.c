@@ -27,7 +27,7 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(bt_host_crypto);
 
-int prng_init(void)
+int prng_init(struct bt_dev *hdev)
 {
 	if (psa_crypto_init() != PSA_SUCCESS) {
 		return -EIO;
@@ -36,7 +36,7 @@ int prng_init(void)
 }
 
 #if defined(CONFIG_BT_HOST_CRYPTO_PRNG)
-int bt_rand(void *buf, size_t len)
+int bt_rand_mc(uint8_t dev_id, void *buf, size_t len)
 {
 	if (psa_generate_random(buf, len) == PSA_SUCCESS) {
 		return 0;
@@ -45,13 +45,13 @@ int bt_rand(void *buf, size_t len)
 	return -EIO;
 }
 #else /* !CONFIG_BT_HOST_CRYPTO_PRNG */
-int bt_rand(void *buf, size_t len)
+int bt_rand_mc(uint8_t dev_id, void *buf, size_t len)
 {
 	CHECKIF(buf == NULL || len == 0) {
 		return -EINVAL;
 	}
 
-	return bt_hci_le_rand(buf, len);
+	return bt_hci_le_rand_mc(dev_id, buf, len);
 }
 #endif /* CONFIG_BT_HOST_CRYPTO_PRNG */
 

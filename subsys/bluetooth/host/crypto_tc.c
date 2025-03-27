@@ -32,13 +32,13 @@ LOG_MODULE_REGISTER(bt_host_crypto);
 
 static struct tc_hmac_prng_struct prng;
 
-static int prng_reseed(struct tc_hmac_prng_struct *h)
+static int prng_reseed(struct bt_dev *hdev, struct tc_hmac_prng_struct *h)
 {
 	uint8_t seed[32];
 	int64_t extra;
 	int ret;
 
-	ret = bt_hci_le_rand(seed, sizeof(seed));
+	ret = bt_hci_le_rand_mc(hdev->dev_id, seed, sizeof(seed));
 	if (ret) {
 		return ret;
 	}
@@ -55,12 +55,12 @@ static int prng_reseed(struct tc_hmac_prng_struct *h)
 	return 0;
 }
 
-int prng_init(void)
+int prng_init(struct bt_dev *hdev)
 {
 	uint8_t perso[8];
 	int ret;
 
-	ret = bt_hci_le_rand(perso, sizeof(perso));
+	ret = bt_hci_le_rand_mc(hdev->dev_id, perso, sizeof(perso));
 	if (ret) {
 		return ret;
 	}
@@ -72,13 +72,19 @@ int prng_init(void)
 	}
 
 	/* re-seed is needed after init */
-	return prng_reseed(&prng);
+	return prng_reseed(hdev, &prng);
 }
 
 #if defined(CONFIG_BT_HOST_CRYPTO_PRNG)
-int bt_rand(void *buf, size_t len)
+int bt_rand_mc(uint8_t dev_id, void *buf, size_t len)
 {
 	int ret;
+	struct bt_dev *hdev;
+
+	hdev = bt_dev_get(dev_id);
+	if (!hdev) {
+		return -ENODEV;
+	}
 
 	CHECKIF(buf == NULL || len == 0) {
 		return -EINVAL;
@@ -86,7 +92,7 @@ int bt_rand(void *buf, size_t len)
 
 	ret = tc_hmac_prng_generate(buf, len, &prng);
 	if (ret == TC_HMAC_PRNG_RESEED_REQ) {
-		ret = prng_reseed(&prng);
+		ret = prng_reseed(hdev, &prng);
 		if (ret) {
 			return ret;
 		}
@@ -101,13 +107,20 @@ int bt_rand(void *buf, size_t len)
 	return -EIO;
 }
 #else /* !CONFIG_BT_HOST_CRYPTO_PRNG */
-int bt_rand(void *buf, size_t len)
+int bt_rand_mc(uint8_t dev_id, void *buf, size_t len)
 {
+	struct bt_dev *hdev;
+
+	hdev = bt_dev_get(dev_id);
+	if (!hdev) {
+		return -ENODEV;
+	}
+
 	CHECKIF(buf == NULL || len == 0) {
 		return -EINVAL;
 	}
 
-	return bt_hci_le_rand(buf, len);
+	return bt_hci_le_rand_mc(hdev->dev_id, buf, len);
 }
 #endif /* CONFIG_BT_HOST_CRYPTO_PRNG */
 
