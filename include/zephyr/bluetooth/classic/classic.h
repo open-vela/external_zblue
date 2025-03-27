@@ -323,8 +323,15 @@ struct bt_bond_info_br {
  * @param info Bond information.
  * @param user_data Data passed to the iterator.
  */
-void bt_foreach_bond_br(void (*func)(const struct bt_bond_info_br *info, void *user_data),
+void bt_foreach_bond_br_mc(uint8_t dev_id, void (*func)(const struct bt_bond_info_br *info, void *user_data),
 			void *user_data);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline void bt_foreach_bond_br(void (*func)(const struct bt_bond_info_br *info, void *user_data),
+			void *user_data)
+{
+	bt_foreach_bond_br_mc(0, func, user_data);
+}
+#endif
 
 /**
  * @brief Set BR/EDR bond information.
@@ -334,7 +341,13 @@ void bt_foreach_bond_br(void (*func)(const struct bt_bond_info_br *info, void *u
  * @return Zero on success or error code otherwise, positive in case
  * of protocol error or negative (POSIX) in case of stack internal error.
  */
-int bt_set_bond_info_br(const struct bt_bond_info_br *info);
+int bt_set_bond_info_br_mc(uint8_t dev_id, const struct bt_bond_info_br *info);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_set_bond_info_br(const struct bt_bond_info_br *info)
+{
+	return bt_set_bond_info_br_mc(0, info);
+}
+#endif
 
 /**
  * @brief Get BR/EDR bond information.
@@ -345,7 +358,13 @@ int bt_set_bond_info_br(const struct bt_bond_info_br *info);
  * @return Zero on success or error code otherwise, positive in case
  * of protocol error or negative (POSIX) in case of stack internal error.
  */
-int bt_get_bond_info_br(const bt_addr_t* bdaddr, struct bt_bond_info_br *info);
+int bt_get_bond_info_br_mc(uint8_t dev_id, const bt_addr_t* bdaddr, struct bt_bond_info_br *info);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_get_bond_info_br(const bt_addr_t* bdaddr, struct bt_bond_info_br *info)
+{
+	return bt_get_bond_info_br_mc(0, bdaddr, info);
+}
+#endif
 
 /**
  * @brief Request remote device name callback.

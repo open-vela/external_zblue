@@ -56,7 +56,7 @@ const bt_addr_le_t *bt_lookup_id_addr(uint8_t id, const bt_addr_le_t *addr)
 	if (IS_ENABLED(CONFIG_BT_SMP)) {
 		struct bt_keys *keys;
 
-		keys = bt_keys_find_irk(id, addr);
+		keys = bt_keys_find_irk(&bt_dev, id, addr);
 		if (keys) {
 			LOG_DBG("Identity %s matched RPA %s", bt_addr_le_str(&keys->addr),
 				bt_addr_le_str(addr));
@@ -928,9 +928,9 @@ void bt_id_pending_keys_update(void)
 	if (atomic_test_and_clear_bit(bt_dev.flags, BT_DEV_ID_PENDING)) {
 		if (IS_ENABLED(CONFIG_BT_CENTRAL) &&
 		    IS_ENABLED(CONFIG_BT_PRIVACY)) {
-			bt_keys_foreach_type(BT_KEYS_ALL, pending_id_update, NULL);
+			bt_keys_foreach_type(&bt_dev, BT_KEYS_ALL, pending_id_update, NULL);
 		} else {
-			bt_keys_foreach_type(BT_KEYS_IRK, pending_id_update, NULL);
+			bt_keys_foreach_type(&bt_dev, BT_KEYS_IRK, pending_id_update, NULL);
 		}
 	}
 }
@@ -989,7 +989,7 @@ struct bt_keys *bt_id_find_conflict(struct bt_keys *candidate)
 		.candidate = candidate,
 	};
 
-	bt_keys_foreach_type(BT_KEYS_IRK, find_rl_conflict, &conflict);
+	bt_keys_foreach_type(&bt_dev, BT_KEYS_IRK, find_rl_conflict, &conflict);
 
 	return conflict.found;
 }
@@ -1213,9 +1213,9 @@ void bt_id_del(struct bt_keys *keys)
 		keys->state &= ~BT_KEYS_ID_ADDED;
 		if (IS_ENABLED(CONFIG_BT_CENTRAL) &&
 		    IS_ENABLED(CONFIG_BT_PRIVACY)) {
-			bt_keys_foreach_type(BT_KEYS_ALL, keys_add_id, NULL);
+			bt_keys_foreach_type(&bt_dev, BT_KEYS_ALL, keys_add_id, NULL);
 		} else {
-			bt_keys_foreach_type(BT_KEYS_IRK, keys_add_id, NULL);
+			bt_keys_foreach_type(&bt_dev, BT_KEYS_IRK, keys_add_id, NULL);
 		}
 		goto done;
 	}

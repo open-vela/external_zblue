@@ -2593,7 +2593,7 @@ bool bt_conn_ltk_present(const struct bt_conn *conn)
 	const struct bt_keys *keys = conn->le.keys;
 
 	if (!keys) {
-		keys = bt_keys_find_addr(conn->id, &conn->le.dst);
+		keys = bt_keys_find_addr(conn->hdev, conn->id, &conn->le.dst);
 	}
 
 	if (keys) {

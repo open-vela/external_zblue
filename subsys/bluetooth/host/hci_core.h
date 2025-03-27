@@ -470,6 +470,7 @@ struct bt_dev {
 	struct bt_iso_big bigs[CONFIG_BT_ISO_MAX_BIG];
 #endif
 #endif
+	struct bt_keys_pool *keys;
 };
 
 extern struct bt_dev bt_dev;
