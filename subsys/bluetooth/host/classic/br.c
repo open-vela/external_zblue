@@ -1450,7 +1450,7 @@ int bt_br_unpair(bt_addr_t *bdaddr)
 	}
 
 	/* Delete stored link key from settings */
-	bt_keys_link_key_clear_addr(bdaddr);
+	bt_keys_link_key_clear_addr(&bt_dev, bdaddr);
 
 	/* Delete stored link key from controller */
 	bt_br_delete_stored_link_key(bdaddr, true);
