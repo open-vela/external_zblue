@@ -36,7 +36,13 @@ extern "C" {
  *  @return Zero on success or error code otherwise, positive in case
  *  of protocol error or negative (POSIX) in case of stack internal error
  */
-int bt_rand(void *buf, size_t len);
+int bt_rand_mc(uint8_t dev_id, void *buf, size_t len);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_rand(void *buf, size_t len)
+{
+	return bt_rand_mc(0, buf, len);
+}
+#endif
 
 /** @brief AES encrypt little-endian data.
  *
