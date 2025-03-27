@@ -100,7 +100,7 @@ static int bt_smp_accept(struct bt_conn *conn, struct bt_l2cap_chan **chan)
 
 BT_L2CAP_CHANNEL_DEFINE(smp_fixed_chan, BT_L2CAP_CID_SMP, bt_smp_accept, NULL);
 
-int bt_smp_init(void)
+int bt_smp_init(struct bt_dev *hdev)
 {
 	return 0;
 }

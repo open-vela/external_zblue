@@ -2115,7 +2115,13 @@ static inline const char *bt_security_err_to_str(enum bt_security_err err)
  *
  *  @param enable Value allowing/disallowing to be bondable.
  */
-void bt_set_bondable(bool enable);
+void bt_set_bondable_mc(uint8_t dev_id, bool enable);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline void bt_set_bondable(bool enable)
+{
+	bt_set_bondable_mc(0, enable);
+}
+#endif
 
 /** @brief Get bonding flag.
  *
@@ -2126,7 +2132,13 @@ void bt_set_bondable(bool enable);
  *
  *  @return Current bonding flag.
  */
-bool bt_get_bondable(void);
+bool bt_get_bondable_mc(uint8_t dev_id);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline bool bt_get_bondable(void)
+{
+	return bt_get_bondable_mc(0);
+}
+#endif
 
 /** @brief Set/clear the bonding flag for a given connection.
  *
@@ -2154,7 +2166,13 @@ int bt_conn_set_bondable(struct bt_conn *conn, bool enable);
  *
  *  @param enable Value allowing/disallowing remote LE SC OOB data.
  */
-void bt_le_oob_set_sc_flag(bool enable);
+void bt_le_oob_set_sc_flag_mc(uint8_t dev_id, bool enable);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline void bt_le_oob_set_sc_flag(bool enable)
+{
+	bt_le_oob_set_sc_flag_mc(0, enable);
+}
+#endif
 
 /** @brief Allow/disallow remote legacy OOB data to be used for pairing.
  *
@@ -2162,7 +2180,13 @@ void bt_le_oob_set_sc_flag(bool enable);
  *
  *  @param enable Value allowing/disallowing remote legacy OOB data.
  */
-void bt_le_oob_set_legacy_flag(bool enable);
+void bt_le_oob_set_legacy_flag_mc(uint8_t dev_id, bool enable);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline void bt_le_oob_set_legacy_flag(bool enable)
+{
+	bt_le_oob_set_legacy_flag_mc(0, enable);
+}
+#endif
 
 /** @brief Set OOB Temporary Key to be used for pairing
  *

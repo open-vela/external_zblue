@@ -9,6 +9,8 @@
 
 #include <zephyr/devicetree.h>
 
+#include "ecc.h"
+
 /* LL connection parameters */
 #define LE_CONN_LATENCY		0x0000
 #define LE_CONN_TIMEOUT		0x002a
@@ -333,6 +335,7 @@ struct bt_dev_conn_ctx;
 struct bt_dev_scan_ctx;
 struct bt_dev_l2cap_ctx;
 struct bt_dev_l2cap_br_ctx;
+struct bt_dev_smp_ctx;
 
 /* The theoretical max for these is 8 and 64, but there's no point
  * in allocating the full memory if we only support a small subset.
@@ -490,6 +493,13 @@ struct bt_dev {
 
 	struct bt_dev_l2cap_ctx *l2cap_ctx;
 	struct bt_dev_l2cap_br_ctx *l2cap_br_ctx;
+	struct bt_dev_smp_ctx *smp_ctx;
+
+#if defined(CONFIG_BT_ECC)
+	uint8_t pub_key[BT_PUB_KEY_LEN];
+	sys_slist_t pub_key_cb_slist;
+	bt_dh_key_cb_t dh_key_cb;
+#endif
 };
 
 extern struct bt_dev bt_dev;
