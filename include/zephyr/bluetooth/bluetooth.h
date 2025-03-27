@@ -331,7 +331,13 @@ int bt_set_appearance(uint16_t new_appearance);
  * @param count Should be initialized to the array size. Once the function
  *              returns it will contain the number of returned identities.
  */
-void bt_id_get(bt_addr_le_t *addrs, size_t *count);
+void bt_id_get_mc(uint8_t dev_id, bt_addr_le_t *addrs, size_t *count);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline void bt_id_get(bt_addr_le_t *addrs, size_t *count)
+{
+	bt_id_get_mc(0, addrs, count);
+}
+#endif
 
 /**
  * @brief Create a new identity.
@@ -379,7 +385,13 @@ void bt_id_get(bt_addr_le_t *addrs, size_t *count);
  * @return Identity identifier (>= 0) in case of success, or a negative
  *         error code on failure.
  */
-int bt_id_create(bt_addr_le_t *addr, uint8_t *irk);
+int bt_id_create_mc(uint8_t dev_id, bt_addr_le_t *addr, uint8_t *irk);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_id_create(bt_addr_le_t *addr, uint8_t *irk)
+{
+	return bt_id_create_mc(0, addr, irk);
+}
+#endif
 
 /**
  * @brief Reset/reclaim an identity for reuse.
@@ -413,7 +425,13 @@ int bt_id_create(bt_addr_le_t *addr, uint8_t *irk);
  * @return Identity identifier (>= 0) in case of success, or a negative
  *         error code on failure.
  */
-int bt_id_reset(uint8_t id, bt_addr_le_t *addr, uint8_t *irk);
+int bt_id_reset_mc(uint8_t dev_id, uint8_t id, bt_addr_le_t *addr, uint8_t *irk);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_id_reset(uint8_t id, bt_addr_le_t *addr, uint8_t *irk)
+{
+	return bt_id_reset_mc(0, id, addr, irk);
+}
+#endif
 
 /**
  * @brief Delete an identity.
@@ -431,7 +449,13 @@ int bt_id_reset(uint8_t id, bt_addr_le_t *addr, uint8_t *irk);
  *
  * @return 0 in case of success, or a negative error code on failure.
  */
-int bt_id_delete(uint8_t id);
+int bt_id_delete_mc(uint8_t dev_id, uint8_t id);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_id_delete(uint8_t id)
+{
+	return bt_id_delete_mc(0, id);
+}
+#endif
 
 /**
  * @brief Bluetooth data serialized size.
@@ -2684,7 +2708,13 @@ struct bt_le_oob {
  * @return Zero on success or error code otherwise, positive in case of
  *         protocol error or negative (POSIX) in case of stack internal error.
  */
-int bt_le_oob_get_local(uint8_t id, struct bt_le_oob *oob);
+int bt_le_oob_get_local_mc(uint8_t dev_id, uint8_t id, struct bt_le_oob *oob);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_le_oob_get_local(uint8_t id, struct bt_le_oob *oob)
+{
+	return bt_le_oob_get_local_mc(0, id, oob);
+}
+#endif
 
 /**
  * @brief Get local LE Out of Band (OOB) information.

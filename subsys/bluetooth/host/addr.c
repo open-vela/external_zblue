@@ -16,18 +16,18 @@
 
 #define ADDR_RESOLVED_BITMASK (0x02)
 
-static inline int create_random_addr(bt_addr_le_t *addr)
+static inline int create_random_addr(uint8_t dev_id, bt_addr_le_t *addr)
 {
 	addr->type = BT_ADDR_LE_RANDOM;
 
-	return bt_rand(addr->a.val, 6);
+	return bt_rand_mc(dev_id, addr->a.val, 6);
 }
 
-int bt_addr_le_create_nrpa(bt_addr_le_t *addr)
+int bt_addr_le_create_nrpa_mc(uint8_t dev_id, bt_addr_le_t *addr)
 {
 	int err;
 
-	err = create_random_addr(addr);
+	err = create_random_addr(dev_id, addr);
 	if (err) {
 		return err;
 	}
@@ -37,11 +37,11 @@ int bt_addr_le_create_nrpa(bt_addr_le_t *addr)
 	return 0;
 }
 
-int bt_addr_le_create_static(bt_addr_le_t *addr)
+int bt_addr_le_create_static_mc(uint8_t dev_id, bt_addr_le_t *addr)
 {
 	int err;
 
-	err = create_random_addr(addr);
+	err = create_random_addr(dev_id, addr);
 	if (err) {
 		return err;
 	}

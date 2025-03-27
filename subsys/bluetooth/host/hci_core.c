@@ -721,7 +721,7 @@ int bt_le_create_conn_ext(const struct bt_conn *conn)
 		use_filter = atomic_test_bit(conn->flags, BT_CONN_AUTO_CONNECT);
 	}
 
-	err = bt_id_set_create_conn_own_addr(use_filter, &own_addr_type);
+	err = bt_id_set_create_conn_own_addr(conn->hdev, use_filter, &own_addr_type);
 	if (err) {
 		return err;
 	}
@@ -796,7 +796,7 @@ int bt_le_create_conn_synced(const struct bt_conn *conn, const struct bt_le_ext_
 	uint8_t own_addr_type;
 	int err;
 
-	err = bt_id_set_create_conn_own_addr(false, &own_addr_type);
+	err = bt_id_set_create_conn_own_addr(conn->hdev, false, &own_addr_type);
 	if (err) {
 		return err;
 	}
@@ -847,7 +847,7 @@ static int bt_le_create_conn_legacy(const struct bt_conn *conn)
 		use_filter = atomic_test_bit(conn->flags, BT_CONN_AUTO_CONNECT);
 	}
 
-	err = bt_id_set_create_conn_own_addr(use_filter, &own_addr_type);
+	err = bt_id_set_create_conn_own_addr(conn->hdev, use_filter, &own_addr_type);
 	if (err) {
 		return err;
 	}
@@ -1347,7 +1347,7 @@ static void enh_conn_complete(struct bt_dev *hdev, struct bt_hci_evt_le_enh_conn
 	bt_hci_le_enh_conn_complete(hdev, evt);
 }
 
-static void translate_addrs(bt_addr_le_t *peer_addr, bt_addr_le_t *id_addr,
+static void translate_addrs(struct bt_dev *hdev, bt_addr_le_t *peer_addr, bt_addr_le_t *id_addr,
 			    const struct bt_hci_evt_le_enh_conn_complete *evt, uint8_t id)
 {
 	if (bt_addr_le_is_resolved(&evt->peer_addr)) {
@@ -1356,7 +1356,7 @@ static void translate_addrs(bt_addr_le_t *peer_addr, bt_addr_le_t *id_addr,
 		bt_addr_copy(&peer_addr->a, &evt->peer_rpa);
 		peer_addr->type = BT_ADDR_LE_RANDOM;
 	} else {
-		bt_addr_le_copy(id_addr, bt_lookup_id_addr(id, &evt->peer_addr));
+		bt_addr_le_copy(id_addr, bt_lookup_id_addr(hdev, id, &evt->peer_addr));
 		bt_addr_le_copy(peer_addr, &evt->peer_addr);
 	}
 }
@@ -1400,11 +1400,11 @@ void bt_hci_le_enh_conn_complete(struct bt_dev *hdev, struct bt_hci_evt_le_enh_c
 	LOG_DBG("local RPA %s", bt_addr_str(&evt->local_rpa));
 
 #if defined(CONFIG_BT_SMP)
-	bt_id_pending_keys_update();
+	bt_id_pending_keys_update(hdev);
 #endif
 
 	id = evt->role == BT_HCI_ROLE_PERIPHERAL ? hdev->adv_conn_id : BT_ID_DEFAULT;
-	translate_addrs(&peer_addr, &id_addr, evt, id);
+	translate_addrs(hdev, &peer_addr, &id_addr, evt, id);
 
 	conn = find_pending_connect(evt->role, &id_addr);
 
@@ -1591,10 +1591,10 @@ void bt_hci_le_enh_conn_complete_sync(struct bt_dev *hdev, struct bt_hci_evt_le_
 	}
 
 #if defined(CONFIG_BT_SMP)
-	bt_id_pending_keys_update();
+	bt_id_pending_keys_update(hdev);
 #endif
 
-	translate_addrs(&peer_addr, &id_addr, (const struct bt_hci_evt_le_enh_conn_complete *)evt,
+	translate_addrs(hdev, &peer_addr, &id_addr, (const struct bt_hci_evt_le_enh_conn_complete *)evt,
 			BT_ID_DEFAULT);
 	update_conn(conn, &id_addr, (const struct bt_hci_evt_le_enh_conn_complete *)evt);
 
@@ -4108,7 +4108,7 @@ static int hci_init(void)
 #if defined(CONFIG_BT_HCI_VS)
 	hci_vs_init();
 #endif
-	err = bt_id_init();
+	err = bt_id_init(&bt_dev);
 	if (err) {
 		return err;
 	}
