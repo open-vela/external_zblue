@@ -47,7 +47,7 @@ enum bt_le_scan_user {
 
 void bt_scan_reset(struct bt_dev *hdev);
 
-bool bt_id_scan_random_addr_check(void);
+bool bt_id_scan_random_addr_check(struct bt_dev *hdev);
 bool bt_le_scan_active_scanner_running(struct bt_dev *hdev);
 
 int bt_le_scan_set_enable(struct bt_dev *hdev, uint8_t enable);

@@ -1003,7 +1003,7 @@ int bt_le_adv_start_legacy(struct bt_le_ext_adv *adv,
 		return -EINVAL;
 	}
 
-	if (!bt_id_adv_random_addr_check(param)) {
+	if (!bt_id_adv_random_addr_check(adv->hdev, param)) {
 		return -EINVAL;
 	}
 
@@ -1477,7 +1477,7 @@ int bt_le_adv_stop_mc(uint8_t dev_id)
 		/* If scan is ongoing set back NRPA */
 		if (atomic_test_bit(hdev->flags, BT_DEV_SCANNING)) {
 			bt_le_scan_set_enable(hdev, BT_HCI_LE_SCAN_DISABLE);
-			bt_id_set_private_addr(BT_ID_DEFAULT);
+			bt_id_set_private_addr(hdev, BT_ID_DEFAULT);
 			bt_le_scan_set_enable(hdev, BT_HCI_LE_SCAN_ENABLE);
 		}
 	}
@@ -1730,7 +1730,7 @@ int bt_le_ext_adv_stop(struct bt_le_ext_adv *adv)
 		bt_id_adv_limited_stopped(adv);
 
 #if defined(CONFIG_BT_SMP)
-		bt_id_pending_keys_update();
+		bt_id_pending_keys_update(adv->hdev);
 #endif
 	}
 
@@ -2276,7 +2276,7 @@ void bt_hci_le_adv_set_terminated(struct bt_dev *hdev, struct net_buf *buf)
 		bt_id_adv_limited_stopped(adv);
 
 #if defined(CONFIG_BT_SMP)
-		bt_id_pending_keys_update();
+		bt_id_pending_keys_update(hdev);
 #endif
 
 		if (adv->cb && adv->cb->sent) {
@@ -2322,7 +2322,7 @@ void bt_hci_le_scan_req_received(struct bt_dev *hdev, struct net_buf *buf)
 			bt_addr_le_copy_resolved(&id_addr, &evt->addr);
 		} else {
 			bt_addr_le_copy(&id_addr,
-					bt_lookup_id_addr(adv->id, &evt->addr));
+					bt_lookup_id_addr(hdev, adv->id, &evt->addr));
 		}
 
 		info.addr = &id_addr;

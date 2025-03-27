@@ -319,7 +319,7 @@ void bt_keys_clear(struct bt_dev *hdev, struct bt_keys *keys)
 	LOG_DBG("%s (keys 0x%04x)", bt_addr_le_str(&keys->addr), keys->keys);
 
 	if (keys->state & BT_KEYS_ID_ADDED) {
-		bt_id_del(keys);
+		bt_id_del(hdev, keys);
 	}
 
 	if (IS_ENABLED(CONFIG_BT_SETTINGS)) {

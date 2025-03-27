@@ -249,12 +249,12 @@ static int start_le_scan_ext(struct bt_dev *hdev, struct bt_le_scan_param *scan_
 		/* Allow bt_le_oob_get_local to be called directly before
 		 * starting a scan limited by timeout.
 		 */
-		if (IS_ENABLED(CONFIG_BT_PRIVACY) && !bt_id_rpa_is_new()) {
+		if (IS_ENABLED(CONFIG_BT_PRIVACY) && !bt_id_rpa_is_new(hdev)) {
 			atomic_clear_bit(hdev->flags, BT_DEV_RPA_VALID);
 		}
 	}
 
-	err = bt_id_set_scan_own_addr(active_scan, &own_addr_type);
+	err = bt_id_set_scan_own_addr(hdev, active_scan, &own_addr_type);
 	if (err) {
 		return err;
 	}
@@ -324,7 +324,7 @@ static int start_le_scan_legacy(struct bt_dev *hdev, struct bt_le_scan_param *pa
 	}
 
 	active_scan = param->type == BT_HCI_LE_SCAN_ACTIVE;
-	err = bt_id_set_scan_own_addr(active_scan, &set_param.addr_type);
+	err = bt_id_set_scan_own_addr(hdev, active_scan, &set_param.addr_type);
 	if (err) {
 		return err;
 	}
@@ -661,7 +661,7 @@ static void le_adv_recv(struct bt_dev *hdev, bt_addr_le_t *addr,
 		bt_addr_le_copy(&id_addr, BT_ADDR_LE_ANY);
 	} else {
 		bt_addr_le_copy(&id_addr,
-				bt_lookup_id_addr(BT_ID_DEFAULT, addr));
+				bt_lookup_id_addr(hdev, BT_ID_DEFAULT, addr));
 	}
 
 	if (hdev->scan_ctx->scan_dev_found_cb) {
@@ -714,7 +714,7 @@ void bt_hci_le_scan_timeout(struct bt_dev *hdev, struct net_buf *buf)
 	atomic_clear_bit(hdev->flags, BT_DEV_RPA_VALID);
 
 #if defined(CONFIG_BT_SMP)
-	bt_id_pending_keys_update();
+	bt_id_pending_keys_update(hdev);
 #endif
 
 	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&hdev->scan_ctx->scan_cbs, listener, next, node) {
@@ -1242,7 +1242,7 @@ static void bt_hci_le_per_adv_sync_established_common(struct bt_dev *hdev,
 		bt_addr_le_copy_resolved(&id_addr, &evt->adv_addr);
 	} else {
 		bt_addr_le_copy(&id_addr,
-				bt_lookup_id_addr(BT_ID_DEFAULT,
+				bt_lookup_id_addr(hdev, BT_ID_DEFAULT,
 						  &evt->adv_addr));
 	}
 
@@ -1493,7 +1493,7 @@ static void bt_hci_le_past_received_common(struct bt_dev *hdev, struct net_buf *
 		bt_addr_le_copy_resolved(&id_addr, &evt->addr);
 	} else {
 		bt_addr_le_copy(&id_addr,
-				bt_lookup_id_addr(BT_ID_DEFAULT, &evt->addr));
+				bt_lookup_id_addr(hdev, BT_ID_DEFAULT, &evt->addr));
 	}
 
 	per_adv_sync->handle = sys_le16_to_cpu(evt->sync_handle);
@@ -1781,7 +1781,7 @@ int bt_le_scan_start_mc(uint8_t dev_id, const struct bt_le_scan_param *param, bt
 		return -EINVAL;
 	}
 
-	if (param->type && !bt_id_scan_random_addr_check()) {
+	if (param->type && !bt_id_scan_random_addr_check(hdev)) {
 		return -EINVAL;
 	}
 
@@ -1827,7 +1827,7 @@ int bt_le_scan_stop_mc(uint8_t dev_id)
 		atomic_clear_bit(hdev->flags, BT_DEV_RPA_VALID);
 
 #if defined(CONFIG_BT_SMP)
-		bt_id_pending_keys_update();
+		bt_id_pending_keys_update(hdev);
 #endif
 	}
 
