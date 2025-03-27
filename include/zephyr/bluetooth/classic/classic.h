@@ -97,8 +97,15 @@ struct bt_br_discovery_param {
  * @return Zero on success or error code otherwise, positive in case
  * of protocol error or negative (POSIX) in case of stack internal error
  */
-int bt_br_discovery_start(const struct bt_br_discovery_param *param,
-			  struct bt_br_discovery_result *results, size_t count);
+int bt_br_discovery_start_mc(uint8_t dev_id, const struct bt_br_discovery_param *param,
+	struct bt_br_discovery_result *results, size_t count);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_br_discovery_start(const struct bt_br_discovery_param *param,
+			  struct bt_br_discovery_result *results, size_t count)
+{
+	return bt_br_discovery_start_mc(0, param, results, count);
+}
+#endif
 
 /**
  * @brief Stop BR/EDR discovery.
@@ -109,7 +116,13 @@ int bt_br_discovery_start(const struct bt_br_discovery_param *param,
  * @return Zero on success or error code otherwise, positive in case of
  *         protocol error or negative (POSIX) in case of stack internal error.
  */
-int bt_br_discovery_stop(void);
+int bt_br_discovery_stop_mc(uint8_t dev_id);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_br_discovery_stop(void)
+{
+	return bt_br_discovery_stop_mc(0);
+}
+#endif
 
 struct bt_br_discovery_cb {
 
@@ -142,7 +155,13 @@ struct bt_br_discovery_cb {
  *
  * @param cb Callback struct. Must point to memory that remains valid.
  */
-void bt_br_discovery_cb_register(struct bt_br_discovery_cb *cb);
+void bt_br_discovery_cb_register_mc(uint8_t dev_id, struct bt_br_discovery_cb *cb);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline void bt_br_discovery_cb_register(struct bt_br_discovery_cb *cb)
+{
+	bt_br_discovery_cb_register_mc(0, cb);
+}
+#endif
 
 /**
  * @brief Unregister discovery packet callbacks.
@@ -151,7 +170,13 @@ void bt_br_discovery_cb_register(struct bt_br_discovery_cb *cb);
  *
  * @param cb Callback struct. Must point to memory that remains valid.
  */
-void bt_br_discovery_cb_unregister(struct bt_br_discovery_cb *cb);
+void bt_br_discovery_cb_unregister_mc(uint8_t dev_id, struct bt_br_discovery_cb *cb);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline void bt_br_discovery_cb_unregister(struct bt_br_discovery_cb *cb)
+{
+	bt_br_discovery_cb_unregister_mc(0, cb);
+}
+#endif
 
 struct bt_br_oob {
 	/** BR/EDR address. */
@@ -180,7 +205,13 @@ int bt_br_oob_get_local(struct bt_br_oob *oob);
  * @return Negative if fail set to requested state or requested state has been
  *         already set. Zero if done successfully.
  */
-int bt_br_set_discoverable(bool enable);
+int bt_br_set_discoverable_mc(uint8_t dev_id, bool enable);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_br_set_discoverable(bool enable)
+{
+	return bt_br_set_discoverable_mc(0, enable);
+}
+#endif
 
 /**
  * @brief Enable/disable set controller in connectable state.
@@ -194,7 +225,13 @@ int bt_br_set_discoverable(bool enable);
  * @return Negative if fail set to requested state or requested state has been
  *         already set. Zero if done successfully.
  */
-int bt_br_set_connectable(bool enable);
+int bt_br_set_connectable_mc(uint8_t dev_id, bool enable);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_br_set_connectable(bool enable)
+{
+	return bt_br_set_connectable_mc(0, enable);
+}
+#endif
 
 /**
  * @brief Enable/disable set controller in connectable and discoverable state.
@@ -207,7 +244,13 @@ int bt_br_set_connectable(bool enable);
  * @return Negative if fail set to requested state or requested state has been
  *         already set. Zero if done successfully. 
  */
-int bt_br_set_visibility(bool disc_mode, bool conn_mode);
+int bt_br_set_visibility_mc(uint8_t dev_id, bool disc_mode, bool conn_mode);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_br_set_visibility(bool disc_mode, bool conn_mode)
+{
+	return bt_br_set_visibility_mc(0, disc_mode, conn_mode);
+}
+#endif
 
 /**
  * @brief Set controller page scan activity.
@@ -222,7 +265,13 @@ int bt_br_set_visibility(bool disc_mode, bool conn_mode);
  * @return Negative if fail set to requested state or requested state has been
  *         already set. Zero if done successfully.
  */
-int bt_br_write_page_scan_activity(uint16_t interval, uint16_t window);
+int bt_br_write_page_scan_activity_mc(uint8_t dev_id, uint16_t interval, uint16_t window);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_br_write_page_scan_activity(uint16_t interval, uint16_t window)
+{
+	return bt_br_write_page_scan_activity_mc(0, interval, window);
+}
+#endif
 
 /**
  * @brief Set controller inquiry scan activity.
@@ -237,7 +286,13 @@ int bt_br_write_page_scan_activity(uint16_t interval, uint16_t window);
  * @return Negative if fail set to requested state or requested state has been
  *         already set. Zero if done successfully.
  */
-int bt_br_write_inquiry_scan_activity(uint16_t interval, uint16_t window);
+int bt_br_write_inquiry_scan_activity_mc(uint8_t dev_id, uint16_t interval, uint16_t window);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_br_write_inquiry_scan_activity(uint16_t interval, uint16_t window)
+{
+	return bt_br_write_inquiry_scan_activity_mc(0, interval, window);
+}
+#endif
 
 /**
  * @brief Set the inquiry Scan Type configuration parameter of the local
@@ -250,7 +305,13 @@ int bt_br_write_inquiry_scan_activity(uint16_t interval, uint16_t window);
  * @return Negative if fail set to requested state or requested state has been
  *         already set. Zero if done successfully.
  */
-int bt_br_write_inquiry_scan_type(uint8_t type);
+int bt_br_write_inquiry_scan_type_mc(uint8_t dev_id, uint8_t type);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_br_write_inquiry_scan_type(uint8_t type)
+{
+	return bt_br_write_inquiry_scan_type_mc(0, type);
+}
+#endif
 
 /**
  * @brief Set the page Scan Type configuration parameter of the local
@@ -263,7 +324,13 @@ int bt_br_write_inquiry_scan_type(uint8_t type);
  * @return Negative if fail set to requested state or requested state has been
  *         already set. Zero if done successfully.
  */
-int bt_br_write_page_scan_type(uint8_t type);
+int bt_br_write_page_scan_type_mc(uint8_t dev_id, uint8_t type);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_br_write_page_scan_type(uint8_t type)
+{
+	return bt_br_write_page_scan_type_mc(0, type);
+}
+#endif
 
 /**
  * @brief Set the Class of Device configuration parameter of the local
@@ -274,7 +341,13 @@ int bt_br_write_page_scan_type(uint8_t type);
  * @return Negative if fail set to requested state or requested state has been
  *         already set. Zero if done successfully.
  */
-int bt_br_set_class_of_device(uint32_t local_cod);
+int bt_br_set_class_of_device_mc(uint8_t dev_id, uint32_t local_cod);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_br_set_class_of_device(uint32_t local_cod)
+{
+	return bt_br_set_class_of_device_mc(0, local_cod);
+}
+#endif
 
 /**
  * @brief Set the local name of the BR/EDR Controller.
@@ -284,7 +357,13 @@ int bt_br_set_class_of_device(uint32_t local_cod);
  * @return Negative if fail set to requested state or requested state has been
  *         already set. Zero if done successfully.
  */
-int bt_br_write_local_name(const char *name);
+int bt_br_write_local_name_mc(uint8_t dev_id, const char *name);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_br_write_local_name(const char *name)
+{
+	return bt_br_write_local_name_mc(0, name);
+}
+#endif
 
 /**
  * @brief Read the Extended Inquiry Response configuration parameter of the
@@ -297,7 +376,13 @@ int bt_br_write_local_name(const char *name);
  * @return Zero on success or error code otherwise, positive in case
  * of protocol error or negative (POSIX) in case of stack internal error.
  */
-int bt_br_read_ext_inq_response(uint8_t *status, uint8_t *fec_required, uint8_t *eir);
+int bt_br_read_ext_inq_response_mc(uint8_t dev_id, uint8_t *status, uint8_t *fec_required, uint8_t *eir);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_br_read_ext_inq_response(uint8_t *status, uint8_t *fec_required, uint8_t *eir)
+{
+	return bt_br_read_ext_inq_response_mc(0, status, fec_required, eir);
+}
+#endif
 
 /**
  * @brief Write the Extended Inquiry Response configuration parameter of the
@@ -308,7 +393,13 @@ int bt_br_read_ext_inq_response(uint8_t *status, uint8_t *fec_required, uint8_t 
  * @return Zero on success or error code otherwise, positive in case
  * of protocol error or negative (POSIX) in case of stack internal error.
  */
-int bt_br_write_ext_inq_response(uint8_t fec_required);
+int bt_br_write_ext_inq_response_mc(uint8_t dev_id, uint8_t fec_required);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_br_write_ext_inq_response(uint8_t fec_required)
+{
+	return bt_br_write_ext_inq_response_mc(0, fec_required);
+}
+#endif
 
 /** Information about a br/edr bond with a remote device. */
 struct bt_bond_info_br {
@@ -386,7 +477,13 @@ typedef void (*bt_br_remote_name_req_cb_t)(const bt_addr_t *bdaddr, const char *
  *
  * @return 0 on success or negative error value on failure.
  */
-int bt_br_remote_name_request(const bt_addr_t *addr, bt_br_remote_name_req_cb_t cb);
+int bt_br_remote_name_request_mc(uint8_t dev_id, const bt_addr_t *addr, bt_br_remote_name_req_cb_t cb);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_br_remote_name_request(const bt_addr_t *addr, bt_br_remote_name_req_cb_t cb)
+{
+	return bt_br_remote_name_request_mc(0, addr, cb);
+}
+#endif
 
 /**
  * @brief Unpair with a br remote device.
@@ -398,7 +495,13 @@ int bt_br_remote_name_request(const bt_addr_t *addr, bt_br_remote_name_req_cb_t 
  *
  * @return 0 on success or negative error value on failure.
  */
-int bt_br_unpair(bt_addr_t *bdaddr);
+int bt_br_unpair_mc(uint8_t dev_id, bt_addr_t *bdaddr);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_br_unpair(bt_addr_t *bdaddr)
+{
+	return bt_br_unpair_mc(0, bdaddr);
+}
+#endif
 
 /**
  * @}

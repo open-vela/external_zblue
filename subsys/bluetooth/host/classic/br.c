@@ -22,19 +22,6 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(bt_br);
 
-struct bt_br_rnr_cb {
-	bt_addr_t addr;
-	bt_br_remote_name_req_cb_t cb;
-} __packed;
-
-struct bt_br_discovery_result *discovery_results;
-static size_t discovery_results_size;
-static size_t discovery_results_count;
-static sys_slist_t discovery_cbs = SYS_SLIST_STATIC_INIT(&discovery_cbs);
-
-/* remote name request callback */
-static struct bt_br_rnr_cb rnr_cb;
-
 int bt_reject_conn(struct bt_dev *hdev, const bt_addr_t *bdaddr, uint8_t reason)
 {
 	struct bt_hci_cp_reject_conn_req *cp;
@@ -137,7 +124,7 @@ static bool br_sufficient_key_size(struct bt_conn *conn)
 	cp = net_buf_add(buf, sizeof(*cp));
 	cp->handle = sys_cpu_to_le16(conn->handle);
 
-	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_READ_ENCRYPTION_KEY_SIZE, buf, &rsp);
+	err = bt_hci_cmd_send_sync(conn->hdev, BT_HCI_OP_READ_ENCRYPTION_KEY_SIZE, buf, &rsp);
 	if (err) {
 		LOG_ERR("Failed to read encryption key size (err %d)", err);
 		return false;
@@ -234,7 +221,7 @@ void bt_hci_conn_complete(struct bt_dev *hdev, struct net_buf *buf)
 
 	LOG_DBG("status 0x%02x, handle %u, type 0x%02x", evt->status, handle, evt->link_type);
 
-	conn = bt_conn_lookup_addr_br(&evt->bdaddr);
+	conn = bt_conn_lookup_addr_br_mc(hdev->dev_id, &evt->bdaddr);
 	if (!conn) {
 		LOG_ERR("Unable to find conn for %s", bt_addr_str(&evt->bdaddr));
 		return;
@@ -289,10 +276,11 @@ void bt_hci_conn_complete(struct bt_dev *hdev, struct net_buf *buf)
 	cp = net_buf_add(buf, sizeof(*cp));
 	cp->handle = evt->handle;
 
-	bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_READ_REMOTE_FEATURES, buf, NULL);
+	bt_hci_cmd_send_sync(hdev, BT_HCI_OP_READ_REMOTE_FEATURES, buf, NULL);
 }
 
-static int request_name(const bt_addr_t *addr, uint8_t pscan, uint16_t offset)
+static int request_name(struct bt_dev *hdev, const bt_addr_t *addr,
+			 uint8_t pscan, uint16_t offset)
 {
 	struct bt_hci_cp_remote_name_request *cp;
 	struct net_buf *buf;
@@ -309,7 +297,7 @@ static int request_name(const bt_addr_t *addr, uint8_t pscan, uint16_t offset)
 	cp->reserved = 0x00; /* reserved, should be set to 0x00 */
 	cp->clock_offset = offset;
 
-	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_REMOTE_NAME_REQUEST, buf, NULL);
+	return bt_hci_cmd_send_sync(hdev, BT_HCI_OP_REMOTE_NAME_REQUEST, buf, NULL);
 }
 
 #define EIR_SHORT_NAME    0x08
@@ -353,29 +341,30 @@ static bool eir_has_name(const uint8_t *eir)
 	return false;
 }
 
-void bt_br_discovery_reset(void)
+void bt_br_discovery_reset(struct bt_dev *hdev)
 {
-	discovery_results = NULL;
-	discovery_results_size = 0;
-	discovery_results_count = 0;
+	sys_slist_init(&hdev->discovery_cbs);
+	hdev->discovery_results = NULL;
+	hdev->discovery_results_size = 0;
+	hdev->discovery_results_count = 0;
 }
 
-static void report_discovery_results(void)
+static void report_discovery_results(struct bt_dev *hdev)
 {
 	bool resolving_names = false;
 	int i;
 	struct bt_br_discovery_cb *listener, *next;
 
-	for (i = 0; i < discovery_results_count; i++) {
+	for (i = 0; i < hdev->discovery_results_count; i++) {
 		struct bt_br_discovery_priv *priv;
 
-		priv = &discovery_results[i]._priv;
+		priv = &hdev->discovery_results[i]._priv;
 
-		if (eir_has_name(discovery_results[i].eir)) {
+		if (eir_has_name(hdev->discovery_results[i].eir)) {
 			continue;
 		}
 
-		if (request_name(&discovery_results[i].addr, priv->pscan_rep_mode,
+		if (request_name(hdev, &hdev->discovery_results[i].addr, priv->pscan_rep_mode,
 				 priv->clock_offset)) {
 			continue;
 		}
@@ -388,15 +377,15 @@ static void report_discovery_results(void)
 		return;
 	}
 
-	atomic_clear_bit(bt_dev.flags, BT_DEV_INQUIRY);
+	atomic_clear_bit(hdev->flags, BT_DEV_INQUIRY);
 
-	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&discovery_cbs, listener, next, node) {
+	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&hdev->discovery_cbs, listener, next, node) {
 		if (listener->timeout) {
-			listener->timeout(discovery_results, discovery_results_count);
+			listener->timeout(hdev->discovery_results, hdev->discovery_results_count);
 		}
 	}
 
-	bt_br_discovery_reset();
+	bt_br_discovery_reset(hdev);
 }
 
 void bt_hci_inquiry_complete(struct bt_dev *hdev, struct net_buf *buf)
@@ -407,25 +396,26 @@ void bt_hci_inquiry_complete(struct bt_dev *hdev, struct net_buf *buf)
 		LOG_ERR("Failed to complete inquiry");
 	}
 
-	report_discovery_results();
+	report_discovery_results(hdev);
 }
 
-static struct bt_br_discovery_result *get_result_slot(const bt_addr_t *addr, int8_t rssi)
+static struct bt_br_discovery_result *get_result_slot(struct bt_dev *hdev,
+									 const bt_addr_t *addr, int8_t rssi)
 {
 	struct bt_br_discovery_result *result = NULL;
 	size_t i;
 
 	/* check if already present in results */
-	for (i = 0; i < discovery_results_count; i++) {
-		if (bt_addr_eq(addr, &discovery_results[i].addr)) {
-			return &discovery_results[i];
+	for (i = 0; i < hdev->discovery_results_count; i++) {
+		if (bt_addr_eq(addr, &hdev->discovery_results[i].addr)) {
+			return &hdev->discovery_results[i];
 		}
 	}
 
 	/* Pick a new slot (if available) */
-	if (discovery_results_count < discovery_results_size) {
-		bt_addr_copy(&discovery_results[discovery_results_count].addr, addr);
-		return &discovery_results[discovery_results_count++];
+	if (hdev->discovery_results_count < hdev->discovery_results_size) {
+		bt_addr_copy(&hdev->discovery_results[hdev->discovery_results_count].addr, addr);
+		return &hdev->discovery_results[hdev->discovery_results_count++];
 	}
 
 	/* ignore if invalid RSSI */
@@ -437,13 +427,13 @@ static struct bt_br_discovery_result *get_result_slot(const bt_addr_t *addr, int
 	 * Pick slot with smallest RSSI that is smaller then passed RSSI
 	 * TODO handle TX if present
 	 */
-	for (i = 0; i < discovery_results_size; i++) {
-		if (discovery_results[i].rssi > rssi) {
+	for (i = 0; i < hdev->discovery_results_size; i++) {
+		if (hdev->discovery_results[i].rssi > rssi) {
 			continue;
 		}
 
-		if (!result || result->rssi > discovery_results[i].rssi) {
-			result = &discovery_results[i];
+		if (!result || result->rssi > hdev->discovery_results[i].rssi) {
+			result = &hdev->discovery_results[i];
 		}
 	}
 
@@ -457,14 +447,14 @@ static struct bt_br_discovery_result *get_result_slot(const bt_addr_t *addr, int
 	return result;
 }
 
-static struct bt_br_discovery_result *find_discovery_result(const bt_addr_t *addr)
+static struct bt_br_discovery_result *find_discovery_result(struct bt_dev *hdev, const bt_addr_t *addr)
 {
 	size_t i;
 
 	/* check if already present in results */
-	for (i = 0; i < discovery_results_count; i++) {
-		if (!bt_addr_cmp(addr, &discovery_results[i].addr)) {
-			return &discovery_results[i];
+	for (i = 0; i < hdev->discovery_results_count; i++) {
+		if (!bt_addr_cmp(addr, &hdev->discovery_results[i].addr)) {
+			return &hdev->discovery_results[i];
 		}
 	}
 
@@ -475,7 +465,7 @@ void bt_hci_inquiry_result_with_rssi(struct bt_dev *hdev, struct net_buf *buf)
 {
 	uint8_t num_reports = net_buf_pull_u8(buf);
 
-	if (!atomic_test_bit(bt_dev.flags, BT_DEV_INQUIRY)) {
+	if (!atomic_test_bit(hdev->flags, BT_DEV_INQUIRY)) {
 		return;
 	}
 
@@ -495,7 +485,7 @@ void bt_hci_inquiry_result_with_rssi(struct bt_dev *hdev, struct net_buf *buf)
 		evt = net_buf_pull_mem(buf, sizeof(*evt));
 		LOG_DBG("%s rssi %d dBm", bt_addr_str(&evt->addr), evt->rssi);
 
-		result = get_result_slot(&evt->addr, evt->rssi);
+		result = get_result_slot(hdev, &evt->addr, evt->rssi);
 		if (!result) {
 			return;
 		}
@@ -510,7 +500,7 @@ void bt_hci_inquiry_result_with_rssi(struct bt_dev *hdev, struct net_buf *buf)
 		/* we could reuse slot so make sure EIR is cleared */
 		(void)memset(result->eir, 0, sizeof(result->eir));
 
-		SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&discovery_cbs, listener, next, node) {
+		SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&hdev->discovery_cbs, listener, next, node) {
 			if (listener->recv) {
 				listener->recv(result);
 			}
@@ -525,13 +515,13 @@ void bt_hci_extended_inquiry_result(struct bt_dev *hdev, struct net_buf *buf)
 	struct bt_br_discovery_priv *priv;
 	struct bt_br_discovery_cb *listener, *next;
 
-	if (!atomic_test_bit(bt_dev.flags, BT_DEV_INQUIRY)) {
+	if (!atomic_test_bit(hdev->flags, BT_DEV_INQUIRY)) {
 		return;
 	}
 
 	LOG_DBG("%s rssi %d dBm", bt_addr_str(&evt->addr), evt->rssi);
 
-	result = get_result_slot(&evt->addr, evt->rssi);
+	result = get_result_slot(hdev, &evt->addr, evt->rssi);
 	if (!result) {
 		return;
 	}
@@ -544,7 +534,7 @@ void bt_hci_extended_inquiry_result(struct bt_dev *hdev, struct net_buf *buf)
 	memcpy(result->cod, evt->cod, 3);
 	memcpy(result->eir, evt->eir, sizeof(result->eir));
 
-	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&discovery_cbs, listener, next, node) {
+	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&hdev->discovery_cbs, listener, next, node) {
 		if (listener->recv) {
 			listener->recv(result);
 		}
@@ -561,13 +551,13 @@ void bt_hci_remote_name_request_complete(struct bt_dev *hdev, struct net_buf *bu
 	int i;
 	struct bt_br_discovery_cb *listener, *next;
 
-	if (rnr_cb.cb && !bt_addr_cmp(&evt->bdaddr, &rnr_cb.addr)) {
+	if (hdev->rnr_cb.cb && !bt_addr_cmp(&evt->bdaddr, &hdev->rnr_cb.addr)) {
 		LOG_DBG("status 0x%02x", evt->status);
-		rnr_cb.cb(&evt->bdaddr, evt->name, evt->status);
-		memset(&rnr_cb, 0, sizeof(rnr_cb));
+		hdev->rnr_cb.cb(&evt->bdaddr, evt->name, evt->status);
+		memset(&hdev->rnr_cb, 0, sizeof(hdev->rnr_cb));
 	}
 
-	result = get_result_slot(&evt->bdaddr, 0xff);
+	result = get_result_slot(hdev, &evt->bdaddr, 0xff);
 	if (!result) {
 		return;
 	}
@@ -618,7 +608,7 @@ void bt_hci_remote_name_request_complete(struct bt_dev *hdev, struct net_buf *bu
 		eir += eir[0] + 1;
 	}
 
-	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&discovery_cbs, listener, next, node) {
+	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&hdev->discovery_cbs, listener, next, node) {
 		if (listener->recv) {
 			listener->recv(result);
 		}
@@ -626,10 +616,10 @@ void bt_hci_remote_name_request_complete(struct bt_dev *hdev, struct net_buf *bu
 
 check_names:
 	/* if still waiting for names */
-	for (i = 0; i < discovery_results_count; i++) {
+	for (i = 0; i < hdev->discovery_results_count; i++) {
 		struct bt_br_discovery_priv *dpriv;
 
-		dpriv = &discovery_results[i]._priv;
+		dpriv = &hdev->discovery_results[i]._priv;
 
 		if (dpriv->resolving) {
 			return;
@@ -637,11 +627,11 @@ check_names:
 	}
 
 	/* all names resolved, report discovery results */
-	atomic_clear_bit(bt_dev.flags, BT_DEV_INQUIRY);
+	atomic_clear_bit(hdev->flags, BT_DEV_INQUIRY);
 
-	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&discovery_cbs, listener, next, node) {
+	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&hdev->discovery_cbs, listener, next, node) {
 		if (listener->timeout) {
-			listener->timeout(discovery_results, discovery_results_count);
+			listener->timeout(hdev->discovery_results, hdev->discovery_results_count);
 		}
 	}
 }
@@ -681,7 +671,7 @@ void bt_hci_read_remote_features_complete(struct bt_dev *hdev, struct net_buf *b
 	cp->handle = evt->handle;
 	cp->page = 0x01;
 
-	bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_READ_REMOTE_EXT_FEATURES, buf, NULL);
+	bt_hci_cmd_send_sync(hdev, BT_HCI_OP_READ_REMOTE_EXT_FEATURES, buf, NULL);
 
 done:
 	bt_conn_unref(conn);
@@ -719,7 +709,7 @@ void bt_hci_role_change(struct bt_dev *hdev, struct net_buf *buf)
 		return;
 	}
 
-	conn = bt_conn_lookup_addr_br(&evt->bdaddr);
+	conn = bt_conn_lookup_addr_br_mc(hdev->dev_id, &evt->bdaddr);
 	if (!conn) {
 		LOG_ERR("Can't find conn for %s", bt_addr_str(&evt->bdaddr));
 		return;
@@ -763,7 +753,7 @@ void bt_hci_link_mode_change(struct bt_dev *hdev, struct net_buf *buf)
 }
 #endif /* CONFIG_BT_POWER_MODE_CONTROL */
 
-static int read_ext_features(void)
+static int read_ext_features(struct bt_dev *hdev)
 {
 	int i;
 
@@ -782,14 +772,14 @@ static int read_ext_features(void)
 		cp = net_buf_add(buf, sizeof(*cp));
 		cp->page = i;
 
-		err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_READ_LOCAL_EXT_FEATURES, buf, &rsp);
+		err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_READ_LOCAL_EXT_FEATURES, buf, &rsp);
 		if (err) {
 			return err;
 		}
 
 		rp = (void *)rsp->data;
 
-		memcpy(&bt_dev.features[i], rp->ext_features, sizeof(bt_dev.features[i]));
+		memcpy(&hdev->features[i], rp->ext_features, sizeof(hdev->features[i]));
 
 		if (rp->max_page <= i) {
 			net_buf_unref(rsp);
@@ -802,62 +792,62 @@ static int read_ext_features(void)
 	return 0;
 }
 
-void device_supported_pkt_type(void)
+void device_supported_pkt_type(struct bt_dev *hdev)
 {
 	/* Device supported features and sco packet types */
-	if (BT_FEAT_LMP_SCO_CAPABLE(bt_dev.features)) {
-		bt_dev.br.esco_pkt_type |= (HCI_PKT_TYPE_SCO_HV1);
+	if (BT_FEAT_LMP_SCO_CAPABLE(hdev->features)) {
+		hdev->br.esco_pkt_type |= (HCI_PKT_TYPE_SCO_HV1);
 	}
 
-	if (BT_FEAT_HV2_PKT(bt_dev.features)) {
-		bt_dev.br.esco_pkt_type |= (HCI_PKT_TYPE_SCO_HV2);
+	if (BT_FEAT_HV2_PKT(hdev->features)) {
+		hdev->br.esco_pkt_type |= (HCI_PKT_TYPE_SCO_HV2);
 	}
 
-	if (BT_FEAT_HV3_PKT(bt_dev.features)) {
-		bt_dev.br.esco_pkt_type |= (HCI_PKT_TYPE_SCO_HV3);
+	if (BT_FEAT_HV3_PKT(hdev->features)) {
+		hdev->br.esco_pkt_type |= (HCI_PKT_TYPE_SCO_HV3);
 	}
 
-	if (BT_FEAT_LMP_ESCO_CAPABLE(bt_dev.features)) {
-		bt_dev.br.esco_pkt_type |= (HCI_PKT_TYPE_ESCO_EV3);
+	if (BT_FEAT_LMP_ESCO_CAPABLE(hdev->features)) {
+		hdev->br.esco_pkt_type |= (HCI_PKT_TYPE_ESCO_EV3);
 	}
 
-	if (BT_FEAT_EV4_PKT(bt_dev.features)) {
-		bt_dev.br.esco_pkt_type |= (HCI_PKT_TYPE_ESCO_EV4);
+	if (BT_FEAT_EV4_PKT(hdev->features)) {
+		hdev->br.esco_pkt_type |= (HCI_PKT_TYPE_ESCO_EV4);
 	}
 
-	if (BT_FEAT_EV5_PKT(bt_dev.features)) {
-		bt_dev.br.esco_pkt_type |= (HCI_PKT_TYPE_ESCO_EV5);
+	if (BT_FEAT_EV5_PKT(hdev->features)) {
+		hdev->br.esco_pkt_type |= (HCI_PKT_TYPE_ESCO_EV5);
 	}
 
-	if (BT_FEAT_2EV3_PKT(bt_dev.features)) {
-		bt_dev.br.esco_pkt_type |= (HCI_PKT_TYPE_ESCO_2EV3);
+	if (BT_FEAT_2EV3_PKT(hdev->features)) {
+		hdev->br.esco_pkt_type |= (HCI_PKT_TYPE_ESCO_2EV3);
 	}
 
-	if (BT_FEAT_3EV3_PKT(bt_dev.features)) {
-		bt_dev.br.esco_pkt_type |= (HCI_PKT_TYPE_ESCO_3EV3);
+	if (BT_FEAT_3EV3_PKT(hdev->features)) {
+		hdev->br.esco_pkt_type |= (HCI_PKT_TYPE_ESCO_3EV3);
 	}
 
-	if (BT_FEAT_3SLOT_PKT(bt_dev.features)) {
-		bt_dev.br.esco_pkt_type |= (HCI_PKT_TYPE_ESCO_2EV5 | HCI_PKT_TYPE_ESCO_3EV5);
+	if (BT_FEAT_3SLOT_PKT(hdev->features)) {
+		hdev->br.esco_pkt_type |= (HCI_PKT_TYPE_ESCO_2EV5 | HCI_PKT_TYPE_ESCO_3EV5);
 	}
 }
 
-static void read_buffer_size_complete(struct net_buf *buf)
+static void read_buffer_size_complete(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_rp_read_buffer_size *rp = (void *)buf->data;
 	uint16_t pkts;
 
 	LOG_DBG("status 0x%02x", rp->status);
 
-	bt_dev.br.mtu = sys_le16_to_cpu(rp->acl_max_len);
+	hdev->br.mtu = sys_le16_to_cpu(rp->acl_max_len);
 	pkts = sys_le16_to_cpu(rp->acl_max_num);
 
-	LOG_DBG("ACL BR/EDR buffers: pkts %u mtu %u", pkts, bt_dev.br.mtu);
+	LOG_DBG("ACL BR/EDR buffers: pkts %u mtu %u", pkts, hdev->br.mtu);
 
-	k_sem_init(&bt_dev.br.pkts, pkts, pkts);
+	k_sem_init(&hdev->br.pkts, pkts, pkts);
 }
 
-int bt_br_init(void)
+int bt_br_init(struct bt_dev *hdev)
 {
 	struct net_buf *buf;
 	struct bt_hci_cp_write_ssp_mode *ssp_cp;
@@ -867,23 +857,23 @@ int bt_br_init(void)
 	int err;
 
 	/* Read extended local features */
-	if (BT_FEAT_EXT_FEATURES(bt_dev.features)) {
-		err = read_ext_features();
+	if (BT_FEAT_EXT_FEATURES(hdev->features)) {
+		err = read_ext_features(hdev);
 		if (err) {
 			return err;
 		}
 	}
 
 	/* Add local supported packet types to bt_dev */
-	device_supported_pkt_type();
+	device_supported_pkt_type(hdev);
 
 	/* Get BR/EDR buffer size */
-	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_READ_BUFFER_SIZE, NULL, &buf);
+	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_READ_BUFFER_SIZE, NULL, &buf);
 	if (err) {
 		return err;
 	}
 
-	read_buffer_size_complete(buf);
+	read_buffer_size_complete(hdev, buf);
 	net_buf_unref(buf);
 
 	/* Set SSP mode */
@@ -894,7 +884,7 @@ int bt_br_init(void)
 
 	ssp_cp = net_buf_add(buf, sizeof(*ssp_cp));
 	ssp_cp->mode = 0x01;
-	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_WRITE_SSP_MODE, buf, NULL);
+	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_WRITE_SSP_MODE, buf, NULL);
 	if (err) {
 		return err;
 	}
@@ -907,7 +897,7 @@ int bt_br_init(void)
 
 	inq_cp = net_buf_add(buf, sizeof(*inq_cp));
 	inq_cp->mode = 0x02;
-	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_WRITE_INQUIRY_MODE, buf, NULL);
+	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_WRITE_INQUIRY_MODE, buf, NULL);
 	if (err) {
 		return err;
 	}
@@ -921,7 +911,7 @@ int bt_br_init(void)
 	name_cp = net_buf_add(buf, sizeof(*name_cp));
 	strncpy((char *)name_cp->local_name, CONFIG_BT_DEVICE_NAME, sizeof(name_cp->local_name));
 
-	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_WRITE_LOCAL_NAME, buf, NULL);
+	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_WRITE_LOCAL_NAME, buf, NULL);
 	if (err) {
 		return err;
 	}
@@ -934,7 +924,7 @@ int bt_br_init(void)
 
 	net_buf_add_le24(buf, CONFIG_BT_COD);
 
-	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_WRITE_CLASS_OF_DEVICE, buf, NULL);
+	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_WRITE_CLASS_OF_DEVICE, buf, NULL);
 	if (err) {
 		return err;
 	}
@@ -947,13 +937,13 @@ int bt_br_init(void)
 
 	net_buf_add_le16(buf, CONFIG_BT_PAGE_TIMEOUT);
 
-	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_WRITE_PAGE_TIMEOUT, buf, NULL);
+	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_WRITE_PAGE_TIMEOUT, buf, NULL);
 	if (err) {
 		return err;
 	}
 
 	/* Enable BR/EDR SC if supported */
-	if (BT_FEAT_SC(bt_dev.features)) {
+	if (BT_FEAT_SC(hdev->features)) {
 		struct bt_hci_cp_write_sc_host_supp *sc_cp;
 
 		buf = bt_hci_cmd_create(BT_HCI_OP_WRITE_SC_HOST_SUPP, sizeof(*sc_cp));
@@ -964,7 +954,7 @@ int bt_br_init(void)
 		sc_cp = net_buf_add(buf, sizeof(*sc_cp));
 		sc_cp->sc_support = 0x01;
 
-		err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_WRITE_SC_HOST_SUPP, buf, NULL);
+		err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_WRITE_SC_HOST_SUPP, buf, NULL);
 		if (err) {
 			return err;
 		}
@@ -973,7 +963,7 @@ int bt_br_init(void)
 	return 0;
 }
 
-static int br_start_inquiry(const struct bt_br_discovery_param *param)
+static int br_start_inquiry(struct bt_dev *hdev, const struct bt_br_discovery_param *param)
 {
 	const uint8_t iac[3] = {0x33, 0x8b, 0x9e};
 	struct bt_hci_op_inquiry *cp;
@@ -994,7 +984,7 @@ static int br_start_inquiry(const struct bt_br_discovery_param *param)
 		cp->lap[0] = 0x00;
 	}
 
-	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_INQUIRY, buf, NULL);
+	return bt_hci_cmd_send_sync(hdev, BT_HCI_OP_INQUIRY, buf, NULL);
 }
 
 static bool valid_br_discov_param(const struct bt_br_discovery_param *param, size_t num_results)
@@ -1010,59 +1000,71 @@ static bool valid_br_discov_param(const struct bt_br_discovery_param *param, siz
 	return true;
 }
 
-int bt_br_discovery_start(const struct bt_br_discovery_param *param,
+int bt_br_discovery_start_mc(uint8_t dev_id, const struct bt_br_discovery_param *param,
 			  struct bt_br_discovery_result *results, size_t cnt)
 {
 	int err;
+	struct bt_dev *hdev;
 
 	LOG_DBG("");
+
+	hdev = bt_dev_get(dev_id);
+	if (!hdev) {
+		return -ENODEV;
+	}
 
 	if (!valid_br_discov_param(param, cnt)) {
 		return -EINVAL;
 	}
 
-	if (atomic_test_bit(bt_dev.flags, BT_DEV_INQUIRY)) {
+	if (atomic_test_bit(hdev->flags, BT_DEV_INQUIRY)) {
 		return -EALREADY;
 	}
 
-	err = br_start_inquiry(param);
+	err = br_start_inquiry(hdev, param);
 	if (err) {
 		return err;
 	}
 
-	atomic_set_bit(bt_dev.flags, BT_DEV_INQUIRY);
+	atomic_set_bit(hdev->flags, BT_DEV_INQUIRY);
 
 	(void)memset(results, 0, sizeof(*results) * cnt);
 
-	discovery_results = results;
-	discovery_results_size = cnt;
-	discovery_results_count = 0;
+	hdev->discovery_results = results;
+	hdev->discovery_results_size = cnt;
+	hdev->discovery_results_count = 0;
 
 	return 0;
 }
 
-int bt_br_discovery_stop(void)
+int bt_br_discovery_stop_mc(uint8_t dev_id)
 {
 	int err;
 	int i;
+	struct bt_dev *hdev;
 
 	LOG_DBG("");
 
-	if (!atomic_test_bit(bt_dev.flags, BT_DEV_INQUIRY)) {
+	hdev = bt_dev_get(dev_id);
+	if (!hdev) {
+		return -ENODEV;
+	}
+
+	if (!atomic_test_bit(hdev->flags, BT_DEV_INQUIRY)) {
 		return -EALREADY;
 	}
 
-	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_INQUIRY_CANCEL, NULL, NULL);
+	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_INQUIRY_CANCEL, NULL, NULL);
 	if (err) {
 		return err;
 	}
 
-	for (i = 0; i < discovery_results_count; i++) {
+	for (i = 0; i < hdev->discovery_results_count; i++) {
 		struct bt_br_discovery_priv *priv;
 		struct bt_hci_cp_remote_name_cancel *cp;
 		struct net_buf *buf;
 
-		priv = &discovery_results[i]._priv;
+		priv = &hdev->discovery_results[i]._priv;
 
 		if (!priv->resolving) {
 			continue;
@@ -1074,31 +1076,41 @@ int bt_br_discovery_stop(void)
 		}
 
 		cp = net_buf_add(buf, sizeof(*cp));
-		bt_addr_copy(&cp->bdaddr, &discovery_results[i].addr);
+		bt_addr_copy(&cp->bdaddr, &hdev->discovery_results[i].addr);
 
-		bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_REMOTE_NAME_CANCEL, buf, NULL);
+		bt_hci_cmd_send_sync(hdev, BT_HCI_OP_REMOTE_NAME_CANCEL, buf, NULL);
 	}
 
-	atomic_clear_bit(bt_dev.flags, BT_DEV_INQUIRY);
+	atomic_clear_bit(hdev->flags, BT_DEV_INQUIRY);
 
-	discovery_results = NULL;
-	discovery_results_size = 0;
-	discovery_results_count = 0;
+	hdev->discovery_results = NULL;
+	hdev->discovery_results_size = 0;
+	hdev->discovery_results_count = 0;
 
 	return 0;
 }
 
-void bt_br_discovery_cb_register(struct bt_br_discovery_cb *cb)
+void bt_br_discovery_cb_register_mc(uint8_t dev_id, struct bt_br_discovery_cb *cb)
 {
-	sys_slist_append(&discovery_cbs, &cb->node);
+	struct bt_dev *hdev = bt_dev_get(dev_id);
+	if (!hdev) {
+		return;
+	}
+
+	sys_slist_append(&hdev->discovery_cbs, &cb->node);
 }
 
-void bt_br_discovery_cb_unregister(struct bt_br_discovery_cb *cb)
+void bt_br_discovery_cb_unregister_mc(uint8_t dev_id, struct bt_br_discovery_cb *cb)
 {
-	sys_slist_find_and_remove(&discovery_cbs, &cb->node);
+	struct bt_dev *hdev = bt_dev_get(dev_id);
+	if (!hdev) {
+		return;
+	}
+
+	sys_slist_find_and_remove(&hdev->discovery_cbs, &cb->node);
 }
 
-static int write_scan_enable(uint8_t scan)
+static int write_scan_enable(struct bt_dev *hdev, uint8_t scan)
 {
 	struct net_buf *buf;
 	int err;
@@ -1111,67 +1123,87 @@ static int write_scan_enable(uint8_t scan)
 	}
 
 	net_buf_add_u8(buf, scan);
-	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_WRITE_SCAN_ENABLE, buf, NULL);
+	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_WRITE_SCAN_ENABLE, buf, NULL);
 	if (err) {
 		return err;
 	}
 
-	atomic_set_bit_to(bt_dev.flags, BT_DEV_ISCAN, (scan & BT_BREDR_SCAN_INQUIRY));
-	atomic_set_bit_to(bt_dev.flags, BT_DEV_PSCAN, (scan & BT_BREDR_SCAN_PAGE));
+	atomic_set_bit_to(hdev->flags, BT_DEV_ISCAN, (scan & BT_BREDR_SCAN_INQUIRY));
+	atomic_set_bit_to(hdev->flags, BT_DEV_PSCAN, (scan & BT_BREDR_SCAN_PAGE));
 
 	return 0;
 }
 
-int bt_br_set_connectable(bool enable)
+int bt_br_set_connectable_mc(uint8_t dev_id, bool enable)
 {
+	struct bt_dev *hdev;
+
+	hdev = bt_dev_get(dev_id);
+	if (!hdev) {
+		return -ENODEV;
+	}
+
 	if (enable) {
-		if (atomic_test_bit(bt_dev.flags, BT_DEV_PSCAN)) {
+		if (atomic_test_bit(hdev->flags, BT_DEV_PSCAN)) {
 			return -EALREADY;
 		} else {
-			return write_scan_enable(BT_BREDR_SCAN_PAGE);
+			return write_scan_enable(hdev, BT_BREDR_SCAN_PAGE);
 		}
 	} else {
-		if (!atomic_test_bit(bt_dev.flags, BT_DEV_PSCAN)) {
+		if (!atomic_test_bit(hdev->flags, BT_DEV_PSCAN)) {
 			return -EALREADY;
 		} else {
-			return write_scan_enable(BT_BREDR_SCAN_DISABLED);
+			return write_scan_enable(hdev, BT_BREDR_SCAN_DISABLED);
 		}
 	}
 }
 
-int bt_br_set_discoverable(bool enable)
+int bt_br_set_discoverable_mc(uint8_t dev_id, bool enable)
 {
+	struct bt_dev *hdev;
+
+	hdev = bt_dev_get(dev_id);
+	if (!hdev) {
+		return -ENODEV;
+	}
+
 	if (enable) {
-		if (atomic_test_bit(bt_dev.flags, BT_DEV_ISCAN)) {
+		if (atomic_test_bit(hdev->flags, BT_DEV_ISCAN)) {
 			return -EALREADY;
 		}
 
-		if (!atomic_test_bit(bt_dev.flags, BT_DEV_PSCAN)) {
+		if (!atomic_test_bit(hdev->flags, BT_DEV_PSCAN)) {
 			return -EPERM;
 		}
 
-		return write_scan_enable(BT_BREDR_SCAN_INQUIRY | BT_BREDR_SCAN_PAGE);
+		return write_scan_enable(hdev, BT_BREDR_SCAN_INQUIRY | BT_BREDR_SCAN_PAGE);
 	} else {
-		if (!atomic_test_bit(bt_dev.flags, BT_DEV_ISCAN)) {
+		if (!atomic_test_bit(hdev->flags, BT_DEV_ISCAN)) {
 			return -EALREADY;
 		}
 
-		return write_scan_enable(BT_BREDR_SCAN_PAGE);
+		return write_scan_enable(hdev, BT_BREDR_SCAN_PAGE);
 	}
 }
 
-int bt_br_set_visibility(bool disc_mode, bool conn_mode)
+int bt_br_set_visibility_mc(uint8_t dev_id, bool disc_mode, bool conn_mode)
 {
 	uint8_t prev = BT_BREDR_SCAN_DISABLED;
 	uint8_t next = BT_BREDR_SCAN_DISABLED;
+	struct bt_dev *hdev;
+
+	hdev = bt_dev_get(dev_id);
+	if (!hdev) {
+		return -ENODEV;
+	}
 
 	if (disc_mode && !conn_mode)
 		return -EPERM;
 
-	if (atomic_test_bit(bt_dev.flags, BT_DEV_PSCAN))
+	if (atomic_test_bit(hdev->flags, BT_DEV_PSCAN))
 		prev |= BT_BREDR_SCAN_PAGE;
 
-	if (atomic_test_bit(bt_dev.flags, BT_DEV_ISCAN))
+	if (atomic_test_bit(hdev->flags, BT_DEV_ISCAN))
 		prev |= BT_BREDR_SCAN_INQUIRY;
 
 	if (conn_mode)
@@ -1183,15 +1215,15 @@ int bt_br_set_visibility(bool disc_mode, bool conn_mode)
 	if (prev == next)
 		return -EALREADY;
 
-	return write_scan_enable(next);
+	return write_scan_enable(hdev, next);
 }
 
-static int write_scan_activity(uint16_t opcode, uint16_t interval, uint16_t windown)
+static int write_scan_activity(struct bt_dev *hdev, uint16_t opcode, uint16_t interval, uint16_t windown)
 {
 	struct bt_hci_cp_write_scan_activity *cp;
 	struct net_buf *buf;
 
-	if (!atomic_test_bit(bt_dev.flags, BT_DEV_READY)) {
+	if (!atomic_test_bit(hdev->flags, BT_DEV_READY)) {
 		return -EAGAIN;
 	}
 
@@ -1204,26 +1236,40 @@ static int write_scan_activity(uint16_t opcode, uint16_t interval, uint16_t wind
 	cp->interval = sys_cpu_to_le16(interval);
 	cp->windown = sys_cpu_to_le16(windown);
 
-	return bt_hci_cmd_send(&bt_dev, opcode, buf);
+	return bt_hci_cmd_send(hdev, opcode, buf);
 }
 
-int bt_br_write_page_scan_activity(uint16_t interval, uint16_t window)
+int bt_br_write_page_scan_activity_mc(uint8_t dev_id, uint16_t interval, uint16_t window)
 {
-	return write_scan_activity(BT_HCI_OP_WRITE_PAGE_SCAN_ACTIVITY, interval, window);
+	struct bt_dev *hdev;
+
+	hdev = bt_dev_get(dev_id);
+	if (!hdev) {
+		return -ENODEV;
+	}
+
+	return write_scan_activity(hdev, BT_HCI_OP_WRITE_PAGE_SCAN_ACTIVITY, interval, window);
 }
 
-int bt_br_write_inquiry_scan_activity(uint16_t interval, uint16_t window)
+int bt_br_write_inquiry_scan_activity_mc(uint8_t dev_id, uint16_t interval, uint16_t window)
 {
-	return write_scan_activity(BT_HCI_OP_WRITE_INQUIRY_SCAN_ACTIVITY, interval, window);
+	struct bt_dev *hdev;
+
+	hdev = bt_dev_get(dev_id);
+	if (!hdev) {
+		return -ENODEV;
+	}
+
+	return write_scan_activity(hdev, BT_HCI_OP_WRITE_INQUIRY_SCAN_ACTIVITY, interval, window);
 }
 
-static int write_scan_type(uint16_t opcode, uint8_t type)
+static int write_scan_type(struct bt_dev *hdev, uint16_t opcode, uint8_t type)
 {
 	struct bt_hci_cp_write_scan_type *cp;
 	struct net_buf *buf;
 	int err;
 
-	if (!atomic_test_bit(bt_dev.flags, BT_DEV_READY)) {
+	if (!atomic_test_bit(hdev->flags, BT_DEV_READY)) {
 		return -EAGAIN;
 	}
 
@@ -1235,7 +1281,7 @@ static int write_scan_type(uint16_t opcode, uint8_t type)
 	cp = net_buf_add(buf, sizeof(*cp));
 	cp->type = type;
 
-	err = bt_hci_cmd_send_sync(&bt_dev, opcode, buf, NULL);
+	err = bt_hci_cmd_send_sync(hdev, opcode, buf, NULL);
 	if (err) {
 		return err;
 	}
@@ -1243,22 +1289,42 @@ static int write_scan_type(uint16_t opcode, uint8_t type)
 	return 0;
 }
 
-int bt_br_write_inquiry_scan_type(uint8_t type)
+int bt_br_write_inquiry_scan_type_mc(uint8_t dev_id, uint8_t type)
 {
-	return write_scan_type(BT_HCI_OP_WRITE_INQUIRY_SCAN_TYPE, type);
+	struct bt_dev *hdev;
+
+	hdev = bt_dev_get(dev_id);
+	if (!hdev) {
+		return -ENODEV;
+	}
+
+	return write_scan_type(hdev, BT_HCI_OP_WRITE_INQUIRY_SCAN_TYPE, type);
 }
 
-int bt_br_write_page_scan_type(uint8_t type)
+int bt_br_write_page_scan_type_mc(uint8_t dev_id, uint8_t type)
 {
-	return write_scan_type(BT_HCI_OP_WRITE_PAGE_SCAN_TYPE, type);
+	struct bt_dev *hdev;
+
+	hdev = bt_dev_get(dev_id);
+	if (!hdev) {
+		return -ENODEV;
+	}
+
+	return write_scan_type(hdev, BT_HCI_OP_WRITE_PAGE_SCAN_TYPE, type);
 }
 
-int bt_br_set_class_of_device(uint32_t local_cod)
+int bt_br_set_class_of_device_mc(uint8_t dev_id, uint32_t local_cod)
 {
 	struct net_buf *buf;
 	struct bt_hci_cp_write_class_of_device *class_cp;
+	struct bt_dev *hdev;
 
-	if (!atomic_test_bit(bt_dev.flags, BT_DEV_READY)) {
+	hdev = bt_dev_get(dev_id);
+	if (!hdev) {
+		return -ENODEV;
+	}
+
+	if (!atomic_test_bit(hdev->flags, BT_DEV_READY)) {
 		return -EAGAIN;
 	}
 
@@ -1272,14 +1338,20 @@ int bt_br_set_class_of_device(uint32_t local_cod)
 	class_cp->class_of_device[1] = (uint8_t)(local_cod >> 8);
 	class_cp->class_of_device[2] = (uint8_t)(local_cod >> 16);
 
-	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_WRITE_CLASS_OF_DEVICE, buf, NULL);
+	return bt_hci_cmd_send_sync(hdev, BT_HCI_OP_WRITE_CLASS_OF_DEVICE, buf, NULL);
 }
 
-int bt_br_write_local_name(const char *name)
+int bt_br_write_local_name_mc(uint8_t dev_id, const char *name)
 {
 	struct net_buf *buf;
 	struct bt_hci_write_local_name *name_cp;
 	size_t name_len = strlen(name);
+	struct bt_dev *hdev;
+ 
+	hdev = bt_dev_get(dev_id);
+	if (!hdev) {
+		return -ENODEV;
+	}
 
 	if (name_len > sizeof(name_cp->local_name)) {
 		return -EINVAL;
@@ -1294,20 +1366,26 @@ int bt_br_write_local_name(const char *name)
 	memset(name_cp, 0, sizeof(*name_cp));
 	memcpy((char *)name_cp->local_name, name, name_len);
 
-	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_WRITE_LOCAL_NAME, buf, NULL);
+	return bt_hci_cmd_send_sync(hdev, BT_HCI_OP_WRITE_LOCAL_NAME, buf, NULL);
 }
 
-int bt_br_read_ext_inq_response(uint8_t *status, uint8_t *fec_required, uint8_t *eir)
+int bt_br_read_ext_inq_response_mc(uint8_t dev_id, uint8_t *status, uint8_t *fec_required, uint8_t *eir)
 {
 	struct bt_hci_rp_read_extended_inquiry_response *rp;
 	struct net_buf *rsp;
+	struct bt_dev *hdev;
 	int err;
 
-	if (!BT_FEAT_EIR(bt_dev.features)) {
+	hdev = bt_dev_get(dev_id);
+	if (!hdev) {
+		return -ENODEV;
+	}
+
+	if (!BT_FEAT_EIR(hdev->features)) {
 		return -ENOTSUP;
 	}
 
-	err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_READ_EXTENDED_INQUIRY_RESPONSE, NULL, &rsp);
+	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_READ_EXTENDED_INQUIRY_RESPONSE, NULL, &rsp);
 	if (err) {
 		return err;
 	}
@@ -1325,15 +1403,21 @@ int bt_br_read_ext_inq_response(uint8_t *status, uint8_t *fec_required, uint8_t 
 	return 0;
 }
 
-int bt_br_write_ext_inq_response(uint8_t fec_required)
+int bt_br_write_ext_inq_response_mc(uint8_t dev_id, uint8_t fec_required)
 {
 	struct net_buf *buf;
 	struct bt_hci_cp_write_extended_inquiry_response *cp;
 	size_t name_len, eir_len = 240;
 	uint8_t type;
 	uint8_t *p;
+	struct bt_dev *hdev;
 
-	if (!BT_FEAT_EIR(bt_dev.features)) {
+	hdev = bt_dev_get(dev_id);
+	if (!hdev) {
+		return -ENODEV;
+	}
+ 
+	if (!BT_FEAT_EIR(hdev->features)) {
 		return -ENOTSUP;
 	}
 
@@ -1346,7 +1430,7 @@ int bt_br_write_ext_inq_response(uint8_t fec_required)
 
 	/* Fill in EIR data (Name) */
 	eir_len -= 2;
-	name_len = strlen(bt_dev.name);
+	name_len = strlen(hdev->name);
 	if (name_len > eir_len) {
 		name_len = eir_len;
 		type = EIR_SHORT_NAME;
@@ -1358,7 +1442,7 @@ int bt_br_write_ext_inq_response(uint8_t fec_required)
 
 	net_buf_add_u8(buf, name_len + 1);
 	net_buf_add_u8(buf, type);
-	net_buf_add_mem(buf, bt_dev.name, name_len);
+	net_buf_add_mem(buf, hdev->name, name_len);
 
 	/* TODO: Fill in EIR data (COD) */
 	/* TODO: Fill in EIR data (UUID) */
@@ -1369,25 +1453,31 @@ int bt_br_write_ext_inq_response(uint8_t fec_required)
 	p = net_buf_add(buf, eir_len);
 	memset(p, 0, eir_len);
 
-	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_WRITE_EXTENDED_INQUIRY_RESPONSE, buf, NULL);
+	return bt_hci_cmd_send_sync(hdev, BT_HCI_OP_WRITE_EXTENDED_INQUIRY_RESPONSE, buf, NULL);
 }
 
-int bt_br_remote_name_request(const bt_addr_t *bdaddr, bt_br_remote_name_req_cb_t cb)
+int bt_br_remote_name_request_mc(uint8_t dev_id, const bt_addr_t *bdaddr, bt_br_remote_name_req_cb_t cb)
 {
 	struct bt_br_discovery_result *result;
 	struct bt_br_discovery_priv *priv;
+	struct bt_dev *hdev;
 	int err;
 
-	if (rnr_cb.cb) {
+	hdev = bt_dev_get(dev_id);
+	if (!hdev) {
+		return -ENODEV;
+	}
+
+	if (hdev->rnr_cb.cb) {
 		return -EBUSY;
 	}
 
 	/* save remote name request control block */
-	rnr_cb.cb = cb;
-	bt_addr_copy(&rnr_cb.addr, bdaddr);
+	hdev->rnr_cb.cb = cb;
+	bt_addr_copy(&hdev->rnr_cb.addr, bdaddr);
 
 	/* check if we have a cached result */
-	result = find_discovery_result(bdaddr);
+	result = find_discovery_result(hdev, bdaddr);
 	if (result) {
 		/* check is resolving, just return if resolving */
 		priv = (struct bt_br_discovery_priv *)&result->_priv;
@@ -1396,25 +1486,25 @@ int bt_br_remote_name_request(const bt_addr_t *bdaddr, bt_br_remote_name_req_cb_
 		}
 
 		priv->resolving = 1;
-		err = request_name(bdaddr, priv->pscan_rep_mode, priv->clock_offset);
+		err = request_name(hdev, bdaddr, priv->pscan_rep_mode, priv->clock_offset);
 	} else {
 		/* start discovery to resolve name by default param */
-		err = request_name(bdaddr, BT_HCI_PAGE_SCAN_REP_MODE_R2, 0);
+		err = request_name(hdev, bdaddr, BT_HCI_PAGE_SCAN_REP_MODE_R2, 0);
 	}
 
 	if (err) {
 		LOG_ERR("Unable to request name for %s (err %d)", bt_addr_str(bdaddr), err);
-		rnr_cb.cb(bdaddr, NULL, BT_HCI_ERR_UNSPECIFIED);
+		hdev->rnr_cb.cb(bdaddr, NULL, BT_HCI_ERR_UNSPECIFIED);
 
 		/* clear control block */
-		memset(&rnr_cb, 0, sizeof(rnr_cb));
+		memset(&hdev->rnr_cb, 0, sizeof(hdev->rnr_cb));
 		return err;
 	}
 
 	return 0;
 }
 
-int bt_br_delete_stored_link_key(const bt_addr_t *bdaddr, bool delete_all)
+int bt_br_delete_stored_link_key(struct bt_dev *hdev, const bt_addr_t *bdaddr, bool delete_all)
 {
 	struct net_buf *buf;
 	struct bt_hci_delete_stored_link_key *cp;
@@ -1429,36 +1519,42 @@ int bt_br_delete_stored_link_key(const bt_addr_t *bdaddr, bool delete_all)
 	bt_addr_copy(&cp->bdaddr, bdaddr);
 	cp->delete_all = delete_all;
 
-	return bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_DELETE_STORED_LINK_KEY, buf, NULL);
+	return bt_hci_cmd_send_sync(hdev, BT_HCI_OP_DELETE_STORED_LINK_KEY, buf, NULL);
 }
 
-int bt_br_unpair(bt_addr_t *bdaddr)
+int bt_br_unpair_mc(uint8_t dev_id, bt_addr_t *bdaddr)
 {
 	struct bt_conn_auth_info_cb *listener, *next;
 	bt_addr_le_t addr;
 	struct bt_conn *conn;
+	struct bt_dev *hdev;
 
 	if (!IS_ENABLED(CONFIG_BT_CLASSIC)) {
 		return -ENOTSUP;
 	}
 
+	hdev = bt_dev_get(dev_id);
+	if (!hdev) {
+		return -ENODEV;
+	}
+
 	/* Disconnect acl connection if connection is existed */
-	conn = bt_conn_lookup_addr_br(bdaddr);
+	conn = bt_conn_lookup_addr_br_mc(dev_id, bdaddr);
 	if (conn) {
 		bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
 		bt_conn_unref(conn);
 	}
 
 	/* Delete stored link key from settings */
-	bt_keys_link_key_clear_addr(&bt_dev, bdaddr);
+	bt_keys_link_key_clear_addr(hdev, bdaddr);
 
 	/* Delete stored link key from controller */
-	bt_br_delete_stored_link_key(bdaddr, true);
+	bt_br_delete_stored_link_key(hdev, bdaddr, true);
 
 	addr.type = BT_ADDR_LE_PUBLIC;
 	memcpy(&addr, bdaddr, sizeof(addr));
 
-	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&bt_dev.bt_auth_info_cbs, listener,
+	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&hdev->bt_auth_info_cbs, listener,
 					  next, node) {
 		if (listener->bond_deleted) {
 			listener->bond_deleted(0, &addr);
