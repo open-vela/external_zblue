@@ -457,6 +457,19 @@ struct bt_dev {
 	sys_slist_t bt_auth_info_cbs;
 #endif
 	struct bt_dev_scan_ctx *scan_ctx;
+
+#if defined(CONFIG_BT_ISO)
+	struct bt_conn iso_conns[CONFIG_BT_ISO_MAX_CHAN];
+#if defined(CONFIG_BT_ISO_CENTRAL)
+	struct bt_iso_cig cigs[CONFIG_BT_ISO_MAX_CIG];
+#endif
+#if defined(CONFIG_BT_ISO_PERIPHERAL)
+	struct bt_iso_server *iso_server;
+#endif
+#if defined(CONFIG_BT_ISO_BROADCAST)
+	struct bt_iso_big bigs[CONFIG_BT_ISO_MAX_BIG];
+#endif
+#endif
 };
 
 extern struct bt_dev bt_dev;
