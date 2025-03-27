@@ -485,15 +485,21 @@ int bt_hci_cmd_send_sync(struct bt_dev *hdev, uint16_t opcode,
 	return 0;
 }
 
-int bt_hci_le_rand(void *buffer, size_t len)
+int bt_hci_le_rand_mc(uint8_t dev_id, void *buffer, size_t len)
 {
 	struct bt_hci_rp_le_rand *rp;
 	struct net_buf *rsp;
 	size_t count;
 	int err;
+	struct bt_dev *hdev;
+
+	hdev = bt_dev_get(dev_id);
+	if (!hdev) {
+		return -ENODEV;
+	}
 
 	/* Check first that HCI_LE_Rand is supported */
-	if (!BT_CMD_TEST(bt_dev.supported_commands, 27, 7)) {
+	if (!BT_CMD_TEST(hdev->supported_commands, 27, 7)) {
 		return -ENOTSUP;
 	}
 
@@ -501,7 +507,7 @@ int bt_hci_le_rand(void *buffer, size_t len)
 		/* Number of bytes to fill on this iteration */
 		count = MIN(len, sizeof(rp->rand));
 		/* Request the next 8 bytes over HCI */
-		err = bt_hci_cmd_send_sync(&bt_dev, BT_HCI_OP_LE_RAND, NULL, &rsp);
+		err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_LE_RAND, NULL, &rsp);
 		if (err) {
 			return err;
 		}
@@ -3354,7 +3360,7 @@ static int common_init(void)
 		/* Initialize the PRNG so that it is safe to use it later
 		 * on in the initialization process.
 		 */
-		err = prng_init();
+		err = prng_init(&bt_dev);
 		if (err) {
 			return err;
 		}

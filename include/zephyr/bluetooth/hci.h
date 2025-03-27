@@ -219,7 +219,13 @@ int bt_hci_register_vnd_evt_cb(bt_hci_vnd_evt_cb_t cb);
  *
  * @return 0 on success or negative error value on failure.
  */
-int bt_hci_le_rand(void *buffer, size_t len);
+int bt_hci_le_rand_mc(uint8_t dev_id, void *buffer, size_t len);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_hci_le_rand(void *buffer, size_t len)
+{
+  return bt_hci_le_rand_mc(0, buffer, len);
+}
+#endif
 
 
 #ifdef __cplusplus
