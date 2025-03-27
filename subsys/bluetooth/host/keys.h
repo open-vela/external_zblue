@@ -90,18 +90,21 @@ struct bt_keys {
 /** Clears all keys.
  *
  * Keys stored in settings are not cleared.
+ * 
+ * @param hdev Hci device.
  */
-void bt_keys_reset(void);
+void bt_keys_reset(struct bt_dev *hdev);
 
 /**
  * @brief Get a call through the callback for each key with the same type
  *
+ * @param hdev Hci device.
  * @param type Key type.
  * @param func Callback function to be called when a matched record is found.
  * @param data User data to be passed to the callback function.
  */
-void bt_keys_foreach_type(enum bt_keys_type type, void (*func)(struct bt_keys *keys, void *data),
-			  void *data);
+void bt_keys_foreach_type(struct bt_dev *hdev, enum bt_keys_type type,
+			void (*func)(struct bt_keys *keys, void *data), void *data);
 
 /**
  * @brief Get the key slot reference for an ID and address pair.
@@ -115,13 +118,14 @@ void bt_keys_foreach_type(enum bt_keys_type type, void (*func)(struct bt_keys *k
  *       the function will try to find the oldest key that isn't in use with a connection.
  *       If a key with matched criteria is found, it will be overwritten with the new one.
  *
+ * @param hdev Hci device.
  * @param id Key identifier.
  * @param addr Destination address.
  *
  * @return A valid reference pointer to the key slot if process succeeded.
  *         Otherwise, a NULL value is returned.
  */
-struct bt_keys *bt_keys_get_addr(uint8_t id, const bt_addr_le_t *addr);
+struct bt_keys *bt_keys_get_addr(struct bt_dev *hdev, uint8_t id, const bt_addr_le_t *addr);
 
 /**
  * @brief Get the key slot reference for an ID and address pair with a certain type.
@@ -131,6 +135,7 @@ struct bt_keys *bt_keys_get_addr(uint8_t id, const bt_addr_le_t *addr);
  * Otherwise try to reserve one for the new ID and address pair if there is
  * a room for the new pair and set the type.
  *
+ * @param hdev Hci device.
  * @param type Key type.
  * @param id Key identifier.
  * @param addr Destination address.
@@ -138,11 +143,13 @@ struct bt_keys *bt_keys_get_addr(uint8_t id, const bt_addr_le_t *addr);
  * @return A valid reference pointer to the key slot if process succeeded.
  *         Otherwise, a NULL value is returned.
  */
-struct bt_keys *bt_keys_get_type(enum bt_keys_type type, uint8_t id, const bt_addr_le_t *addr);
+struct bt_keys *bt_keys_get_type(struct bt_dev *hdev, enum bt_keys_type type,
+				uint8_t id, const bt_addr_le_t *addr);
 
 /**
  * @brief Find key identified by type, ID and address
  *
+ * @param hdev Hci device.
  * @param type Key type.
  * @param id Key identifier.
  * @param addr Destination address.
@@ -150,27 +157,30 @@ struct bt_keys *bt_keys_get_type(enum bt_keys_type type, uint8_t id, const bt_ad
  * @return A valid reference pointer to the key slot if it exists.
  *         Otherwise, a NULL value is returned.
  */
-struct bt_keys *bt_keys_find(enum bt_keys_type type, uint8_t id, const bt_addr_le_t *addr);
+struct bt_keys *bt_keys_find(struct bt_dev *hdev, enum bt_keys_type type,
+				uint8_t id, const bt_addr_le_t *addr);
 
 /**
  * @brief Find key reference by trying to resolve an RPA using IRK
  *
+ * @param hdev Hci device.
  * @param id Key identifier.
  * @param addr Destination address.
  * @return A valid reference pointer to the key slot on success.
  *         Otherwise, a NULL value is returned.
  */
-struct bt_keys *bt_keys_find_irk(uint8_t id, const bt_addr_le_t *addr);
+struct bt_keys *bt_keys_find_irk(struct bt_dev *hdev, uint8_t id, const bt_addr_le_t *addr);
 
 /**
  * @brief Find a key by ID and address
  *
+ * @param hdev Hci device.
  * @param id Key identifier.
  * @param addr Destination address.
  * @return A valid reference pointer to the key slot if it exists.
  *         Otherwise, a NULL value is returned.
  */
-struct bt_keys *bt_keys_find_addr(uint8_t id, const bt_addr_le_t *addr);
+struct bt_keys *bt_keys_find_addr(struct bt_dev *hdev, uint8_t id, const bt_addr_le_t *addr);
 
 /**
  * @brief Add a type to a key
@@ -185,7 +195,7 @@ void bt_keys_add_type(struct bt_keys *keys, enum bt_keys_type type);
  *
  * @param keys Key reference to be cleared.
  */
-void bt_keys_clear(struct bt_keys *keys);
+void bt_keys_clear(struct bt_dev *hdev, struct bt_keys *keys);
 
 #if defined(CONFIG_BT_SETTINGS)
 
@@ -222,17 +232,37 @@ struct bt_keys_link_key {
 #define BT_KEYS_LINK_KEY_STORAGE_LEN     (sizeof(struct bt_keys_link_key) - \
 	offsetof(struct bt_keys_link_key, storage_start))
 
-struct bt_keys_link_key *bt_keys_get_link_key(const bt_addr_t *addr);
-struct bt_keys_link_key *bt_keys_find_link_key(const bt_addr_t *addr);
-void bt_keys_link_key_clear(struct bt_keys_link_key *link_key);
-void bt_keys_link_key_clear_addr(const bt_addr_t *addr);
-void bt_keys_link_key_store(struct bt_keys_link_key *link_key);
+struct bt_keys_pool {
+	/* LE smp keys database */
+	struct bt_keys key_pool[CONFIG_BT_MAX_PAIRED];
+
+#if defined(CONFIG_BT_KEYS_OVERWRITE_OLDEST)
+	uint32_t aging_counter_val;
+	struct bt_keys *last_keys_updated;
+#endif
+
+#if defined(CONFIG_BT_CLASSIC)
+	/* BR/EDR link key database */
+	struct bt_keys_link_key br_key_pool[CONFIG_BT_MAX_PAIRED];
+
+#if defined(CONFIG_BT_KEYS_OVERWRITE_OLDEST)
+	uint32_t br_aging_counter_val;
+	struct bt_keys_link_key *br_last_keys_updated;
+#endif
+#endif
+};
+
+struct bt_keys_link_key *bt_keys_get_link_key(struct bt_dev *hdev, const bt_addr_t *addr);
+struct bt_keys_link_key *bt_keys_find_link_key(struct bt_dev *hdev, const bt_addr_t *addr);
+void bt_keys_link_key_clear(struct bt_dev *hdev, struct bt_keys_link_key *link_key);
+void bt_keys_link_key_clear_addr(struct bt_dev *hdev, const bt_addr_t *addr);
+void bt_keys_link_key_store(struct bt_dev *hdev, struct bt_keys_link_key *link_key);
 
 /* This function is used to signal that the key has been used for paring */
 /* It updates the aging counter and saves it to flash if configuration option */
 /* BT_KEYS_SAVE_AGING_COUNTER_ON_PAIRING is enabled */
-void bt_keys_update_usage(uint8_t id, const bt_addr_le_t *addr);
-void bt_keys_link_key_update_usage(const bt_addr_t *addr);
+void bt_keys_update_usage(struct bt_dev *hdev, uint8_t id, const bt_addr_le_t *addr);
+void bt_keys_link_key_update_usage(struct bt_dev *hdev, const bt_addr_t *addr);
 
 void bt_keys_show_sniffer_info(struct bt_keys *keys, void *data);
 
