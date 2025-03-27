@@ -4518,7 +4518,7 @@ int bt_disable(void)
 
 #if defined(CONFIG_BT_CONN)
 	if (IS_ENABLED(CONFIG_BT_SMP)) {
-		bt_pub_key_hci_disrupted();
+		bt_pub_key_hci_disrupted(&bt_dev);
 	}
 	bt_conn_cleanup_all(&bt_dev);
 	disconnected_handles_reset();

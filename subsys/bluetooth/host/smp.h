@@ -140,7 +140,7 @@ void bt_smp_update_keys(struct bt_conn *conn);
 
 int bt_smp_br_send_pairing_req(struct bt_conn *conn);
 
-int bt_smp_init(void);
+int bt_smp_init(struct bt_dev *hdev);
 
 int bt_smp_auth_cb_overlay(struct bt_conn *conn, const struct bt_conn_auth_cb *cb);
 int bt_smp_auth_keypress_notify(struct bt_conn *conn,
@@ -151,7 +151,7 @@ int bt_smp_auth_pairing_confirm(struct bt_conn *conn);
 int bt_smp_auth_cancel(struct bt_conn *conn);
 
 int bt_smp_le_oob_set_tk(struct bt_conn *conn, const uint8_t *tk);
-int bt_smp_le_oob_generate_sc_data(struct bt_le_oob_sc_data *le_sc_oob);
+int bt_smp_le_oob_generate_sc_data(struct bt_dev *hdev, struct bt_le_oob_sc_data *le_sc_oob);
 int bt_smp_le_oob_set_sc_data(struct bt_conn *conn,
 			      const struct bt_le_oob_sc_data *oobd_local,
 			      const struct bt_le_oob_sc_data *oobd_remote);
