@@ -331,6 +331,8 @@ struct bt_br_rnr_cb {
 
 struct bt_dev_conn_ctx;
 struct bt_dev_scan_ctx;
+struct bt_dev_l2cap_ctx;
+struct bt_dev_l2cap_br_ctx;
 
 /* The theoretical max for these is 8 and 64, but there's no point
  * in allocating the full memory if we only support a small subset.
@@ -485,6 +487,9 @@ struct bt_dev {
 
 	/* remote name request callback */
 	struct bt_br_rnr_cb rnr_cb;
+
+	struct bt_dev_l2cap_ctx *l2cap_ctx;
+	struct bt_dev_l2cap_br_ctx *l2cap_br_ctx;
 };
 
 extern struct bt_dev bt_dev;
