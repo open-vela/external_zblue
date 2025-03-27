@@ -2737,9 +2737,15 @@ struct bt_bond_info {
  * @param func       Function to call for each bond.
  * @param user_data  Data to pass to the callback function.
  */
-void bt_foreach_bond(uint8_t id, void (*func)(const struct bt_bond_info *info,
-					   void *user_data),
-		     void *user_data);
+void bt_foreach_bond_mc(uint8_t dev_id, uint8_t id, void (*func)(const struct bt_bond_info *info,
+	void *user_data), void *user_data);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline void bt_foreach_bond(uint8_t id, void (*func)(const struct bt_bond_info *info,
+	void *user_data), void *user_data)
+{
+bt_foreach_bond_mc(0, id, func, user_data);
+}
+#endif
 
 /** @brief Configure vendor data path
  *
