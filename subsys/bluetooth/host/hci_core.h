@@ -543,19 +543,19 @@ int bt_le_create_conn_synced(const struct bt_conn *conn, const struct bt_le_ext_
 			     uint8_t subevent);
 
 bool bt_addr_le_is_bonded(uint8_t id, const bt_addr_le_t *addr);
-const bt_addr_le_t *bt_lookup_id_addr(uint8_t id, const bt_addr_le_t *addr);
+const bt_addr_le_t *bt_lookup_id_addr(struct bt_dev *hdev, uint8_t id, const bt_addr_le_t *addr);
 
 int bt_send(struct bt_dev *hdev, struct net_buf *buf);
 
 /* Don't require everyone to include keys.h */
 struct bt_keys;
-void bt_id_add(struct bt_keys *keys);
-void bt_id_del(struct bt_keys *keys);
+void bt_id_add(struct bt_dev *hdev, struct bt_keys *keys);
+void bt_id_del(struct bt_dev *hdev, struct bt_keys *keys);
 
-struct bt_keys *bt_id_find_conflict(struct bt_keys *candidate);
+struct bt_keys *bt_id_find_conflict(struct bt_dev *hdev, struct bt_keys *candidate);
 
-int bt_setup_random_id_addr(void);
-int bt_setup_public_id_addr(void);
+int bt_setup_random_id_addr(struct bt_dev *hdev);
+int bt_setup_public_id_addr(struct bt_dev *hdev);
 
 void bt_finalize_init(void);
 
