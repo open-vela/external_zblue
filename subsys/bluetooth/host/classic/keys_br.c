@@ -26,22 +26,15 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(bt_keys_br);
 
-static struct bt_keys_link_key key_pool[CONFIG_BT_MAX_PAIRED];
-
-#if defined(CONFIG_BT_KEYS_OVERWRITE_OLDEST)
-static uint32_t aging_counter_val;
-static struct bt_keys_link_key *last_keys_updated;
-#endif /* CONFIG_BT_KEYS_OVERWRITE_OLDEST */
-
-struct bt_keys_link_key *bt_keys_find_link_key(const bt_addr_t *addr)
+struct bt_keys_link_key *bt_keys_find_link_key(struct bt_dev *hdev, const bt_addr_t *addr)
 {
 	struct bt_keys_link_key *key;
 	int i;
 
 	LOG_DBG("%s", bt_addr_str(addr));
 
-	for (i = 0; i < ARRAY_SIZE(key_pool); i++) {
-		key = &key_pool[i];
+	for (i = 0; i < ARRAY_SIZE(hdev->keys->br_key_pool); i++) {
+		key = &hdev->keys->br_key_pool[i];
 
 		if (bt_addr_eq(&key->addr, addr)) {
 			return key;
@@ -51,23 +44,23 @@ struct bt_keys_link_key *bt_keys_find_link_key(const bt_addr_t *addr)
 	return NULL;
 }
 
-struct bt_keys_link_key *bt_keys_get_link_key(const bt_addr_t *addr)
+struct bt_keys_link_key *bt_keys_get_link_key(struct bt_dev *hdev, const bt_addr_t *addr)
 {
 	struct bt_keys_link_key *key;
 
-	key = bt_keys_find_link_key(addr);
+	key = bt_keys_find_link_key(hdev, addr);
 	if (key) {
 		return key;
 	}
 
-	key = bt_keys_find_link_key(BT_ADDR_ANY);
+	key = bt_keys_find_link_key(hdev, BT_ADDR_ANY);
 #if defined(CONFIG_BT_KEYS_OVERWRITE_OLDEST)
 	if (!key) {
 		int i;
 
-		key = &key_pool[0];
-		for (i = 1; i < ARRAY_SIZE(key_pool); i++) {
-			struct bt_keys_link_key *current = &key_pool[i];
+		key = &hdev->keys->br_key_pool[0];
+		for (i = 1; i < ARRAY_SIZE(hdev->keys->br_key_pool); i++) {
+			struct bt_keys_link_key *current = &hdev->keys->br_key_pool[i];
 
 			if (current->aging_counter < key->aging_counter) {
 				key = current;
@@ -75,7 +68,7 @@ struct bt_keys_link_key *bt_keys_get_link_key(const bt_addr_t *addr)
 		}
 
 		if (key) {
-			bt_keys_link_key_clear(key);
+			bt_keys_link_key_clear(hdev, key);
 		}
 	}
 #endif
@@ -83,8 +76,8 @@ struct bt_keys_link_key *bt_keys_get_link_key(const bt_addr_t *addr)
 	if (key) {
 		bt_addr_copy(&key->addr, addr);
 #if defined(CONFIG_BT_KEYS_OVERWRITE_OLDEST)
-		key->aging_counter = ++aging_counter_val;
-		last_keys_updated = key;
+		key->aging_counter = ++hdev->keys->br_aging_counter_val;
+		hdev->keys->br_last_keys_updated = key;
 #endif
 		LOG_DBG("created %p for %s", key, bt_addr_str(addr));
 		return key;
@@ -95,7 +88,7 @@ struct bt_keys_link_key *bt_keys_get_link_key(const bt_addr_t *addr)
 	return NULL;
 }
 
-void bt_keys_link_key_clear(struct bt_keys_link_key *link_key)
+void bt_keys_link_key_clear(struct bt_dev *hdev, struct bt_keys_link_key *link_key)
 {
 	if (IS_ENABLED(CONFIG_BT_SETTINGS)) {
 		bt_addr_le_t le_addr;
@@ -110,26 +103,26 @@ void bt_keys_link_key_clear(struct bt_keys_link_key *link_key)
 	(void)memset(link_key, 0, sizeof(*link_key));
 }
 
-void bt_keys_link_key_clear_addr(const bt_addr_t *addr)
+void bt_keys_link_key_clear_addr(struct bt_dev *hdev, const bt_addr_t *addr)
 {
 	int i;
 	struct bt_keys_link_key *key;
 
 	if (!addr) {
-		for (i = 0; i < ARRAY_SIZE(key_pool); i++) {
-			key = &key_pool[i];
-			bt_keys_link_key_clear(key);
+		for (i = 0; i < ARRAY_SIZE(hdev->keys->br_key_pool); i++) {
+			key = &hdev->keys->br_key_pool[i];
+			bt_keys_link_key_clear(hdev, key);
 		}
 		return;
 	}
 
-	key = bt_keys_find_link_key(addr);
+	key = bt_keys_find_link_key(hdev, addr);
 	if (key) {
-		bt_keys_link_key_clear(key);
+		bt_keys_link_key_clear(hdev, key);
 	}
 }
 
-void bt_keys_link_key_store(struct bt_keys_link_key *link_key)
+void bt_keys_link_key_store(struct bt_dev *hdev, struct bt_keys_link_key *link_key)
 {
 	if (IS_ENABLED(CONFIG_BT_SETTINGS)) {
 		int err;
@@ -146,13 +139,18 @@ void bt_keys_link_key_store(struct bt_keys_link_key *link_key)
 	}
 }
 
-void bt_foreach_bond_br(void (*func)(const struct bt_bond_info_br *info, void *user_data),
+void bt_foreach_bond_br_mc(uint8_t dev_id, void (*func)(const struct bt_bond_info_br *info, void *user_data),
 			void *user_data)
 {
 	__ASSERT_NO_MSG(func != NULL);
+	struct bt_dev *hdev = bt_dev_get(dev_id);
 
-	for (size_t i = 0; i < ARRAY_SIZE(key_pool); i++) {
-		struct bt_keys_link_key *key = &key_pool[i];
+	if (!hdev) {
+		return;
+	}
+
+	for (size_t i = 0; i < ARRAY_SIZE(hdev->keys->br_key_pool); i++) {
+		struct bt_keys_link_key *key = &hdev->keys->br_key_pool[i];
 
 		if (bt_addr_cmp(&key->addr, BT_ADDR_ANY)) {
 			struct bt_bond_info_br info;
@@ -165,11 +163,16 @@ void bt_foreach_bond_br(void (*func)(const struct bt_bond_info_br *info, void *u
 	}
 }
 
-int bt_set_bond_info_br(const struct bt_bond_info_br *info)
+int bt_set_bond_info_br_mc(uint8_t dev_id, const struct bt_bond_info_br *info)
 {
 	struct bt_keys_link_key *key;
+	struct bt_dev *hdev = bt_dev_get(dev_id);
 
-	key = bt_keys_get_link_key(&info->addr);
+	if (!hdev) {
+		return -ENODEV;
+	}
+
+	key = bt_keys_get_link_key(hdev, &info->addr);
 	if (!key) {
 		LOG_ERR("Unable to create keys for %s", bt_addr_str(&info->addr));
 		return -ENOMEM;
@@ -191,16 +194,20 @@ int bt_set_bond_info_br(const struct bt_bond_info_br *info)
 		break;
 	}
 
-	bt_keys_link_key_store(key);
+	bt_keys_link_key_store(hdev, key);
 
 	return 0;
 }
 
-int bt_get_bond_info_br(const bt_addr_t* bdaddr, struct bt_bond_info_br *info)
+int bt_get_bond_info_br_mc(uint8_t dev_id, const bt_addr_t* bdaddr, struct bt_bond_info_br *info)
 {
 	struct bt_keys_link_key *key;
+	struct bt_dev *hdev = bt_dev_get(dev_id);
 
-	key = bt_keys_find_link_key(bdaddr);
+	if (!hdev) {
+		return -ENODEV;
+	}
+	key = bt_keys_find_link_key(hdev, bdaddr);
 	if (!key) {
 		LOG_DBG("No keys for %s", bt_addr_str(bdaddr));
 		return -ENODATA;
@@ -215,7 +222,7 @@ int bt_get_bond_info_br(const bt_addr_t* bdaddr, struct bt_bond_info_br *info)
 
 #if defined(CONFIG_BT_SETTINGS)
 
-static int link_key_set(const char *name, size_t len_rd,
+static int link_key_set(struct bt_dev *hdev, const char *name, size_t len_rd,
 			settings_read_cb read_cb, void *cb_arg)
 {
 	int err;
@@ -243,10 +250,10 @@ static int link_key_set(const char *name, size_t len_rd,
 		return -EINVAL;
 	}
 
-	link_key = bt_keys_get_link_key(&le_addr.a);
+	link_key = bt_keys_get_link_key(hdev, &le_addr.a);
 	if (len != BT_KEYS_LINK_KEY_STORAGE_LEN) {
 		if (link_key) {
-			bt_keys_link_key_clear(link_key);
+			bt_keys_link_key_clear(hdev, link_key);
 			LOG_DBG("Clear keys for %s", bt_addr_le_str(&le_addr));
 		} else {
 			LOG_WRN("Unable to find deleted keys for %s", bt_addr_le_str(&le_addr));
@@ -258,8 +265,8 @@ static int link_key_set(const char *name, size_t len_rd,
 	memcpy(link_key->storage_start, val, len);
 	LOG_DBG("Successfully restored link key for %s", bt_addr_le_str(&le_addr));
 #if defined(CONFIG_BT_KEYS_OVERWRITE_OLDEST)
-	if (aging_counter_val < link_key->aging_counter) {
-		aging_counter_val = link_key->aging_counter;
+	if (hdev->keys->br_aging_counter_val < link_key->aging_counter) {
+		hdev->keys->br_aging_counter_val = link_key->aging_counter;
 	}
 #endif  /* CONFIG_BT_KEYS_OVERWRITE_OLDEST */
 
@@ -270,25 +277,25 @@ SETTINGS_STATIC_HANDLER_DEFINE(bt_link_key, "bt/link_key", NULL, link_key_set,
 			       NULL, NULL);
 
 #if defined(CONFIG_BT_KEYS_OVERWRITE_OLDEST)
-void bt_keys_link_key_update_usage(const bt_addr_t *addr)
+void bt_keys_link_key_update_usage(struct bt_dev *hdev, const bt_addr_t *addr)
 {
-	struct bt_keys_link_key *link_key = bt_keys_find_link_key(addr);
+	struct bt_keys_link_key *link_key = bt_keys_find_link_key(hdev, addr);
 
 	if (!link_key) {
 		return;
 	}
 
-	if (last_keys_updated == link_key) {
+	if (hdev->keys->br_last_keys_updated == link_key) {
 		return;
 	}
 
-	link_key->aging_counter = ++aging_counter_val;
-	last_keys_updated = link_key;
+	link_key->aging_counter = ++hdev->keys->br_aging_counter_val;
+	hdev->keys->br_last_keys_updated = link_key;
 
 	LOG_DBG("Aging counter for %s is set to %u", bt_addr_str(addr), link_key->aging_counter);
 
 	if (IS_ENABLED(CONFIG_BT_KEYS_SAVE_AGING_COUNTER_ON_PAIRING)) {
-		bt_keys_link_key_store(link_key);
+		bt_keys_link_key_store(hdev, link_key);
 	}
 }
 #endif  /* CONFIG_BT_KEYS_OVERWRITE_OLDEST */

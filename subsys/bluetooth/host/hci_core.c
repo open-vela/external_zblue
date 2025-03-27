@@ -1026,7 +1026,7 @@ static void hci_disconn_complete(struct bt_dev *hdev, struct net_buf *buf)
 		 */
 		if (conn->type == BT_CONN_TYPE_BR &&
 		    atomic_test_and_clear_bit(conn->flags, BT_CONN_BR_NOBOND)) {
-			bt_keys_link_key_clear(conn->br.link_key);
+			bt_keys_link_key_clear(hdev, conn->br.link_key);
 		}
 #endif
 		bt_conn_unref(conn);
@@ -2083,17 +2083,17 @@ static void unpair(uint8_t id, const bt_addr_le_t *addr)
 	if (IS_ENABLED(CONFIG_BT_CLASSIC)) {
 		/* LE Public may indicate BR/EDR as well */
 		if (addr->type == BT_ADDR_LE_PUBLIC) {
-			bt_keys_link_key_clear_addr(&addr->a);
+			bt_keys_link_key_clear_addr(&bt_dev, &addr->a);
 		}
 	}
 
 	if (IS_ENABLED(CONFIG_BT_SMP)) {
 		if (!keys) {
-			keys = bt_keys_find_addr(id, addr);
+			keys = bt_keys_find_addr(&bt_dev, id, addr);
 		}
 
 		if (keys) {
-			bt_keys_clear(keys);
+			bt_keys_clear(&bt_dev, keys);
 		}
 	}
 
@@ -3889,7 +3889,7 @@ static void bt_dev_show_info(void)
 
 	if (IS_ENABLED(CONFIG_BT_SMP) &&
 	    IS_ENABLED(CONFIG_BT_LOG_SNIFFER_INFO)) {
-		bt_keys_foreach_type(BT_KEYS_ALL, bt_keys_show_sniffer_info, NULL);
+		bt_keys_foreach_type(&bt_dev, BT_KEYS_ALL, bt_keys_show_sniffer_info, NULL);
 	}
 
 	LOG_INF("HCI: version %s (0x%02x) revision 0x%04x, manufacturer 0x%04x",
@@ -4418,6 +4418,10 @@ int bt_enable(bt_ready_cb_t cb)
 		return 0;
 	}
 
+#if defined(CONFIG_BT_SMP) || defined(CONFIG_BT_CLASSIC)
+	bt_keys_reset(&bt_dev);
+#endif
+
 	if (IS_ENABLED(CONFIG_BT_SETTINGS)) {
 		err = bt_settings_init();
 		if (err) {
@@ -4545,7 +4549,7 @@ int bt_disable(void)
 	bt_dev.id_count = 0;
 #if defined(CONFIG_BT_SMP)
 	bt_dev.le.rl_entries = 0;
-	bt_keys_reset();
+	bt_keys_reset(&bt_dev);
 #endif
 
 	/* If random address was set up - clear it */
@@ -4658,7 +4662,7 @@ int bt_set_appearance(uint16_t appearance)
 bool bt_addr_le_is_bonded(uint8_t id, const bt_addr_le_t *addr)
 {
 	if (IS_ENABLED(CONFIG_BT_SMP)) {
-		struct bt_keys *keys = bt_keys_find_addr(id, addr);
+		struct bt_keys *keys = bt_keys_find_addr(&bt_dev, id, addr);
 
 		/* if there are any keys stored then device is bonded */
 		return keys && keys->keys;

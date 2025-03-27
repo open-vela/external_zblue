@@ -465,7 +465,7 @@ void bt_hci_link_key_notify(struct bt_dev *hdev, struct net_buf *buf)
 	LOG_DBG("%s, link type 0x%02x", bt_addr_str(&evt->bdaddr), evt->key_type);
 
 	if (!conn->br.link_key) {
-		conn->br.link_key = bt_keys_get_link_key(&evt->bdaddr);
+		conn->br.link_key = bt_keys_get_link_key(hdev, &evt->bdaddr);
 	}
 	if (!conn->br.link_key) {
 		LOG_ERR("Can't update keys for %s", bt_addr_str(&evt->bdaddr));
@@ -513,7 +513,7 @@ void bt_hci_link_key_notify(struct bt_dev *hdev, struct net_buf *buf)
 	if (!atomic_test_bit(conn->flags, BT_CONN_BR_NOBOND)) {
 		ssp_link_key_notify(conn, conn->br.link_key->val, evt->key_type);
 		if (IS_ENABLED(CONFIG_BT_SETTINGS)) {
-			bt_keys_link_key_store(conn->br.link_key);
+			bt_keys_link_key_store(hdev, conn->br.link_key);
 		}
 	}
 
@@ -572,7 +572,7 @@ void bt_hci_link_key_req(struct bt_dev *hdev, struct net_buf *buf)
 	}
 
 	if (!conn->br.link_key) {
-		conn->br.link_key = bt_keys_find_link_key(&evt->bdaddr);
+		conn->br.link_key = bt_keys_find_link_key(hdev, &evt->bdaddr);
 	}
 
 	if (!conn->br.link_key) {
