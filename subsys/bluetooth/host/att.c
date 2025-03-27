@@ -3815,7 +3815,7 @@ static void bt_eatt_init(void)
 	LOG_DBG("");
 
 	/* Check if eatt_l2cap server has already been registered. */
-	registered_server = bt_l2cap_server_lookup_psm(eatt_l2cap.psm);
+	registered_server = bt_l2cap_server_lookup_psm(&bt_dev, eatt_l2cap.psm);
 	if (registered_server != &eatt_l2cap) {
 		err = bt_l2cap_server_register(&eatt_l2cap);
 		if (err < 0) {

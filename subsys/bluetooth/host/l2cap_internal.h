@@ -228,7 +228,7 @@ int bt_l2cap_update_conn_param(struct bt_conn *conn,
 			       const struct bt_le_conn_param *param);
 
 /* Initialize L2CAP and supported channels */
-void bt_l2cap_init(void);
+void bt_l2cap_init(struct bt_dev *hdev);
 
 /* Lookup channel by Transmission CID */
 struct bt_l2cap_chan *bt_l2cap_le_lookup_tx_cid(struct bt_conn *conn,
@@ -245,10 +245,10 @@ struct bt_l2cap_ecred_cb {
 };
 
 /* Register callbacks for Enhanced Credit based Flow Control */
-void bt_l2cap_register_ecred_cb(const struct bt_l2cap_ecred_cb *cb);
+void bt_l2cap_register_ecred_cb(struct bt_dev *hdev, const struct bt_l2cap_ecred_cb *cb);
 
 /* Returns a server if it exists for given psm. */
-struct bt_l2cap_server *bt_l2cap_server_lookup_psm(uint16_t psm);
+struct bt_l2cap_server *bt_l2cap_server_lookup_psm(struct bt_dev *hdev, uint16_t psm);
 
 /* Pull data from the L2CAP layer */
 struct net_buf *l2cap_data_pull(struct bt_conn *conn,
