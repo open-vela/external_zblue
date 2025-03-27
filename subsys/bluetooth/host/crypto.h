@@ -5,4 +5,4 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-int prng_init(void);
+int prng_init(struct bt_dev *hdev);
