@@ -75,9 +75,6 @@ enum {
 	L2CAP_FLAG_FIXED_CONNECTED,		/* fixed connected */
 };
 
-static sys_slist_t br_servers;
-
-
 /* Pool for outgoing BR/EDR signaling packets, min MTU is 48 */
 NET_BUF_POOL_FIXED_DEFINE(br_sig_pool, CONFIG_BT_MAX_CONN,
 			  BT_L2CAP_BUF_SIZE(L2CAP_BR_MIN_MTU), 8, NULL);
@@ -98,7 +95,12 @@ struct bt_l2cap_br {
 	uint32_t			info_feat_mask;
 };
 
-static struct bt_l2cap_br bt_l2cap_br_pool[CONFIG_BT_MAX_CONN];
+struct bt_dev_l2cap_br_ctx {
+	struct bt_dev *hdev;
+	sys_slist_t br_servers;
+	struct bt_l2cap_br bt_l2cap_br_pool[CONFIG_BT_MAX_CONN];
+	uint8_t ident;
+} l2cap_br_ctx_pool[CONFIG_BT_NUM_CTLRS];
 
 struct bt_l2cap_chan *bt_l2cap_br_lookup_rx_cid(struct bt_conn *conn,
 						uint16_t cid)
@@ -252,17 +254,16 @@ static bool l2cap_br_chan_add(struct bt_conn *conn, struct bt_l2cap_chan *chan,
 	return true;
 }
 
-static uint8_t l2cap_br_get_ident(void)
+static uint8_t l2cap_br_get_ident(struct bt_dev *hdev)
 {
-	static uint8_t ident;
-
-	ident++;
+	struct bt_dev_l2cap_br_ctx *l2cap_br = hdev->l2cap_br_ctx;
+	l2cap_br->ident++;
 	/* handle integer overflow (0 is not valid) */
-	if (!ident) {
-		ident++;
+	if (!l2cap_br->ident) {
+		l2cap_br->ident++;
 	}
 
-	return ident;
+	return l2cap_br->ident;
 }
 
 static void raise_data_ready(struct bt_l2cap_br_chan *br_chan)
@@ -429,6 +430,7 @@ static void l2cap_br_get_info(struct bt_l2cap_br *l2cap, uint16_t info_type)
 	struct bt_l2cap_info_req *info;
 	struct net_buf *buf;
 	struct bt_l2cap_sig_hdr *hdr;
+	struct bt_conn *conn = l2cap->chan.chan.conn;
 
 	LOG_DBG("info type %u", info_type);
 
@@ -448,7 +450,7 @@ static void l2cap_br_get_info(struct bt_l2cap_br *l2cap, uint16_t info_type)
 	buf = bt_l2cap_create_pdu(&br_sig_pool, 0);
 
 	atomic_set_bit(l2cap->chan.flags, L2CAP_FLAG_SIG_INFO_PENDING);
-	l2cap->info_ident = l2cap_br_get_ident();
+	l2cap->info_ident = l2cap_br_get_ident(conn->hdev);
 
 	hdr = net_buf_add(buf, sizeof(*hdr));
 	hdr->code = BT_L2CAP_INFO_REQ;
@@ -689,11 +691,11 @@ void bt_l2cap_br_disconnected(struct bt_conn *conn)
 	}
 }
 
-static struct bt_l2cap_server *l2cap_br_server_lookup_psm(uint16_t psm)
+static struct bt_l2cap_server *l2cap_br_server_lookup_psm(struct bt_dev *hdev, uint16_t psm)
 {
 	struct bt_l2cap_server *server;
 
-	SYS_SLIST_FOR_EACH_CONTAINER(&br_servers, server, node) {
+	SYS_SLIST_FOR_EACH_CONTAINER(&hdev->l2cap_br_ctx->br_servers, server, node) {
 		if (server->psm == psm) {
 			return server;
 		}
@@ -721,12 +723,13 @@ static void l2cap_br_conf(struct bt_l2cap_chan *chan)
 	struct bt_l2cap_sig_hdr *hdr;
 	struct bt_l2cap_conf_req *conf;
 	struct net_buf *buf;
+	struct bt_conn *conn = chan->conn;
 
 	buf = bt_l2cap_create_pdu(&br_sig_pool, 0);
 
 	hdr = net_buf_add(buf, sizeof(*hdr));
 	hdr->code = BT_L2CAP_CONF_REQ;
-	hdr->ident = l2cap_br_get_ident();
+	hdr->ident = l2cap_br_get_ident(conn->hdev);
 	conf = net_buf_add(buf, sizeof(*conf));
 	(void)memset(conf, 0, sizeof(*conf));
 
@@ -1003,7 +1006,7 @@ static void l2cap_br_conn_req(struct bt_l2cap_br *l2cap, uint8_t ident,
 	LOG_DBG("psm 0x%02x scid 0x%04x", psm, scid);
 
 	/* Check if there is a server registered */
-	server = l2cap_br_server_lookup_psm(psm);
+	server = l2cap_br_server_lookup_psm(conn->hdev, psm);
 	if (!server) {
 		result = BT_L2CAP_BR_ERR_PSM_NOT_SUPP;
 		goto no_chan;
@@ -1152,8 +1155,14 @@ static void l2cap_br_conf_rsp(struct bt_l2cap_br *l2cap, uint8_t ident,
 	}
 }
 
-int bt_l2cap_br_server_register(struct bt_l2cap_server *server)
+int bt_l2cap_br_server_register_mc(uint8_t dev_id, struct bt_l2cap_server *server)
 {
+	struct bt_dev *hdev = bt_dev_get(dev_id);
+
+	if (!hdev) {
+		return -ENODEV;
+	}
+
 	if (server->psm < L2CAP_BR_PSM_START || !server->accept) {
 		return -EINVAL;
 	}
@@ -1171,14 +1180,14 @@ int bt_l2cap_br_server_register(struct bt_l2cap_server *server)
 	}
 
 	/* Check if given PSM is already in use */
-	if (l2cap_br_server_lookup_psm(server->psm)) {
+	if (l2cap_br_server_lookup_psm(hdev, server->psm)) {
 		LOG_DBG("PSM already registered");
 		return -EADDRINUSE;
 	}
 
 	LOG_DBG("PSM 0x%04x", server->psm);
 
-	sys_slist_append(&br_servers, &server->node);
+	sys_slist_append(&hdev->l2cap_br_ctx->br_servers, &server->node);
 
 	return 0;
 }
@@ -1629,7 +1638,7 @@ int bt_l2cap_br_chan_disconnect(struct bt_l2cap_chan *chan)
 
 	hdr = net_buf_add(buf, sizeof(*hdr));
 	hdr->code = BT_L2CAP_DISCONN_REQ;
-	hdr->ident = l2cap_br_get_ident();
+	hdr->ident = l2cap_br_get_ident(conn->hdev);
 	hdr->len = sys_cpu_to_le16(sizeof(*req));
 
 	req = net_buf_add(buf, sizeof(*req));
@@ -1738,7 +1747,7 @@ int bt_l2cap_br_chan_connect(struct bt_conn *conn, struct bt_l2cap_chan *chan,
 
 	hdr = net_buf_add(buf, sizeof(*hdr));
 	hdr->code = BT_L2CAP_CONN_REQ;
-	hdr->ident = l2cap_br_get_ident();
+	hdr->ident = l2cap_br_get_ident(conn->hdev);
 	hdr->len = sys_cpu_to_le16(sizeof(*req));
 
 	req = net_buf_add(buf, sizeof(*req));
@@ -1948,6 +1957,7 @@ static void l2cap_br_conn_pend(struct bt_l2cap_chan *chan, uint8_t status)
 	struct net_buf *buf;
 	struct bt_l2cap_sig_hdr *hdr;
 	struct bt_l2cap_conn_req *req;
+	struct bt_dev *hdev = chan->conn->hdev;
 
 	if (BR_CHAN(chan)->state != BT_L2CAP_CONNECTING) {
 		return;
@@ -1992,7 +2002,7 @@ static void l2cap_br_conn_pend(struct bt_l2cap_chan *chan, uint8_t status)
 
 		hdr = net_buf_add(buf, sizeof(*hdr));
 		hdr->code = BT_L2CAP_CONN_REQ;
-		hdr->ident = l2cap_br_get_ident();
+		hdr->ident = l2cap_br_get_ident(hdev);
 		hdr->len = sys_cpu_to_le16(sizeof(*req));
 
 		req = net_buf_add(buf, sizeof(*req));
@@ -2061,6 +2071,7 @@ void bt_l2cap_br_recv(struct bt_conn *conn, struct net_buf *buf)
 static int l2cap_br_accept(struct bt_conn *conn, struct bt_l2cap_chan **chan)
 {
 	int i;
+	struct bt_dev_l2cap_br_ctx *l2cap_br = conn->hdev->l2cap_br_ctx;
 	static const struct bt_l2cap_chan_ops ops = {
 		.connected = l2cap_br_connected,
 		.disconnected = l2cap_br_disconnected,
@@ -2069,8 +2080,8 @@ static int l2cap_br_accept(struct bt_conn *conn, struct bt_l2cap_chan **chan)
 
 	LOG_DBG("conn %p handle %u", conn, conn->handle);
 
-	for (i = 0; i < ARRAY_SIZE(bt_l2cap_br_pool); i++) {
-		struct bt_l2cap_br *l2cap = &bt_l2cap_br_pool[i];
+	for (i = 0; i < ARRAY_SIZE(l2cap_br->bt_l2cap_br_pool); i++) {
+		struct bt_l2cap_br *l2cap = &l2cap_br->bt_l2cap_br_pool[i];
 
 		if (l2cap->chan.chan.conn) {
 			continue;
@@ -2089,9 +2100,13 @@ static int l2cap_br_accept(struct bt_conn *conn, struct bt_l2cap_chan **chan)
 
 BT_L2CAP_BR_CHANNEL_DEFINE(br_fixed_chan, BT_L2CAP_CID_BR_SIG, l2cap_br_accept);
 
-void bt_l2cap_br_init(void)
+void bt_l2cap_br_init(struct bt_dev *hdev)
 {
-	sys_slist_init(&br_servers);
+	hdev->l2cap_br_ctx = &l2cap_br_ctx_pool[hdev->dev_id];
+	hdev->l2cap_br_ctx->hdev = hdev;
+	hdev->l2cap_br_ctx->ident = 0;
+
+	sys_slist_init(&hdev->l2cap_br_ctx->br_servers);
 
 	if (IS_ENABLED(CONFIG_BT_RFCOMM)) {
 		bt_rfcomm_init();

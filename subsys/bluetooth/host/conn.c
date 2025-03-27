@@ -4393,7 +4393,7 @@ int bt_conn_init(struct bt_dev *hdev)
 		return err;
 	}
 
-	bt_l2cap_init();
+	bt_l2cap_init(hdev);
 
 	/* Initialize background scan */
 	if (IS_ENABLED(CONFIG_BT_CENTRAL)) {
