@@ -219,7 +219,7 @@ struct acl_data {
 };
 
 struct bt_conn {
-	/* Hci device this connection belongs to */
+	/* HCI device this connection belongs to */
 	struct bt_dev 		*hdev;
 	uint16_t			handle;
 	enum bt_conn_type	type;
