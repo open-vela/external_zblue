@@ -900,7 +900,7 @@ struct net_buf *l2cap_data_pull(struct bt_conn *conn,
 
 	if (!lechan) {
 		LOG_DBG("no channel conn %p", conn);
-		bt_tx_irq_raise();
+		bt_tx_irq_raise(conn->hdev);
 		return NULL;
 	}
 
@@ -918,7 +918,7 @@ struct net_buf *l2cap_data_pull(struct bt_conn *conn,
 	 * again and this time we will select another channel to pull data from.
 	 */
 	if (!pdu) {
-		bt_tx_irq_raise();
+		bt_tx_irq_raise(conn->hdev);
 		return NULL;
 	}
 

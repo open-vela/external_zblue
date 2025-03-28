@@ -91,14 +91,14 @@ struct bt_keys {
  *
  * Keys stored in settings are not cleared.
  * 
- * @param hdev Hci device.
+ * @param hdev HCI device.
  */
 void bt_keys_reset(struct bt_dev *hdev);
 
 /**
  * @brief Get a call through the callback for each key with the same type
  *
- * @param hdev Hci device.
+ * @param hdev HCI device.
  * @param type Key type.
  * @param func Callback function to be called when a matched record is found.
  * @param data User data to be passed to the callback function.
@@ -118,7 +118,7 @@ void bt_keys_foreach_type(struct bt_dev *hdev, enum bt_keys_type type,
  *       the function will try to find the oldest key that isn't in use with a connection.
  *       If a key with matched criteria is found, it will be overwritten with the new one.
  *
- * @param hdev Hci device.
+ * @param hdev HCI device.
  * @param id Key identifier.
  * @param addr Destination address.
  *
@@ -135,7 +135,7 @@ struct bt_keys *bt_keys_get_addr(struct bt_dev *hdev, uint8_t id, const bt_addr_
  * Otherwise try to reserve one for the new ID and address pair if there is
  * a room for the new pair and set the type.
  *
- * @param hdev Hci device.
+ * @param hdev HCI device.
  * @param type Key type.
  * @param id Key identifier.
  * @param addr Destination address.
@@ -149,7 +149,7 @@ struct bt_keys *bt_keys_get_type(struct bt_dev *hdev, enum bt_keys_type type,
 /**
  * @brief Find key identified by type, ID and address
  *
- * @param hdev Hci device.
+ * @param hdev HCI device.
  * @param type Key type.
  * @param id Key identifier.
  * @param addr Destination address.
@@ -163,7 +163,7 @@ struct bt_keys *bt_keys_find(struct bt_dev *hdev, enum bt_keys_type type,
 /**
  * @brief Find key reference by trying to resolve an RPA using IRK
  *
- * @param hdev Hci device.
+ * @param hdev HCI device.
  * @param id Key identifier.
  * @param addr Destination address.
  * @return A valid reference pointer to the key slot on success.
@@ -174,7 +174,7 @@ struct bt_keys *bt_keys_find_irk(struct bt_dev *hdev, uint8_t id, const bt_addr_
 /**
  * @brief Find a key by ID and address
  *
- * @param hdev Hci device.
+ * @param hdev HCI device.
  * @param id Key identifier.
  * @param addr Destination address.
  * @return A valid reference pointer to the key slot if it exists.

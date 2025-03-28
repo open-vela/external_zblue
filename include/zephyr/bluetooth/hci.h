@@ -19,9 +19,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 struct bt_dev;
-
 /** Converts a HCI error to string.
  *
  * The error codes are described in the Bluetooth Core specification,
@@ -73,7 +71,6 @@ struct net_buf *bt_hci_cmd_create(uint16_t opcode, uint8_t param_len);
   * If synchronous behavior, and retrieval of the Command Complete parameters
   * is desired, the bt_hci_cmd_send_sync() API should be used instead.
   *
-  * @param hdev   The Bluetooth device.
   * @param opcode Command OpCode.
   * @param buf    Command buffer or NULL (if no parameters).
   *
@@ -94,7 +91,7 @@ int bt_hci_cmd_send(struct bt_dev *hdev, uint16_t opcode, struct net_buf *buf);
   * was given, this parameter will be set to point to a buffer containing
   * the response parameters.
   *
-  * @param hdev   The Bluetooth device.
+  * @param hdev   The HCI device to send the command to.
   * @param opcode Command OpCode.
   * @param buf    Command buffer or NULL (if no parameters).
   * @param rsp    Place to store a reference to the command response. May
@@ -105,8 +102,8 @@ int bt_hci_cmd_send(struct bt_dev *hdev, uint16_t opcode, struct net_buf *buf);
   *
   * @return 0 on success or negative error value on failure.
   */
- int bt_hci_cmd_send_sync(struct bt_dev *hdev, uint16_t opcode,
-              struct net_buf *buf, struct net_buf **rsp);
+int bt_hci_cmd_send_sync(struct bt_dev *hdev, uint16_t opcode, struct net_buf *buf,
+			 struct net_buf **rsp);
 
 /** @brief Get connection handle for a connection.
  *
@@ -127,7 +124,13 @@ int bt_hci_get_conn_handle(const struct bt_conn *conn, uint16_t *conn_handle);
  * @returns The corresponding connection object on success.
  *          NULL if it does not exist.
  */
-struct bt_conn *bt_hci_conn_lookup_handle(uint16_t handle);
+struct bt_conn *bt_hci_conn_lookup_handle_mc(uint8_t dev_id, uint16_t handle);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline struct bt_conn *bt_hci_conn_lookup_handle(uint16_t handle)
+{
+  return bt_hci_conn_lookup_handle_mc(0, handle);
+}
+#endif
 
 /** @brief Get advertising handle for an advertising set.
  *
@@ -145,7 +148,13 @@ int bt_hci_get_adv_handle(const struct bt_le_ext_adv *adv, uint8_t *adv_handle);
  * @returns The corresponding advertising set on success,
  *          NULL if it does not exist.
  */
-struct bt_le_ext_adv *bt_hci_adv_lookup_handle(uint8_t handle);
+struct bt_le_ext_adv *bt_hci_adv_lookup_handle_mc(uint8_t dev_id, uint8_t handle);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline struct bt_le_ext_adv *bt_hci_adv_lookup_handle(uint8_t handle)
+{
+  return bt_hci_adv_lookup_handle_mc(0, handle);
+}
+#endif
 
 /** @brief Get periodic advertising sync handle.
  *
@@ -204,7 +213,13 @@ typedef bool bt_hci_vnd_evt_cb_t(struct net_buf_simple *buf);
   *
   * @return 0 on success or negative error value on failure.
   */
-int bt_hci_register_vnd_evt_cb(bt_hci_vnd_evt_cb_t cb);
+int bt_hci_register_vnd_evt_cb_mc(uint8_t dev_id, bt_hci_vnd_evt_cb_t cb);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_hci_register_vnd_evt_cb(bt_hci_vnd_evt_cb_t cb)
+{
+  return bt_hci_register_vnd_evt_cb_mc(0, cb);
+}
+#endif
 
 /** @brief Get Random bytes from the LE Controller.
  *
@@ -226,7 +241,6 @@ static inline int bt_hci_le_rand(void *buffer, size_t len)
   return bt_hci_le_rand_mc(0, buffer, len);
 }
 #endif
-
 
 #ifdef __cplusplus
 }

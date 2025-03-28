@@ -159,7 +159,7 @@ enum {
 
 struct bt_dev;
 struct bt_le_ext_adv {
-	/* Hci device this advertiser belongs to */
+	/* HCI device this advertiser belongs to */
 	struct bt_dev *hdev;
 
 	/* ID Address used for advertising */
@@ -218,7 +218,7 @@ enum {
 };
 
 struct bt_le_per_adv_sync {
-	/* Hci device this advertiser belongs to */
+	/* HCI device this advertiser belongs to */
 	struct bt_dev *hdev;
 
 	/** Periodic Advertiser Address */
@@ -428,6 +428,20 @@ struct bt_dev {
 	/* Queue for outgoing HCI commands */
 	struct k_fifo		cmd_tx_queue;
 
+	/* Work for handling HCI events & ACL data */
+	struct k_work       rx_work;
+
+	/* Work used to process Tx data */
+	struct k_work       tx_work;
+
+#if defined(CONFIG_BT_CONN)
+	/* Array of disconnected handle and reason */
+	uint16_t disconnected_handles[CONFIG_BT_MAX_CONN];
+	uint8_t disconnected_handles_reason[CONFIG_BT_MAX_CONN];
+#endif
+
+	bt_ready_cb_t ready_cb;
+
 #if DT_HAS_CHOSEN(zephyr_bt_hci)
 	const struct device *hci;
 #else
@@ -534,7 +548,7 @@ void bt_hci_cmd_state_set_init(struct net_buf *buf,
 			       struct bt_hci_cmd_state_set *state,
 			       atomic_t *target, int bit, bool val);
 
-int bt_hci_disconnect(uint16_t handle, uint8_t reason);
+int bt_hci_disconnect(struct bt_dev *hdev, uint16_t handle, uint8_t reason);
 
 bool bt_le_conn_params_valid(const struct bt_le_conn_param *param);
 int bt_le_set_data_len(struct bt_conn *conn, uint16_t tx_octets, uint16_t tx_time);
@@ -553,11 +567,11 @@ int bt_le_read_conn_rssi(struct bt_conn *conn, int8_t *rssi);
 int bt_get_df_cte_type(uint8_t hci_cte_type);
 
 int bt_le_create_conn(const struct bt_conn *conn);
-int bt_le_create_conn_cancel(void);
+int bt_le_create_conn_cancel(struct bt_dev *hdev);
 int bt_le_create_conn_synced(const struct bt_conn *conn, const struct bt_le_ext_adv *adv,
 			     uint8_t subevent);
 
-bool bt_addr_le_is_bonded(uint8_t id, const bt_addr_le_t *addr);
+bool bt_addr_le_is_bonded(struct bt_dev *hdev, uint8_t id, const bt_addr_le_t *addr);
 const bt_addr_le_t *bt_lookup_id_addr(struct bt_dev *hdev, uint8_t id, const bt_addr_le_t *addr);
 
 int bt_send(struct bt_dev *hdev, struct net_buf *buf);
@@ -572,7 +586,7 @@ struct bt_keys *bt_id_find_conflict(struct bt_dev *hdev, struct bt_keys *candida
 int bt_setup_random_id_addr(struct bt_dev *hdev);
 int bt_setup_public_id_addr(struct bt_dev *hdev);
 
-void bt_finalize_init(void);
+void bt_finalize_init(struct bt_dev *hdev);
 
 void bt_hci_host_num_completed_packets(struct bt_dev *hdev, struct net_buf *buf);
 
@@ -651,10 +665,10 @@ void bt_hci_le_per_adv_response_report(struct bt_dev *hdev, struct net_buf *buf)
 
 int bt_hci_read_remote_version(struct bt_conn *conn);
 int bt_hci_le_read_remote_features(struct bt_conn *conn);
-int bt_hci_le_read_max_data_len(uint16_t *tx_octets, uint16_t *tx_time);
+int bt_hci_le_read_max_data_len(struct bt_dev *hdev, uint16_t *tx_octets, uint16_t *tx_time);
 
-bool bt_drv_quirk_no_auto_dle(void);
+bool bt_drv_quirk_no_auto_dle(struct bt_dev *hdev);
 
-void bt_tx_irq_raise(void);
-void bt_send_one_host_num_completed_packets(uint16_t handle);
+void bt_tx_irq_raise(struct bt_dev *hdev);
+void bt_send_one_host_num_completed_packets(struct bt_dev *hdev, uint16_t handle);
 void bt_acl_set_ncp_sent(struct net_buf *packet, bool value);

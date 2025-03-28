@@ -615,7 +615,7 @@ static void le_update_private_addr(struct bt_dev *hdev)
 		/* Canceled initiating procedure will be restarted by
 		 * connection complete event.
 		 */
-		bt_le_create_conn_cancel();
+		bt_le_create_conn_cancel(hdev);
 	}
 
 	if (IS_ENABLED(CONFIG_BT_BROADCASTER) &&
@@ -688,7 +688,7 @@ static void rpa_timeout(struct k_work *work)
 
 		if (conn) {
 			bt_conn_unref(conn);
-			bt_le_create_conn_cancel();
+			bt_le_create_conn_cancel(hdev);
 		}
 	}
 
