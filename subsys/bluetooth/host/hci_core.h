@@ -522,6 +522,9 @@ struct bt_dev {
 
 	/* GATT context */
 	struct bt_dev_gatt_ctx *gatt_ctx;
+
+	/* SDP context */
+	struct bt_dev_sdp_ctx *sdp_ctx;
 };
 
 extern struct bt_dev bt_dev;
