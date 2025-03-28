@@ -106,7 +106,7 @@ static void tx_complete_work(struct k_work *work);
 
 static void notify_recycled_conn_slot(struct bt_dev_conn_ctx *conn_ctx);
 
-void bt_tx_irq_raise(void);
+void bt_tx_irq_raise(struct bt_dev *hdev);
 
 /* Group Connected BT_CONN only in this */
 #if defined(CONFIG_BT_CONN)
@@ -161,7 +161,7 @@ void frag_destroy(struct net_buf *frag)
 	LOG_DBG("");
 
 	/* Kick the TX processor to send the rest of the frags. */
-	bt_tx_irq_raise();
+	bt_tx_irq_raise(hdev);
 }
 
 static struct net_buf *get_data_frag(struct bt_dev *hdev, struct net_buf *outside, size_t winsize)
@@ -332,7 +332,7 @@ static void tx_notify_process(struct bt_conn *conn)
 		}
 
 		LOG_DBG("raise TX IRQ");
-		bt_tx_irq_raise();
+		bt_tx_irq_raise(conn->hdev);
 	}
 }
 #endif /* CONFIG_BT_CONN_TX */
@@ -462,7 +462,7 @@ static void bt_acl_recv(struct bt_conn *conn, struct net_buf *buf, uint8_t flags
 		/* Still not enough data received to retrieve the L2CAP header
 		 * length field.
 		 */
-		bt_send_one_host_num_completed_packets(conn->handle);
+		bt_send_one_host_num_completed_packets(conn->hdev, conn->handle);
 		bt_acl_set_ncp_sent(buf, true);
 		net_buf_unref(buf);
 
@@ -473,7 +473,7 @@ static void bt_acl_recv(struct bt_conn *conn, struct net_buf *buf, uint8_t flags
 
 	if (conn->rx->len < acl_total_len) {
 		/* L2CAP frame not complete. */
-		bt_send_one_host_num_completed_packets(conn->handle);
+		bt_send_one_host_num_completed_packets(conn->hdev, conn->handle);
 		bt_acl_set_ncp_sent(buf, true);
 		net_buf_unref(buf);
 
@@ -888,7 +888,7 @@ void bt_conn_data_ready(struct bt_conn *conn)
 	}
 
 	/* Kick the TX processor */
-	bt_tx_irq_raise();
+	bt_tx_irq_raise(conn->hdev);
 }
 
 static bool cannot_send_to_controller(struct bt_conn *conn)
@@ -1033,7 +1033,7 @@ void bt_conn_suspend_tx(bool suspend)
 
 	LOG_DBG("%sing all data TX", suspend ? "suspend" : "resum");
 
-	bt_tx_irq_raise();
+	bt_tx_irq_raise(conn->hdev);
 }
 #endif	/* CONFIG_BT_TESTING */
 
@@ -1132,7 +1132,7 @@ void bt_conn_tx_processor(struct bt_dev *hdev)
 	/* Always kick the TX work. It will self-suspend if it doesn't get
 	 * resources or there is nothing left to send.
 	 */
-	bt_tx_irq_raise();
+	bt_tx_irq_raise(hdev);
 
 exit:
 	/* Give back the ref that `get_conn_ready()` gave us */
@@ -1151,7 +1151,7 @@ static void process_unack_tx(struct bt_conn *conn)
 		node = sys_slist_get(&conn->tx_pending);
 
 		if (!node) {
-			bt_tx_irq_raise();
+			bt_tx_irq_raise(conn->hdev);
 			return;
 		}
 
@@ -1826,10 +1826,10 @@ static void perform_auto_initiated_procedures(struct bt_conn *conn, void *unused
 	 * controller. Not updating it is a quirk and this is the workaround.
 	 */
 	if (IS_ENABLED(CONFIG_BT_AUTO_DATA_LEN_UPDATE) && BT_FEAT_LE_DLE(conn->hdev->le.features) &&
-	    bt_drv_quirk_no_auto_dle()) {
+	    bt_drv_quirk_no_auto_dle(conn->hdev)) {
 		uint16_t tx_octets, tx_time;
 
-		err = bt_hci_le_read_max_data_len(&tx_octets, &tx_time);
+		err = bt_hci_le_read_max_data_len(conn->hdev, &tx_octets, &tx_time);
 		if (!err) {
 			err = bt_le_set_data_len(conn, tx_octets, tx_time);
 			if (err) {
@@ -1874,7 +1874,7 @@ static int conn_disconnect(struct bt_conn *conn, uint8_t reason)
 {
 	int err;
 
-	err = bt_hci_disconnect(conn->handle, reason);
+	err = bt_hci_disconnect(conn->hdev, conn->handle, reason);
 	if (err) {
 		return err;
 	}
@@ -1912,7 +1912,7 @@ int bt_conn_disconnect(struct bt_conn *conn, uint8_t reason)
 		if (conn->type == BT_CONN_TYPE_LE) {
 			if (IS_ENABLED(CONFIG_BT_CENTRAL)) {
 				k_work_cancel_delayable(&conn->deferred_work);
-				return bt_le_create_conn_cancel();
+				return bt_le_create_conn_cancel(conn->hdev);
 			}
 		}
 #if defined(CONFIG_BT_ISO)
@@ -2286,7 +2286,7 @@ static void deferred_work(struct k_work *work)
 		 * auto connect flag if it was set, instead just cancel
 		 * connection directly
 		 */
-		bt_le_create_conn_cancel();
+		bt_le_create_conn_cancel(conn->hdev);
 		return;
 	}
 
@@ -3848,7 +3848,7 @@ int bt_conn_create_auto_stop_mc(uint8_t dev_id)
 	bt_conn_set_state(conn, BT_CONN_DISCONNECTED);
 	bt_conn_unref(conn);
 
-	err = bt_le_create_conn_cancel();
+	err = bt_le_create_conn_cancel(hdev);
 	if (err) {
 		LOG_ERR("Failed to stop initiator");
 		return err;

@@ -62,7 +62,7 @@ struct bt_sco_chan {
  *  The caller gets a new reference to the connection object which must be
  *  released with bt_conn_unref() once done using the object.
  *
- *  @param hdev  Hci device.
+ *  @param hdev  HCI device.
  *  @param peer  Remote address.
  *  @param chan  sco chan object.
  *

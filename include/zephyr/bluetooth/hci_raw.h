@@ -32,7 +32,7 @@ extern "C" {
  *
  * @return Zero on success or (negative) error code otherwise.
  */
-int bt_send(struct net_buf *buf);
+int bt_send(struct bt_dev *hdev, struct net_buf *buf);
 
 enum {
 	/** Passthrough mode
@@ -55,19 +55,22 @@ enum {
  *
  *  Set access mode of Bluetooth RAW channel.
  *
+ *  @param hdev HCI device.
  *  @param mode Access mode.
  *
  *  @return Zero on success or (negative) error code otherwise.
  */
-int bt_hci_raw_set_mode(uint8_t mode);
+int bt_hci_raw_set_mode(struct bt_dev *hdev, uint8_t mode);
 
 /** @brief Get Bluetooth RAW channel mode
  *
  *  Get access mode of Bluetooth RAW channel.
  *
+ *  @param hdev HCI device.
+ *
  *  @return Access mode.
  */
-uint8_t bt_hci_raw_get_mode(void);
+uint8_t bt_hci_raw_get_mode(struct bt_dev *hdev);
 
 #define BT_HCI_ERR_EXT_HANDLED  0xff
 
@@ -102,7 +105,7 @@ struct bt_hci_raw_cmd_ext {
 	 *  BT_HCI_ERR_SUCCESS which just indicates that the command can be
 	 *  sent to the controller to be processed.
 	 */
-	uint8_t   (*func)(struct net_buf *buf);
+	uint8_t   (*func)(struct bt_dev *hdev, struct net_buf *buf);
 };
 
 /** @brief Register Bluetooth RAW command extension table
@@ -110,22 +113,24 @@ struct bt_hci_raw_cmd_ext {
  *  Register Bluetooth RAW channel command extension table, opcodes in this
  *  table are intercepted to sent to the handler function.
  *
+ *  @param hdev HCI device.
  *  @param cmds Pointer to the command extension table.
  *  @param size Size of the command extension table.
  */
-void bt_hci_raw_cmd_ext_register(struct bt_hci_raw_cmd_ext *cmds, size_t size);
+void bt_hci_raw_cmd_ext_register(struct bt_dev *hdev, struct bt_hci_raw_cmd_ext *cmds, size_t size);
 
 /** @brief Enable Bluetooth RAW channel:
  *
  *  Enable Bluetooth RAW HCI channel.
  *
+ *  @param hdev HCI device.
  *  @param rx_queue netbuf queue where HCI packets received from the Bluetooth
  *  controller are to be queued. The queue is defined in the caller while
  *  the available buffers pools are handled in the stack.
  *
  *  @return Zero on success or (negative) error code otherwise.
  */
-int bt_enable_raw(struct k_fifo *rx_queue);
+int bt_enable_raw(struct bt_dev *hdev, struct k_fifo *rx_queue);
 
 #ifdef __cplusplus
 }

@@ -31,14 +31,6 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(bt_hci_raw);
 
-static struct k_fifo *raw_rx;
-
-#if defined(CONFIG_BT_HCI_RAW_H4_ENABLE)
-static uint8_t raw_mode = BT_HCI_RAW_MODE_H4;
-#else
-static uint8_t raw_mode;
-#endif
-
 NET_BUF_POOL_FIXED_DEFINE(hci_rx_pool, BT_BUF_RX_COUNT,
 			  BT_BUF_RX_SIZE, sizeof(struct bt_buf_data), NULL);
 NET_BUF_POOL_FIXED_DEFINE(hci_cmd_pool, CONFIG_BT_BUF_CMD_TX_COUNT,
@@ -57,18 +49,23 @@ NET_BUF_POOL_FIXED_DEFINE(hci_iso_pool, CONFIG_BT_ISO_TX_BUF_COUNT,
 #define BT_HCI_BUS  BT_DT_HCI_BUS_GET(BT_HCI_DEV)
 #define BT_HCI_NAME BT_DT_HCI_NAME_GET(BT_HCI_DEV)
 
-struct bt_dev_raw bt_dev = {
+struct bt_dev bt_dev = {
 #if DT_HAS_CHOSEN(zephyr_bt_hci)
 	.hci = DEVICE_DT_GET(BT_HCI_DEV),
 #endif
 };
-struct bt_hci_raw_cmd_ext *cmd_ext;
-static size_t cmd_ext_size;
 
 #if !DT_HAS_CHOSEN(zephyr_bt_hci)
-int bt_hci_driver_register(const struct bt_hci_driver *drv)
+int bt_hci_driver_register_mc(uint8_t dev_id, const struct bt_hci_driver *drv)
 {
-	if (bt_dev.drv) {
+	struct bt_dev *hdev;
+
+	hdev = bt_dev_get(dev_id);
+	if (!hdev) {
+		return -ENODEV;
+	}
+
+	if (hdev->drv) {
 		return -EALREADY;
 	}
 
@@ -76,7 +73,7 @@ int bt_hci_driver_register(const struct bt_hci_driver *drv)
 		return -EINVAL;
 	}
 
-	bt_dev.drv = drv;
+	hdev->drv = drv;
 
 	LOG_DBG("Registered %s", drv->name ? drv->name : "");
 
@@ -117,6 +114,7 @@ struct net_buf *bt_buf_get_tx(enum bt_buf_type type, k_timeout_t timeout,
 {
 	struct net_buf_pool *pool;
 	struct net_buf *buf;
+	struct bt_dev *hdev = bt_dev_get(0);
 
 	switch (type) {
 	case BT_BUF_CMD:
@@ -132,7 +130,7 @@ struct net_buf *bt_buf_get_tx(enum bt_buf_type type, k_timeout_t timeout,
 #endif /* CONFIG_BT_ISO */
 	case BT_BUF_H4:
 		if (IS_ENABLED(CONFIG_BT_HCI_RAW_H4) &&
-		    raw_mode == BT_HCI_RAW_MODE_H4) {
+		    hdev->raw_mode == BT_HCI_RAW_MODE_H4) {
 			uint8_t h4_type = ((uint8_t *)data)[0];
 
 			switch (h4_type) {
@@ -199,12 +197,13 @@ int bt_hci_recv(const struct device *dev, struct net_buf *buf, void *hci_data)
 int bt_recv(struct net_buf *buf)
 {
 #endif
+	struct bt_dev *hdev = hci_data;
 	LOG_DBG("buf %p len %u", buf, buf->len);
 
 	bt_monitor_send(bt_monitor_opcode(buf), buf->data, buf->len);
 
 	if (IS_ENABLED(CONFIG_BT_HCI_RAW_H4) &&
-	    raw_mode == BT_HCI_RAW_MODE_H4) {
+	    hdev->raw_mode == BT_HCI_RAW_MODE_H4) {
 		switch (bt_buf_get_type(buf)) {
 		case BT_BUF_EVT:
 			net_buf_push_u8(buf, BT_HCI_H4_EVT);
@@ -225,12 +224,12 @@ int bt_recv(struct net_buf *buf)
 	}
 
 	/* Queue to RAW rx queue */
-	k_fifo_put(raw_rx, buf);
+	k_fifo_put(hdev->raw_rx, buf);
 
 	return 0;
 }
 
-static void bt_cmd_complete_ext(uint16_t op, uint8_t status)
+static void bt_cmd_complete_ext(struct bt_dev *hdev, uint16_t op, uint8_t status)
 {
 	struct net_buf *buf;
 	struct bt_hci_evt_cc_status *cc;
@@ -244,23 +243,22 @@ static void bt_cmd_complete_ext(uint16_t op, uint8_t status)
 	cc->status = status;
 
 #if DT_HAS_CHOSEN(zephyr_bt_hci)
-	bt_hci_recv(bt_dev.hci, buf);
+	bt_hci_recv(hdev->hci, buf);
 #else
 	bt_recv(buf);
 #endif
 }
 
-static uint8_t bt_send_ext(struct net_buf *buf)
+static uint8_t bt_send_ext(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_cmd_hdr *hdr;
 	struct net_buf_simple_state state;
 	int i;
 	uint16_t op;
 	uint8_t status;
-
 	status = BT_HCI_ERR_SUCCESS;
 
-	if (!cmd_ext) {
+	if (!hdev->cmd_ext) {
 		return status;
 	}
 
@@ -279,14 +277,14 @@ static uint8_t bt_send_ext(struct net_buf *buf)
 
 	op = sys_le16_to_cpu(hdr->opcode);
 
-	for (i = 0; i < cmd_ext_size; i++) {
-		struct bt_hci_raw_cmd_ext *cmd = &cmd_ext[i];
+	for (i = 0; i < hdev->cmd_ext_size; i++) {
+		struct bt_hci_raw_cmd_ext *cmd = &hdev->cmd_ext[i];
 
 		if (cmd->op == op) {
 			if (buf->len < cmd->min_len) {
 				status = BT_HCI_ERR_INVALID_PARAM;
 			} else {
-				status = cmd->func(buf);
+				status = cmd->func(hdev, buf);
 			}
 
 			break;
@@ -303,7 +301,7 @@ static uint8_t bt_send_ext(struct net_buf *buf)
 	return status;
 }
 
-int bt_send(struct net_buf *buf)
+int bt_send(struct bt_dev *hdev, struct net_buf *buf)
 {
 	LOG_DBG("buf %p len %u", buf, buf->len);
 
@@ -317,24 +315,24 @@ int bt_send(struct net_buf *buf)
 	    bt_buf_get_type(buf) == BT_BUF_CMD) {
 		uint8_t status;
 
-		status = bt_send_ext(buf);
+		status = bt_send_ext(hdev, buf);
 		if (status) {
 			return status;
 		}
 	}
 
 	if (IS_ENABLED(CONFIG_BT_TINYCRYPT_ECC)) {
-		return bt_hci_ecc_send(buf);
+		return bt_hci_ecc_send(hdev, buf);
 	}
 
 #if DT_HAS_CHOSEN(zephyr_bt_hci)
-	return bt_hci_send(bt_dev.hci, buf);
+	return bt_hci_send(hdev->hci, buf);
 #else
-	return bt_dev.drv->send(buf);
+	return hdev->drv->send(buf);
 #endif
 }
 
-int bt_hci_raw_set_mode(uint8_t mode)
+int bt_hci_raw_set_mode(struct bt_dev *hdev, uint8_t mode)
 {
 	LOG_DBG("mode %u", mode);
 
@@ -342,7 +340,7 @@ int bt_hci_raw_set_mode(uint8_t mode)
 		switch (mode) {
 		case BT_HCI_RAW_MODE_PASSTHROUGH:
 		case BT_HCI_RAW_MODE_H4:
-			raw_mode = mode;
+			hdev->raw_mode = mode;
 			return 0;
 		}
 	}
@@ -350,42 +348,48 @@ int bt_hci_raw_set_mode(uint8_t mode)
 	return -EINVAL;
 }
 
-uint8_t bt_hci_raw_get_mode(void)
+uint8_t bt_hci_raw_get_mode(struct bt_dev *hdev)
 {
 	if (IS_ENABLED(CONFIG_BT_HCI_RAW_H4)) {
-		return raw_mode;
+		return hdev->raw_mode;
 	}
 
 	return BT_HCI_RAW_MODE_PASSTHROUGH;
 }
 
-void bt_hci_raw_cmd_ext_register(struct bt_hci_raw_cmd_ext *cmds, size_t size)
+void bt_hci_raw_cmd_ext_register(struct bt_dev *hdev, struct bt_hci_raw_cmd_ext *cmds, size_t size)
 {
 	if (IS_ENABLED(CONFIG_BT_HCI_RAW_CMD_EXT)) {
-		cmd_ext = cmds;
-		cmd_ext_size = size;
+		hdev->cmd_ext = cmds;
+		hdev->cmd_ext_size = size;
 	}
 }
 
-int bt_enable_raw(struct k_fifo *rx_queue)
+int bt_enable_raw(struct bt_dev *hdev, struct k_fifo *rx_queue)
 {
 	int err;
 
 	LOG_DBG("");
 
-	raw_rx = rx_queue;
+#if defined(CONFIG_BT_HCI_RAW_H4_ENABLE)
+	hdev->raw_mode = BT_HCI_RAW_MODE_H4;
+#else
+	hdev->raw_mode = BT_HCI_RAW_MODE_PASSTHROUGH;
+#endif
+
+	hdev->raw_rx = rx_queue;
 
 #if DT_HAS_CHOSEN(zephyr_bt_hci)
-	if (!device_is_ready(bt_dev.hci)) {
+	if (!device_is_ready(hdev->hci)) {
 		LOG_ERR("HCI driver is not ready");
 		return -ENODEV;
 	}
 
 	bt_monitor_new_index(BT_MONITOR_TYPE_PRIMARY, BT_HCI_BUS, BT_ADDR_ANY, BT_HCI_NAME);
 
-	err = bt_hci_open(bt_dev.hci, bt_hci_recv);
+	err = bt_hci_open(hdev->hci, bt_hci_recv);
 #else
-	const struct bt_hci_driver *drv = bt_dev.drv;
+	const struct bt_hci_driver *drv = hdev->drv;
 
 	if (!drv) {
 		LOG_ERR("No HCI driver registered");

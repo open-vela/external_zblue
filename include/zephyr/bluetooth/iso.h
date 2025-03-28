@@ -749,7 +749,7 @@ struct bt_iso_accept_info {
 
 /** @brief ISO Server structure. */
 struct bt_iso_server {
-	/* Hci device this iso server is associated with */
+	/* HCI device this iso server is associated with */
 	struct bt_dev *hdev;
 
 #if defined(CONFIG_BT_SMP) || defined(__DOXYGEN__)
