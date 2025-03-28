@@ -2149,7 +2149,7 @@ static void unpair(struct bt_dev *hdev, uint8_t id, const bt_addr_le_t *addr)
 		}
 	}
 
-	bt_gatt_clear(id, addr);
+	bt_gatt_clear(hdev, id, addr);
 
 #if defined(CONFIG_BT_SMP) || defined(CONFIG_BT_CLASSIC)
 	struct bt_conn_auth_info_cb *listener, *next;
