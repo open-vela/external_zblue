@@ -808,7 +808,7 @@ static int le_adv_update(struct bt_le_ext_adv *adv,
 	int err;
 
 	if (name_type != ADV_NAME_TYPE_NONE) {
-		const char *name = bt_get_name();
+		const char *name = bt_get_name_mc(adv->hdev->dev_id);
 
 		if ((ad && ad_has_name(ad, ad_len)) ||
 		    (sd && ad_has_name(sd, sd_len))) {
