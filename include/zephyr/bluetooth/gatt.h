@@ -310,6 +310,7 @@ struct bt_gatt_service_static {
 
 /** @brief GATT Service structure */
 struct bt_gatt_service {
+	struct bt_dev *hdev;
 	/** Service Attributes */
 	struct bt_gatt_attr *attrs;
 	/** Service Attribute count */
@@ -544,7 +545,13 @@ static inline const char *bt_gatt_err_to_str(int gatt_err)
  *
  *  @param cb Callback struct.
  */
-void bt_gatt_cb_register(struct bt_gatt_cb *cb);
+void bt_gatt_cb_register_mc(uint8_t dev_id, struct bt_gatt_cb *cb);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline void bt_gatt_cb_register(struct bt_gatt_cb *cb)
+{
+	bt_gatt_cb_register_mc(0, cb);
+}
+#endif
 
 /** @brief Unregister GATT callbacks.
  *
@@ -574,7 +581,13 @@ void bt_gatt_cb_unregister(struct bt_gatt_cb *cb);
  *
  *  @return Zero on success or negative error code otherwise
  */
-int bt_gatt_authorization_cb_register(const struct bt_gatt_authorization_cb *cb);
+int bt_gatt_authorization_cb_register_mc(uint8_t dev_id, const struct bt_gatt_authorization_cb *cb);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_gatt_authorization_cb_register(const struct bt_gatt_authorization_cb *cb)
+{
+	return bt_gatt_authorization_cb_register_mc(0, cb);
+}
+#endif
 
 /** @brief Register GATT service.
  *
@@ -602,7 +615,13 @@ int bt_gatt_authorization_cb_register(const struct bt_gatt_authorization_cb *cb)
  *  @return 0 in case of success or negative value in case of error.
  *  @return -EAGAIN if ``bt_init()`` has been called but ``settings_load()`` hasn't yet.
  */
-int bt_gatt_service_register(struct bt_gatt_service *svc);
+int bt_gatt_service_register_mc(uint8_t dev_id, struct bt_gatt_service *svc);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_gatt_service_register(struct bt_gatt_service *svc)
+{
+	return bt_gatt_service_register_mc(0, svc);
+}
+#endif
 
 /** @brief Unregister GATT service.
  *
@@ -651,11 +670,21 @@ typedef uint8_t (*bt_gatt_attr_func_t)(const struct bt_gatt_attr *attr,
  *  @param func Callback function.
  *  @param user_data Data to pass to the callback.
  */
-void bt_gatt_foreach_attr_type(uint16_t start_handle, uint16_t end_handle,
+void bt_gatt_foreach_attr_type_mc(uint8_t dev_id, uint16_t start_handle, uint16_t end_handle,
+				   const struct bt_uuid *uuid,
+				   const void *attr_data, uint16_t num_matches,
+				   bt_gatt_attr_func_t func, void *user_data);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline void bt_gatt_foreach_attr_type(uint16_t start_handle, uint16_t end_handle,
 			       const struct bt_uuid *uuid,
 			       const void *attr_data, uint16_t num_matches,
 			       bt_gatt_attr_func_t func,
-			       void *user_data);
+			       void *user_data)
+{
+	bt_gatt_foreach_attr_type_mc(0, start_handle, end_handle, uuid,
+				     attr_data, num_matches, func, user_data);
+}
+#endif
 
 /** @brief Attribute iterator.
  *
@@ -666,6 +695,14 @@ void bt_gatt_foreach_attr_type(uint16_t start_handle, uint16_t end_handle,
  *  @param func Callback function.
  *  @param user_data Data to pass to the callback.
  */
+static inline void bt_gatt_foreach_attr_mc(uint8_t dev_id, uint16_t start_handle, uint16_t end_handle,
+	bt_gatt_attr_func_t func,
+	void *user_data)
+{
+	bt_gatt_foreach_attr_type_mc(dev_id, start_handle, end_handle, NULL, NULL, 0, func,
+  				  user_data);
+}
+#ifdef CONFIG_BT_ORIGINAL_API
 static inline void bt_gatt_foreach_attr(uint16_t start_handle, uint16_t end_handle,
 					bt_gatt_attr_func_t func,
 					void *user_data)
@@ -673,6 +710,7 @@ static inline void bt_gatt_foreach_attr(uint16_t start_handle, uint16_t end_hand
 	bt_gatt_foreach_attr_type(start_handle, end_handle, NULL, NULL, 0, func,
 				  user_data);
 }
+#endif
 
 /** @brief Iterate to the next attribute
  *
@@ -682,7 +720,10 @@ static inline void bt_gatt_foreach_attr(uint16_t start_handle, uint16_t end_hand
  *
  *  @return The next attribute or NULL if it cannot be found.
  */
+struct bt_gatt_attr *bt_gatt_attr_next_mc(uint8_t dev_id, const struct bt_gatt_attr *attr);
+#ifdef CONFIG_BT_ORIGINAL_API
 struct bt_gatt_attr *bt_gatt_attr_next(const struct bt_gatt_attr *attr);
+#endif
 
 /** @brief Find Attribute by UUID.
  *
@@ -698,9 +739,17 @@ struct bt_gatt_attr *bt_gatt_attr_next(const struct bt_gatt_attr *attr);
  *                     Set to 0 to search until the end.
  *  @param uuid        UUID to match.
  */
-struct bt_gatt_attr *bt_gatt_find_by_uuid(const struct bt_gatt_attr *attr,
+struct bt_gatt_attr *bt_gatt_find_by_uuid_mc(uint8_t dev_id, const struct bt_gatt_attr *attr,
 					  uint16_t attr_count,
 					  const struct bt_uuid *uuid);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline struct bt_gatt_attr *bt_gatt_find_by_uuid(const struct bt_gatt_attr *attr,
+					  uint16_t attr_count,
+					  const struct bt_uuid *uuid)
+{
+	return bt_gatt_find_by_uuid_mc(0, attr, attr_count, uuid);
+}
+#endif
 
 /** @brief Get Attribute handle.
  *
