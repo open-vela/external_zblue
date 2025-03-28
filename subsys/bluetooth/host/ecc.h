@@ -55,7 +55,7 @@ bool bt_pub_key_is_debug(uint8_t *cmp_pub_key);
  *  callback. After calling all the registered callbacks the linked list
  *  is cleared.
  *
- *  @param hdev Hci device.
+ *  @param hdev HCI device.
  *  @param cb Callback to notify the new key.
  *
  *  @return Zero on success or negative error code otherwise
@@ -64,7 +64,7 @@ int bt_pub_key_gen(struct bt_dev *hdev, struct bt_pub_key_cb *cb);
 
 /*  @brief Cleanup public key callbacks when HCI is disrupted.
  *
- *  @param hdev Hci device.
+ *  @param hdev HCI device.
  *
  *  Clear the pub_key_cb_slist and clear the BT_DEV_PUB_KEY_BUSY flag.
  */
@@ -74,7 +74,7 @@ void bt_pub_key_hci_disrupted(struct bt_dev *hdev);
  *
  *  Get the current ECC Public Key.
  *
- * 	@param hdev Hci device.
+ * 	@param hdev HCI device.
  *
  *  @return Current key, or NULL if not available.
  */
@@ -93,7 +93,7 @@ typedef void (*bt_dh_key_cb_t)(struct bt_dev *hdev, const uint8_t key[BT_DH_KEY_
  *
  *  Calculate a DH Key from the remote Public Key.
  *
- *  @param hdev Hci device. 
+ *  @param hdev HCI device. 
  *  @param remote_pk Remote Public Key.
  *  @param cb Callback to notify the calculated key.
  *

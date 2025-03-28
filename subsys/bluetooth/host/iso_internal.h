@@ -42,7 +42,7 @@ enum bt_iso_cig_state {
 };
 
 struct bt_iso_cig {
-	/* Hci device this CIG belongs to */
+	/* HCI device this CIG belongs to */
 	struct bt_dev *hdev;
 
 	/** List of ISO channels to setup as CIS (the CIG). */
@@ -73,7 +73,7 @@ enum {
 };
 
 struct bt_iso_big {
-	/* Hci device this BIG belongs to */
+	/* HCI device this BIG belongs to */
 	struct bt_dev *hdev;
 
 	/** List of ISO channels to setup as BIS (the BIG). */

@@ -60,6 +60,9 @@ struct bt_conn;
 /* Don't require everyone to include iso.h */
 struct bt_iso_biginfo;
 
+/* Don't require everyone to include hci_core.h */
+struct bt_dev;
+
 /* Don't require everyone to include direction.h */
 struct bt_df_per_adv_sync_iq_samples_report;
 
@@ -204,7 +207,7 @@ struct bt_le_ext_adv_cb {
  *
  * @param err zero on success or (negative) error code otherwise.
  */
-typedef void (*bt_ready_cb_t)(int err);
+typedef void (*bt_ready_cb_t)(uint8_t dev_id, int err);
 
 /**
  * @brief Enable Bluetooth
@@ -225,7 +228,13 @@ typedef void (*bt_ready_cb_t)(int err);
  *
  * @return Zero on success or (negative) error code otherwise.
  */
-int bt_enable(bt_ready_cb_t cb);
+int bt_enable_mc(uint8_t dev_id, bt_ready_cb_t cb);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_enable(bt_ready_cb_t cb)
+{
+	return bt_enable_mc(0, cb);
+}
+#endif
 
 /**
  * @brief Disable Bluetooth
@@ -246,14 +255,26 @@ int bt_enable(bt_ready_cb_t cb);
  *
  * @return Zero on success or (negative) error code otherwise.
  */
-int bt_disable(void);
+int bt_disable_mc(uint8_t dev_id);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_disable(void)
+{
+	return bt_disable_mc(0);
+}
+#endif
 
 /**
  * @brief Check if Bluetooth is ready
  *
  * @return true when Bluetooth is ready, false otherwise
  */
-bool bt_is_ready(void);
+bool bt_is_ready_mc(uint8_t dev_id);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline bool bt_is_ready(void)
+{
+	return bt_is_ready_mc(0);
+}
+#endif
 
 /**
  * @brief Set Bluetooth Device Name
@@ -272,7 +293,13 @@ bool bt_is_ready(void);
  *
  * @return Zero on success or (negative) error code otherwise.
  */
-int bt_set_name(const char *name);
+int bt_set_name_mc(uint8_t dev_id, const char *name);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_set_name(const char *name)
+{
+	return bt_set_name_mc(0, name);
+}
+#endif
 
 /**
  * @brief Get Bluetooth Device Name
@@ -281,7 +308,13 @@ int bt_set_name(const char *name);
  *
  * @return Bluetooth Device Name
  */
-const char *bt_get_name(void);
+const char *bt_get_name_mc(uint8_t dev_id);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline const char *bt_get_name(void)
+{
+	return bt_get_name_mc(0);
+}
+#endif
 
 /**
  * @brief Get local Bluetooth appearance
@@ -293,7 +326,13 @@ const char *bt_get_name(void);
  *
  * @returns Appearance Value of local Bluetooth host.
  */
-uint16_t bt_get_appearance(void);
+uint16_t bt_get_appearance_mc(uint8_t dev_id);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline uint16_t bt_get_appearance(void)
+{
+	return bt_get_appearance_mc(0);
+}
+#endif
 
 /**
  * @brief Set local Bluetooth appearance
@@ -309,7 +348,13 @@ uint16_t bt_get_appearance(void);
  * @retval 0 Success.
  * @retval other Persistent storage failed. Appearance was not updated.
  */
-int bt_set_appearance(uint16_t new_appearance);
+int bt_set_appearance_mc(uint8_t dev_id, uint16_t new_appearance);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_set_appearance(uint16_t new_appearance)
+{
+	return bt_set_appearance_mc(0, new_appearance);
+}
+#endif
 
 /**
  * @brief Get the currently configured identities.
@@ -1274,77 +1319,77 @@ struct bt_le_per_adv_param {
  *                       this case may be -EIO.
  */
 int bt_le_adv_start_mc(uint8_t dev_id, const struct bt_le_adv_param *param,
-	const struct bt_data *ad, size_t ad_len,
-	const struct bt_data *sd, size_t sd_len);
+		    const struct bt_data *ad, size_t ad_len,
+		    const struct bt_data *sd, size_t sd_len);
 #ifdef CONFIG_BT_ORIGINAL_API
 static inline int bt_le_adv_start(const struct bt_le_adv_param *param,
-	const struct bt_data *ad, size_t ad_len,
-	const struct bt_data *sd, size_t sd_len)
+		    const struct bt_data *ad, size_t ad_len,
+		    const struct bt_data *sd, size_t sd_len)
 {
-return bt_le_adv_start_mc(0, param, ad, ad_len, sd, sd_len);
+	return bt_le_adv_start_mc(0, param, ad, ad_len, sd, sd_len);
 }
 #endif
 
 /**
-* @brief Update advertising
-*
-* Update advertisement and scan response data.
-*
-* @param ad Data to be used in advertisement packets.
-* @param ad_len Number of elements in ad
-* @param sd Data to be used in scan response packets.
-* @param sd_len Number of elements in sd
-*
-* @return Zero on success or (negative) error code otherwise.
-*/
+ * @brief Update advertising
+ *
+ * Update advertisement and scan response data.
+ *
+ * @param ad Data to be used in advertisement packets.
+ * @param ad_len Number of elements in ad
+ * @param sd Data to be used in scan response packets.
+ * @param sd_len Number of elements in sd
+ *
+ * @return Zero on success or (negative) error code otherwise.
+ */
 int bt_le_adv_update_data_mc(uint8_t dev_id, const struct bt_data *ad, size_t ad_len,
-	  const struct bt_data *sd, size_t sd_len);
+			  const struct bt_data *sd, size_t sd_len);
 #ifdef CONFIG_BT_ORIGINAL_API
 static inline int bt_le_adv_update_data(const struct bt_data *ad, size_t ad_len,
-	  const struct bt_data *sd, size_t sd_len)
+			  const struct bt_data *sd, size_t sd_len)
 {
-return bt_le_adv_update_data_mc(0, ad, ad_len, sd, sd_len);
+	return bt_le_adv_update_data_mc(0, ad, ad_len, sd, sd_len);
 }
 #endif
 
 /**
-* @brief Stop advertising
-*
-* Stops ongoing advertising.
-*
-* @return Zero on success or (negative) error code otherwise.
-*/
+ * @brief Stop advertising
+ *
+ * Stops ongoing advertising.
+ *
+ * @return Zero on success or (negative) error code otherwise.
+ */
 int bt_le_adv_stop_mc(uint8_t dev_id);
 #ifdef CONFIG_BT_ORIGINAL_API
 static inline int bt_le_adv_stop(void)
 {
-return bt_le_adv_stop_mc(BT_ID_DEFAULT);
+	return bt_le_adv_stop_mc(BT_ID_DEFAULT);
 }
 #endif
 
 /**
-* @brief Create advertising set.
-*
-* Create a new advertising set and set advertising parameters.
-* Advertising parameters can be updated with @ref bt_le_ext_adv_update_param.
-*
-* @param[in] param Advertising parameters.
-* @param[in] cb    Callback struct to notify about advertiser activity. Can be
-*                  NULL. Must point to valid memory during the lifetime of the
-*                  advertising set.
-* @param[out] adv  Valid advertising set object on success.
-*
-* @return Zero on success or (negative) error code otherwise.
-*/
+ * @brief Create advertising set.
+ *
+ * Create a new advertising set and set advertising parameters.
+ * Advertising parameters can be updated with @ref bt_le_ext_adv_update_param.
+ *
+ * @param[in] param Advertising parameters.
+ * @param[in] cb    Callback struct to notify about advertiser activity. Can be
+ *                  NULL. Must point to valid memory during the lifetime of the
+ *                  advertising set.
+ * @param[out] adv  Valid advertising set object on success.
+ *
+ * @return Zero on success or (negative) error code otherwise.
+ */
 int bt_le_ext_adv_create_mc(uint8_t dev_id, const struct bt_le_adv_param *param,
-	 const struct bt_le_ext_adv_cb *cb,
-	 struct bt_le_ext_adv **adv);
+			 const struct bt_le_ext_adv_cb *cb,
+			 struct bt_le_ext_adv **adv);
 #ifdef CONFIG_BT_ORIGINAL_API
 static inline int bt_le_ext_adv_create(const struct bt_le_adv_param *param,
-	 const struct bt_le_ext_adv_cb *cb,
-	 struct bt_le_ext_adv **adv)
+			 const struct bt_le_ext_adv_cb *cb,
+			 struct bt_le_ext_adv **adv)
 {
-return bt_le_ext_adv_create_mc(0, param, cb, adv);
+	return bt_le_ext_adv_create_mc(0, param, cb, adv);
 }
 #endif
 
@@ -2577,7 +2622,13 @@ static inline void bt_le_scan_cb_unregister(struct bt_le_scan_cb *cb)
  * @return Zero on success or error code otherwise, positive in case of
  *         protocol error or negative (POSIX) in case of stack internal error.
  */
-int bt_le_filter_accept_list_add(const bt_addr_le_t *addr);
+int bt_le_filter_accept_list_add_mc(uint8_t dev_id, const bt_addr_le_t *addr);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_le_filter_accept_list_add(const bt_addr_le_t *addr)
+{
+	return bt_le_filter_accept_list_add_mc(0, addr);
+}
+#endif
 
 /**
  * @brief Remove device (LE) from filter accept list.
@@ -2593,7 +2644,13 @@ int bt_le_filter_accept_list_add(const bt_addr_le_t *addr);
  * @return Zero on success or error code otherwise, positive in case of
  *         protocol error or negative (POSIX) in case of stack internal error.
  */
-int bt_le_filter_accept_list_remove(const bt_addr_le_t *addr);
+int bt_le_filter_accept_list_remove_mc(uint8_t dev_id, const bt_addr_le_t *addr);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_le_filter_accept_list_remove(const bt_addr_le_t *addr)
+{
+	return bt_le_filter_accept_list_remove_mc(0, addr);
+}
+#endif
 
 /**
  * @brief Clear filter accept list.
@@ -2607,7 +2664,13 @@ int bt_le_filter_accept_list_remove(const bt_addr_le_t *addr);
  * @return Zero on success or error code otherwise, positive in case of
  *         protocol error or negative (POSIX) in case of stack internal error.
  */
-int bt_le_filter_accept_list_clear(void);
+int bt_le_filter_accept_list_clear_mc(uint8_t dev_id);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_le_filter_accept_list_clear(void)
+{
+	return bt_le_filter_accept_list_clear_mc(0);
+}
+#endif
 
 /**
  * @brief Set (LE) channel map.
@@ -2617,7 +2680,13 @@ int bt_le_filter_accept_list_clear(void);
  * @return Zero on success or error code otherwise, positive in case of
  *         protocol error or negative (POSIX) in case of stack internal error.
  */
-int bt_le_set_chan_map(uint8_t chan_map[5]);
+int bt_le_set_chan_map_mc(uint8_t dev_id, uint8_t chan_map[5]);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_le_set_chan_map(uint8_t chan_map[5])
+{
+	return bt_le_set_chan_map_mc(0, chan_map);
+}
+#endif
 
 /**
  * @brief Set the Resolvable Private Address timeout in runtime
@@ -2637,7 +2706,13 @@ int bt_le_set_chan_map(uint8_t chan_map[5]);
  * @retval 0 Success.
  * @retval -EINVAL RPA timeout value is invalid. Valid range is 1s - 3600s.
  */
-int bt_le_set_rpa_timeout(uint16_t new_rpa_timeout);
+int bt_le_set_rpa_timeout_mc(uint8_t dev_id, uint16_t new_rpa_timeout);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_le_set_rpa_timeout(uint16_t new_rpa_timeout)
+{
+	return bt_le_set_rpa_timeout_mc(0, new_rpa_timeout);
+}
+#endif
 
 /**
  * @brief Helper for parsing advertising (or EIR or OOB) data.
@@ -2752,7 +2827,13 @@ int bt_le_ext_adv_oob_get_local(struct bt_le_ext_adv *adv,
  *
  * @return 0 on success or negative error value on failure.
  */
-int bt_unpair(uint8_t id, const bt_addr_le_t *addr);
+int bt_unpair_mc(uint8_t dev_id, uint8_t id, const bt_addr_le_t *addr);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_unpair(uint8_t id, const bt_addr_le_t *addr)
+{
+	return bt_unpair_mc(0, id, addr);
+}
+#endif
 
 /** Information about a bond with a remote device. */
 struct bt_bond_info {
@@ -2768,12 +2849,12 @@ struct bt_bond_info {
  * @param user_data  Data to pass to the callback function.
  */
 void bt_foreach_bond_mc(uint8_t dev_id, uint8_t id, void (*func)(const struct bt_bond_info *info,
-	void *user_data), void *user_data);
+					   void *user_data), void *user_data);
 #ifdef CONFIG_BT_ORIGINAL_API
 static inline void bt_foreach_bond(uint8_t id, void (*func)(const struct bt_bond_info *info,
-	void *user_data), void *user_data)
+					   void *user_data), void *user_data)
 {
-bt_foreach_bond_mc(0, id, func, user_data);
+	bt_foreach_bond_mc(0, id, func, user_data);
 }
 #endif
 
@@ -2791,8 +2872,15 @@ bt_foreach_bond_mc(0, id, func, user_data);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_configure_data_path(uint8_t dir, uint8_t id, uint8_t vs_config_len,
-			   const uint8_t *vs_config);
+int bt_configure_data_path_mc(uint8_t dev_id, uint8_t dir, uint8_t id, uint8_t vs_config_len,
+	const uint8_t *vs_config);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_configure_data_path(uint8_t dir, uint8_t id, uint8_t vs_config_len,
+			   const uint8_t *vs_config)
+{
+	return bt_configure_data_path_mc(0, dir, id, vs_config_len, vs_config);
+}
+#endif
 
 struct bt_le_per_adv_sync_subevent_params {
 	/** @brief Periodic Advertising Properties.
