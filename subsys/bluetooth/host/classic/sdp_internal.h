@@ -71,4 +71,4 @@ struct bt_sdp_pdu_cstate {
 	uint8_t data[BT_SDP_MAX_PDU_CSTATE_LEN];
 } __packed;
 
-void bt_sdp_init(void);
+void bt_sdp_init(struct bt_dev *hdev);
