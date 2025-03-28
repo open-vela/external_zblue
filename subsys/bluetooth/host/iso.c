@@ -739,7 +739,7 @@ static struct net_buf *iso_data_pull(struct bt_conn *conn, size_t amount, size_t
 	if (!frag) {
 		BT_ISO_DATA_DBG("signaled ready but no frag available");
 		/* Service other connections */
-		bt_tx_irq_raise();
+		bt_tx_irq_raise(conn->hdev);
 
 		return NULL;
 	}
@@ -753,7 +753,7 @@ static struct net_buf *iso_data_pull(struct bt_conn *conn, size_t amount, size_t
 		net_buf_unref(b);
 
 		/* Service other connections */
-		bt_tx_irq_raise();
+		bt_tx_irq_raise(conn->hdev);
 
 		return NULL;
 	}
