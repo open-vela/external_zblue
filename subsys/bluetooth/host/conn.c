@@ -4386,7 +4386,7 @@ int bt_conn_init(struct bt_dev *hdev)
 		k_fifo_put(&conn_ctx->free_tx, &conn_ctx->conn_tx[i]);
 	}
 
-	bt_att_init();
+	bt_att_init(hdev);
 
 	err = bt_smp_init(hdev);
 	if (err) {
