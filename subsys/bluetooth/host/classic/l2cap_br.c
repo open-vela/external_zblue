@@ -2120,7 +2120,7 @@ void bt_l2cap_br_init(struct bt_dev *hdev)
 		bt_avrcp_init();
 	}
 
-	bt_sdp_init();
+	bt_sdp_init(hdev);
 
 	if (IS_ENABLED(CONFIG_BT_A2DP)) {
 		bt_a2dp_init();
