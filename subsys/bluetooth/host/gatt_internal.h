@@ -29,7 +29,7 @@
 						BT_GATT_PERM_READ_AUTHEN | \
 						BT_GATT_PERM_READ_LESC)
 
-void bt_gatt_init(void);
+void bt_gatt_init(struct bt_dev *hdev);
 void bt_gatt_connected(struct bt_conn *conn);
 void bt_gatt_att_max_mtu_changed(struct bt_conn *conn, uint16_t tx, uint16_t rx);
 void bt_gatt_encrypt_change(struct bt_conn *conn);
@@ -39,7 +39,7 @@ bool bt_gatt_change_aware(struct bt_conn *conn, bool req);
 
 int bt_gatt_store_ccc(uint8_t id, const bt_addr_le_t *addr);
 
-int bt_gatt_clear(uint8_t id, const bt_addr_le_t *addr);
+int bt_gatt_clear(struct bt_dev *hdev, uint8_t id, const bt_addr_le_t *addr);
 
 #if defined(CONFIG_BT_GATT_CLIENT)
 void bt_gatt_notification(struct bt_conn *conn, uint16_t handle,
