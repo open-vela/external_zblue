@@ -336,6 +336,8 @@ struct bt_dev_scan_ctx;
 struct bt_dev_l2cap_ctx;
 struct bt_dev_l2cap_br_ctx;
 struct bt_dev_smp_ctx;
+struct bt_dev_att_ctx;
+struct bt_dev_gatt_ctx;
 
 /* The theoretical max for these is 8 and 64, but there's no point
  * in allocating the full memory if we only support a small subset.
@@ -514,6 +516,12 @@ struct bt_dev {
 	sys_slist_t pub_key_cb_slist;
 	bt_dh_key_cb_t dh_key_cb;
 #endif
+
+	/* ATT context */
+	struct bt_dev_att_ctx *att_ctx;
+
+	/* GATT context */
+	struct bt_dev_gatt_ctx *gatt_ctx;
 };
 
 extern struct bt_dev bt_dev;
