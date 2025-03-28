@@ -64,11 +64,6 @@ struct bt_sdp {
 	/* TODO: Allow more than one pending request */
 };
 
-static struct bt_sdp_record *db;
-static uint8_t num_services;
-
-static struct bt_sdp bt_sdp_pool[CONFIG_BT_MAX_CONN];
-
 /* Pool for outgoing SDP packets */
 NET_BUF_POOL_FIXED_DEFINE(sdp_pool, CONFIG_BT_MAX_CONN, BT_L2CAP_BUF_SIZE(SDP_MTU),
 			  CONFIG_BT_CONN_TX_USER_DATA_SIZE, NULL);
@@ -91,7 +86,12 @@ struct bt_sdp_client {
 	struct net_buf                      *rec_buf;
 };
 
-static struct bt_sdp_client bt_sdp_client_pool[CONFIG_BT_MAX_CONN];
+struct bt_dev_sdp_ctx {
+	uint8_t num_services;
+	struct bt_sdp_record *db;
+	struct bt_sdp bt_sdp_pool[CONFIG_BT_MAX_CONN];
+	struct bt_sdp_client bt_sdp_client_pool[CONFIG_BT_MAX_CONN];
+} sdp_ctx_pool[CONFIG_BT_NUM_CTLRS];
 
 enum {
 	BT_SDP_ITER_STOP,
@@ -417,10 +417,10 @@ static uint32_t search_uuid(struct bt_sdp_data_elem *elem, struct bt_uuid *uuid,
  * @return Pointer to the record where the iterator stopped, or NULL if all
  *  records are covered
  */
-static struct bt_sdp_record *bt_sdp_foreach_svc(bt_sdp_svc_func_t func,
+static struct bt_sdp_record *bt_sdp_foreach_svc(struct bt_dev *hdev, bt_sdp_svc_func_t func,
 						void *user_data)
 {
-	struct bt_sdp_record *rec = db;
+	struct bt_sdp_record *rec = hdev->sdp_ctx->db;
 
 	while (rec) {
 		if (func(rec, user_data) == BT_SDP_ITER_STOP) {
@@ -463,7 +463,7 @@ static uint8_t insert_record(struct bt_sdp_record *rec, void *user_data)
  *
  * @return 0 for success, or relevant error code
  */
-static uint16_t find_services(struct net_buf *buf,
+static uint16_t find_services(struct bt_dev *hdev, struct net_buf *buf,
 			      struct bt_sdp_record **matching_recs)
 {
 	struct bt_sdp_data_elem data_elem;
@@ -492,7 +492,7 @@ static uint16_t find_services(struct net_buf *buf,
 
 	uuid_list_size = data_elem.data_size;
 
-	bt_sdp_foreach_svc(insert_record, matching_recs);
+	bt_sdp_foreach_svc(hdev, insert_record, matching_recs);
 
 	/* Go over the sequence of UUIDs, and match one UUID at a time */
 	while (uuid_list_size) {
@@ -534,7 +534,7 @@ static uint16_t find_services(struct net_buf *buf,
 		/* Go over the list of services, and look for a service which
 		 * doesn't have this UUID
 		 */
-		for (rec_idx = 0U; rec_idx < num_services; rec_idx++) {
+		for (rec_idx = 0U; rec_idx < hdev->sdp_ctx->num_services; rec_idx++) {
 			record = matching_recs[rec_idx];
 
 			if (!record) {
@@ -578,6 +578,8 @@ static uint16_t find_services(struct net_buf *buf,
 static uint16_t sdp_svc_search_req(struct bt_sdp *sdp, struct net_buf *buf,
 				uint16_t tid)
 {
+	struct bt_conn *conn = sdp->chan.chan.conn;
+	struct bt_dev *hdev = conn->hdev;
 	struct bt_sdp_svc_rsp *rsp;
 	struct net_buf *resp_buf;
 	struct bt_sdp_record *record;
@@ -586,7 +588,7 @@ static uint16_t sdp_svc_search_req(struct bt_sdp *sdp, struct net_buf *buf,
 	uint8_t cont_state_size, cont_state = 0U, idx = 0U, count = 0U;
 	bool pkt_full = false;
 
-	res = find_services(buf, matching_recs);
+	res = find_services(hdev, buf, matching_recs);
 	if (res) {
 		/* Error in parsing */
 		return res;
@@ -601,7 +603,7 @@ static uint16_t sdp_svc_search_req(struct bt_sdp *sdp, struct net_buf *buf,
 	cont_state_size = net_buf_pull_u8(buf);
 
 	/* Zero out the matching services beyond max_rec_count */
-	for (idx = 0U; idx < num_services; idx++) {
+	for (idx = 0U; idx < hdev->sdp_ctx->num_services; idx++) {
 		if (count == max_rec_count) {
 			matching_recs[idx] = NULL;
 			continue;
@@ -638,7 +640,7 @@ static uint16_t sdp_svc_search_req(struct bt_sdp *sdp, struct net_buf *buf,
 	resp_buf = bt_sdp_create_pdu();
 	rsp = net_buf_add(resp_buf, sizeof(*rsp));
 
-	for (; cont_state < num_services; cont_state++) {
+	for (; cont_state < hdev->sdp_ctx->num_services; cont_state++) {
 		record = matching_recs[cont_state];
 
 		if (!record) {
@@ -1076,6 +1078,8 @@ static uint16_t sdp_svc_att_req(struct bt_sdp *sdp, struct net_buf *buf,
 		.last_att = SDP_INVALID,
 		.pkt_full = false
 	};
+	struct bt_conn *conn = sdp->chan.chan.conn;
+	struct bt_dev *hdev = conn->hdev;
 	struct bt_sdp_record *record;
 	struct bt_sdp_att_rsp *rsp;
 	struct net_buf *rsp_buf;
@@ -1128,7 +1132,7 @@ static uint16_t sdp_svc_att_req(struct bt_sdp *sdp, struct net_buf *buf,
 		next_att);
 
 	/* Find the service */
-	record = bt_sdp_foreach_svc(find_handle, &svc_rec_hdl);
+	record = bt_sdp_foreach_svc(hdev, find_handle, &svc_rec_hdl);
 
 	if (!record) {
 		LOG_WRN("Handle %u not found", svc_rec_hdl);
@@ -1186,6 +1190,8 @@ static uint16_t sdp_svc_search_att_req(struct bt_sdp *sdp, struct net_buf *buf,
 				    uint16_t tid)
 {
 	uint32_t filter[MAX_NUM_ATT_ID_FILTER];
+	struct bt_conn *conn = sdp->chan.chan.conn;
+	struct bt_dev *hdev = conn->hdev;
 	struct bt_sdp_record *matching_recs[BT_SDP_MAX_SERVICES];
 	struct search_state state = {
 		.att_list_size = 0,
@@ -1202,7 +1208,7 @@ static uint16_t sdp_svc_search_att_req(struct bt_sdp *sdp, struct net_buf *buf,
 	uint8_t cont_state_size, next_svc = 0U, next_att = 0U;
 	bool dry_run = false;
 
-	res = find_services(buf, matching_recs);
+	res = find_services(hdev, buf, matching_recs);
 	if (res) {
 		return res;
 	}
@@ -1268,7 +1274,7 @@ static uint16_t sdp_svc_search_att_req(struct bt_sdp *sdp, struct net_buf *buf,
 
 	rsp_buf_cpy = rsp_buf;
 
-	for (; next_svc < num_services; next_svc++) {
+	for (; next_svc < hdev->sdp_ctx->num_services; next_svc++) {
 		record = matching_recs[next_svc];
 
 		if (!record) {
@@ -1400,6 +1406,7 @@ static int bt_sdp_recv(struct bt_l2cap_chan *chan, struct net_buf *buf)
 static int bt_sdp_accept(struct bt_conn *conn, struct bt_l2cap_server *server,
 			 struct bt_l2cap_chan **chan)
 {
+	struct bt_dev *hdev = conn->hdev;
 	static const struct bt_l2cap_chan_ops ops = {
 		.connected = bt_sdp_connected,
 		.disconnected = bt_sdp_disconnected,
@@ -1409,8 +1416,8 @@ static int bt_sdp_accept(struct bt_conn *conn, struct bt_l2cap_server *server,
 
 	LOG_DBG("conn %p", conn);
 
-	for (i = 0; i < ARRAY_SIZE(bt_sdp_pool); i++) {
-		struct bt_sdp *sdp = &bt_sdp_pool[i];
+	for (i = 0; i < ARRAY_SIZE(hdev->sdp_ctx->bt_sdp_pool); i++) {
+		struct bt_sdp *sdp = &hdev->sdp_ctx->bt_sdp_pool[i];
 
 		if (sdp->chan.chan.conn) {
 			continue;
@@ -1429,7 +1436,7 @@ static int bt_sdp_accept(struct bt_conn *conn, struct bt_l2cap_server *server,
 	return -ENOMEM;
 }
 
-void bt_sdp_init(void)
+void bt_sdp_init(struct bt_dev *hdev)
 {
 	static struct bt_l2cap_server server = {
 		.psm = SDP_PSM,
@@ -1438,35 +1445,44 @@ void bt_sdp_init(void)
 	};
 	int res;
 
-	res = bt_l2cap_br_server_register(&server);
+	hdev->sdp_ctx = &sdp_ctx_pool[hdev->dev_id];
+	memset(hdev->sdp_ctx, 0, sizeof(*hdev->sdp_ctx));
+
+	res = bt_l2cap_br_server_register_mc(hdev->dev_id, &server);
 	if (res) {
 		LOG_ERR("L2CAP server registration failed with error %d", res);
 	}
 }
 
-int bt_sdp_register_service(struct bt_sdp_record *service)
+int bt_sdp_register_service_mc(uint8_t dev_id, struct bt_sdp_record *service)
 {
 	uint32_t handle = SDP_SERVICE_HANDLE_BASE;
+	struct bt_dev *hdev = bt_dev_get(dev_id);
 
+	if (!hdev) {
+		LOG_ERR("Invalid device id %u", dev_id);
+		return -EINVAL;
+	}
+	
 	if (!service) {
 		LOG_ERR("No service record specified");
 		return 0;
 	}
 
-	if (num_services == BT_SDP_MAX_SERVICES) {
+	if (hdev->sdp_ctx->num_services == BT_SDP_MAX_SERVICES) {
 		LOG_ERR("Reached max allowed registrations");
 		return -ENOMEM;
 	}
 
-	if (db) {
-		handle = db->handle + 1;
+	if (hdev->sdp_ctx->db) {
+		handle = hdev->sdp_ctx->db->handle + 1;
 	}
 
-	service->next = db;
-	service->index = num_services++;
+	service->next = hdev->sdp_ctx->db;
+	service->index = hdev->sdp_ctx->num_services++;
 	service->handle = handle;
 	*((uint32_t *)(service->attrs[0].val.data)) = handle;
-	db = service;
+	hdev->sdp_ctx->db = service;
 
 	LOG_DBG("Service registered at %u", handle);
 
@@ -1950,9 +1966,10 @@ static const struct bt_l2cap_chan_ops sdp_client_chan_ops = {
 static struct bt_sdp_client *sdp_client_new_session(struct bt_conn *conn)
 {
 	int i;
+	struct bt_dev *hdev = conn->hdev;
 
-	for (i = 0; i < ARRAY_SIZE(bt_sdp_client_pool); i++) {
-		struct bt_sdp_client *session = &bt_sdp_client_pool[i];
+	for (i = 0; i < ARRAY_SIZE(hdev->sdp_ctx->bt_sdp_client_pool); i++) {
+		struct bt_sdp_client *session = &hdev->sdp_ctx->bt_sdp_client_pool[i];
 		int err;
 
 		if (session->chan.chan.conn) {
@@ -1983,10 +2000,11 @@ static struct bt_sdp_client *sdp_client_new_session(struct bt_conn *conn)
 static struct bt_sdp_client *sdp_client_get_session(struct bt_conn *conn)
 {
 	int i;
+	struct bt_dev *hdev = conn->hdev;
 
-	for (i = 0; i < ARRAY_SIZE(bt_sdp_client_pool); i++) {
-		if (bt_sdp_client_pool[i].chan.chan.conn == conn) {
-			return &bt_sdp_client_pool[i];
+	for (i = 0; i < ARRAY_SIZE(hdev->sdp_ctx->bt_sdp_client_pool); i++) {
+		if (hdev->sdp_ctx->bt_sdp_client_pool[i].chan.chan.conn == conn) {
+			return &hdev->sdp_ctx->bt_sdp_client_pool[i];
 		}
 	}
 
