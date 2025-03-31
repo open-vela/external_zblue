@@ -121,21 +121,21 @@ static struct bt_conn sco_conns[CONFIG_BT_MAX_SCO_CONN];
 #endif /* CONFIG_BT_CONN */
 
 #if defined(CONFIG_BT_CONN_TX)
+struct frag_md {
+	struct bt_buf_data buf_data;
+	struct bt_buf_view_meta view_meta;
+};
+
 void frag_destroy(struct net_buf *buf);
 
 /* Storage for fragments (views) into the upper layers' PDUs. */
 /* TODO: remove user-data requirements */
 NET_BUF_POOL_FIXED_DEFINE(fragments, CONFIG_BT_CONN_FRAG_COUNT, 0,
-			  CONFIG_BT_CONN_TX_USER_DATA_SIZE, frag_destroy);
-
-struct frag_md {
-	struct bt_buf_view_meta view_meta;
-};
-struct frag_md frag_md_pool[CONFIG_BT_CONN_FRAG_COUNT];
+			  sizeof(struct frag_md), frag_destroy);
 
 struct frag_md *get_frag_md(struct net_buf *fragment)
 {
-	return &frag_md_pool[net_buf_id(fragment)];
+	return (struct frag_md *)net_buf_user_data(fragment);
 }
 
 void frag_destroy(struct net_buf *frag)

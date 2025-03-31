@@ -29,6 +29,9 @@ struct iso_data {
 
 	/** ISO connection handle */
 	uint16_t handle;
+
+	/** ISO Meta Data structure for received ISO packets */
+	struct bt_iso_recv_info iso_info_data;
 };
 
 enum bt_iso_cig_state {
