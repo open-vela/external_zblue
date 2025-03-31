@@ -86,6 +86,7 @@ typedef void (*bt_att_tx_cb_t)(struct bt_conn *conn,
 			       struct bt_att_tx_meta_data *user_data);
 
 struct bt_att_tx_meta_data {
+	struct closure closure_data;
 	int err;
 	uint8_t opcode;
 	uint16_t attr_count;
@@ -275,7 +276,7 @@ static void att_tx_destroy(struct net_buf *buf)
 
 NET_BUF_POOL_DEFINE(att_pool, CONFIG_BT_ATT_TX_COUNT,
 		    BT_L2CAP_SDU_BUF_SIZE(BT_ATT_BUF_SIZE),
-		    CONFIG_BT_CONN_TX_USER_DATA_SIZE, att_tx_destroy);
+		    sizeof(struct bt_att_tx_meta_data), att_tx_destroy);
 
 struct bt_att_tx_meta_data *bt_att_get_tx_meta_data(const struct net_buf *buf)
 {
@@ -284,7 +285,7 @@ struct bt_att_tx_meta_data *bt_att_get_tx_meta_data(const struct net_buf *buf)
 	/* Metadata lifetime is implicitly tied to the buffer lifetime.
 	 * Treat it as part of the buffer itself.
 	 */
-	return &tx_meta_data_storage[net_buf_id((struct net_buf *)buf)];
+	return (struct bt_att_tx_meta_data *)net_buf_user_data(buf);
 }
 
 static int bt_att_chan_send(struct bt_att_chan *chan, struct net_buf *buf);
