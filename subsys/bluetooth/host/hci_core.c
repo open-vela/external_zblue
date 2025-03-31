@@ -108,6 +108,9 @@ static bt_hci_vnd_evt_cb_t *hci_vnd_evt_cb;
 #endif /* CONFIG_BT_HCI_VS_EVT_USER */
 
 struct cmd_data {
+	/* Extend the bt_buf user data */
+	struct bt_buf_data buf_data;
+
 	/** HCI status of the command completion */
 	uint8_t  status;
 
@@ -121,9 +124,7 @@ struct cmd_data {
 	struct k_sem *sync;
 };
 
-static struct cmd_data cmd_data[CONFIG_BT_BUF_CMD_TX_COUNT];
-
-#define cmd(buf) (&cmd_data[net_buf_id(buf)])
+#define cmd(buf) ((struct cmd_data *)net_buf_user_data(buf))
 #define acl(buf) ((struct acl_data *)net_buf_user_data(buf))
 
 #if DT_HAS_CHOSEN(zephyr_bt_hci)
@@ -164,7 +165,7 @@ void bt_hci_cmd_state_set_init(struct net_buf *buf,
  */
 #define CMD_BUF_SIZE MAX(BT_BUF_EVT_RX_SIZE, BT_BUF_CMD_TX_SIZE)
 NET_BUF_POOL_FIXED_DEFINE(hci_cmd_pool, CONFIG_BT_BUF_CMD_TX_COUNT,
-			  CMD_BUF_SIZE, sizeof(struct bt_buf_data), NULL);
+			  CMD_BUF_SIZE, sizeof(struct cmd_data), NULL);
 
 struct event_handler {
 	uint8_t event;
