@@ -286,7 +286,7 @@ extern z_sys_init(void);
 
 int main(int argc, char *argv[])
 {
-	struct shell_ctx ctx;
+	struct shell_ctx ctx = { 0 };
 	struct shell sh = { .ctx = &ctx };
 	int _argc = 0;
 	char* _argv[32];
