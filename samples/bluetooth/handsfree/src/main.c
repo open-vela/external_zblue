@@ -82,7 +82,7 @@ static struct bt_hfp_hf_cb hf_cb = {
 	.ring_indication = ring_cb,
 };
 
-static void bt_ready(int err)
+static void bt_ready(uint8_t dev_id, int err)
 {
 	if (err) {
 		printk("Bluetooth init failed (err %d)\n", err);
