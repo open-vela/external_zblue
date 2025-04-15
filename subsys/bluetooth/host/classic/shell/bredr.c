@@ -151,7 +151,7 @@ static void br_device_found(const bt_addr_t *addr, int8_t rssi,
 
 static struct bt_br_discovery_result br_discovery_results[5];
 
-static void br_discovery_complete(const struct bt_br_discovery_result *results,
+static void br_discovery_complete(uint8_t dev_id, const struct bt_br_discovery_result *results,
 				  size_t count)
 {
 	size_t i;

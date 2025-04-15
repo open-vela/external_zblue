@@ -612,7 +612,7 @@ static void scan_recv(const struct bt_le_scan_recv_info *info, struct net_buf_si
 #endif /* CONFIG_BT_CENTRAL */
 }
 
-static void scan_timeout(void)
+static void scan_timeout(uint8_t dev_id)
 {
 	shell_print(ctx_shell, "Scan timeout");
 }
@@ -1282,7 +1282,7 @@ static struct bt_le_per_adv_sync_cb per_adv_sync_cb = {
 };
 #endif /* CONFIG_BT_PER_ADV_SYNC */
 
-static void bt_ready(int err)
+static void bt_ready(uint8_t dev_id, int err)
 {
 	if (err) {
 		shell_error(ctx_shell, "Bluetooth init failed (err %d)", err);
@@ -1343,7 +1343,7 @@ static int cmd_init(const struct shell *sh, size_t argc, char *argv[])
 
 	if (sync) {
 		err = bt_enable(NULL);
-		bt_ready(err);
+		bt_ready(0, err);
 	} else {
 		err = bt_enable(bt_ready);
 		if (err) {
@@ -1378,6 +1378,7 @@ static int cmd_settings_load(const struct shell *sh, size_t argc,
 #endif
 
 #if defined(CONFIG_BT_HCI)
+extern struct bt_dev *bt_dev_get(uint8_t dev_id);
 static int cmd_hci_cmd(const struct shell *sh, size_t argc, char *argv[])
 {
 	uint8_t ogf;
@@ -1415,7 +1416,7 @@ static int cmd_hci_cmd(const struct shell *sh, size_t argc, char *argv[])
 		net_buf_add_mem(buf, hex_data, len);
 	}
 
-	err = bt_hci_cmd_send_sync(BT_OP(ogf, ocf), buf, &rsp);
+	err = bt_hci_cmd_send_sync(bt_dev_get(0), BT_OP(ogf, ocf), buf, &rsp);
 	if (err) {
 		shell_error(sh, "HCI command failed (err %d)", err);
 		return err;
@@ -4222,7 +4223,7 @@ enum bt_security_err pairing_accept(
 }
 #endif /* CONFIG_BT_SMP_APP_PAIRING_ACCEPT */
 
-void bond_deleted(uint8_t id, const bt_addr_le_t *peer)
+void bond_deleted(uint8_t dev_id, uint8_t id, const bt_addr_le_t *peer)
 {
 	char addr[BT_ADDR_LE_STR_LEN];
 
