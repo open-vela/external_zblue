@@ -112,12 +112,12 @@ k_tid_t k_thread_create(struct k_thread *new_thread,
 		return (k_tid_t)-1;
 	}
 
-#ifdef CONFIG_SMP
+#ifdef CONFIG_ZBLUE_SMP
 	CPU_ZERO(&cpuset0);
 	CPU_SET(0,&cpuset0);
 
 	pthread_setaffinity_np(pid, sizeof(cpu_set_t), &cpuset0);
-#endif /* CONFIG_SMP */
+#endif /* CONFIG_ZBLUE_SMP */
 
 	new_thread->init_data = (void *)pid;
 	sys_dlist_append(&g_task_list, &new_thread->base.qnode_dlist);

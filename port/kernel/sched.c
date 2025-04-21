@@ -47,19 +47,19 @@ void k_yield(void)
 k_tid_t k_sched_current_thread_query(void)
 {
 extern k_tid_t k_thread_current(void);
-#ifdef CONFIG_SMP
+#ifdef CONFIG_ZBLUE_SMP
 	/* In SMP, _current is a field read from _current_cpu, which
 	 * can race with preemption before it is read.  We must lock
 	 * local interrupts when reading it.
 	 */
 	unsigned int k = arch_irq_lock();
-#endif /* CONFIG_SMP */
+#endif /* CONFIG_ZBLUE_SMP */
 
     k_tid_t ret = k_thread_current();
 
-#ifdef CONFIG_SMP
+#ifdef CONFIG_ZBLUE_SMP
 	arch_irq_unlock(k);
-#endif /* CONFIG_SMP */
+#endif /* CONFIG_ZBLUE_SMP */
 	return ret;
 }
 

@@ -125,7 +125,7 @@ struct _priq_mq {
 };
 
 struct _ready_q {
-#ifndef CONFIG_SMP
+#ifndef CONFIG_ZBLUE_SMP
 	/* always contains next thread to run: cannot be NULL */
 	struct k_thread *cache;
 #endif
@@ -164,7 +164,7 @@ struct _cpu {
 	void *fp_ctx;
 #endif
 
-#ifdef CONFIG_SMP
+#ifdef CONFIG_ZBLUE_SMP
 	/* True when _current is allowed to context switch */
 	uint8_t swap_ok;
 #endif
@@ -233,7 +233,7 @@ struct z_kernel {
 	struct k_obj_core  obj_core;
 #endif
 
-#if defined(CONFIG_SMP) && defined(CONFIG_SCHED_IPI_SUPPORTED)
+#if defined(CONFIG_ZBLUE_SMP) && defined(CONFIG_SCHED_IPI_SUPPORTED)
 	/* Identify CPUs to send IPIs to at the next scheduling point */
 	atomic_t pending_ipi;
 #endif
@@ -245,7 +245,7 @@ extern struct z_kernel _kernel;
 
 extern atomic_t _cpus_active;
 
-#ifdef CONFIG_SMP
+#ifdef CONFIG_ZBLUE_SMP
 
 /* True if the current context can be preempted and migrated to
  * another SMP CPU.

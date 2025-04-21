@@ -140,7 +140,7 @@ void k_thread_foreach(k_thread_user_cb_t user_cb, void *user_data);
  * list which means creation of new threads and terminations of existing
  * threads are blocked until this API returns.
  */
-#ifdef CONFIG_SMP
+#ifdef CONFIG_ZBLUE_SMP
 void k_thread_foreach_filter_by_cpu(unsigned int cpu,
 				    k_thread_user_cb_t user_cb, void *user_data);
 #else
@@ -215,7 +215,7 @@ void k_thread_foreach_unlocked(
  * Do not reuse the memory that was occupied by k_thread structure of aborted
  * task if it was aborted after this function was called in any context.
  */
-#ifdef CONFIG_SMP
+#ifdef CONFIG_ZBLUE_SMP
 void k_thread_foreach_unlocked_filter_by_cpu(unsigned int cpu,
 					     k_thread_user_cb_t user_cb, void *user_data);
 #else
