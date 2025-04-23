@@ -569,6 +569,16 @@ static inline void bt_gatt_cb_unregister(struct bt_gatt_cb *cb)
 }
 #endif
 
+/** @brief Unregister GATT callbacks.
+ *
+ *  Unregister previously registered callbacks for monitoring the
+ *  state of GATT. The callback struct must have been registered
+ *  using bt_gatt_cb_register().
+ *
+ *  @param cb Callback struct.
+ */
+void bt_gatt_cb_unregister(struct bt_gatt_cb *cb);
+
 /** @brief Register GATT authorization callbacks.
  *
  *  Register callbacks to perform application-specific authorization of GATT
