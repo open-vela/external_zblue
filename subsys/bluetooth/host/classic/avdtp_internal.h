@@ -83,6 +83,7 @@
 #define BT_AVDTP_ERR_UNSUPPORTED_CONFIGURAION   0x29
 #define BT_AVDTP_ERR_BAD_STATE                  0x31
 
+#define BT_AVDTP_INVAILD_SEID 0x00
 #define BT_AVDTP_MIN_SEID 0x01
 #define BT_AVDTP_MAX_SEID 0x3E
 
@@ -234,6 +235,9 @@ int bt_avdtp_disconnect(struct bt_avdtp *session);
 
 /* AVDTP SEP register function */
 int bt_avdtp_register_sep(uint8_t media_type, uint8_t sep_type, struct bt_avdtp_sep *sep);
+
+/* AVDTP SEP unregister function */
+int bt_avdtp_unregister_sep(struct bt_avdtp_sep *sep);
 
 /* AVDTP Discover Request */
 int bt_avdtp_discover(struct bt_avdtp *session, struct bt_avdtp_discover_params *param);

@@ -1335,23 +1335,49 @@ int bt_avdtp_register(struct bt_avdtp_event_cb *cb)
 	return 0;
 }
 
+static uint8_t AVDTP_Alloc_SEID(void)
+{
+	uint8_t seid = BT_AVDTP_MIN_SEID;
+	struct bt_avdtp_sep *sep;
+	sys_snode_t *node = sys_slist_peek_head(&seps);
+
+	while (node) {
+		sep = CONTAINER_OF(node, struct bt_avdtp_sep, _node);
+		if (sep->sep_info.id == seid) {
+			seid++;
+			if (seid == BT_AVDTP_MAX_SEID) {
+				return BT_AVDTP_INVAILD_SEID;
+			}
+			node = sys_slist_peek_head(&seps);
+		} else {
+			node = sys_slist_peek_next(node);
+		}
+	}
+
+	return seid;
+}
+
 int bt_avdtp_register_sep(uint8_t media_type, uint8_t sep_type, struct bt_avdtp_sep *sep)
 {
 	LOG_DBG("");
-
-	static uint8_t bt_avdtp_sep = BT_AVDTP_MIN_SEID;
 
 	if (!sep) {
 		return -EIO;
 	}
 
-	if (bt_avdtp_sep == BT_AVDTP_MAX_SEID) {
-		return -EIO;
+	if (sys_slist_find(&seps, &sep->_node, NULL)) {
+		return -EALREADY;
 	}
 
 	k_sem_take(&avdtp_sem_lock, K_FOREVER);
 	/* the id allocation need be locked to protect it */
-	sep->sep_info.id = bt_avdtp_sep++;
+	sep->sep_info.id = AVDTP_Alloc_SEID();
+
+	if (sep->sep_info.id == BT_AVDTP_INVAILD_SEID) {
+		k_sem_give(&avdtp_sem_lock);
+		return -EIO;
+	}
+
 	sep->sep_info.inuse = 0U;
 	sep->sep_info.media_type = media_type;
 	sep->sep_info.tsep = sep_type;
@@ -1360,6 +1386,17 @@ int bt_avdtp_register_sep(uint8_t media_type, uint8_t sep_type, struct bt_avdtp_
 	bt_avdtp_set_state_lock(sep, AVDTP_IDLE);
 
 	sys_slist_append(&seps, &sep->_node);
+	k_sem_give(&avdtp_sem_lock);
+
+	return 0;
+}
+
+int bt_avdtp_unregister_sep(struct bt_avdtp_sep *sep)
+{
+	k_sem_take(&avdtp_sem_lock, K_FOREVER);
+
+	sys_slist_find_and_remove(&seps, &sep->_node);
+
 	k_sem_give(&avdtp_sem_lock);
 
 	return 0;

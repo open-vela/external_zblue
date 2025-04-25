@@ -606,6 +606,17 @@ int bt_a2dp_disconnect(struct bt_a2dp *a2dp);
  */
 int bt_a2dp_register_ep(struct bt_a2dp_ep *ep, uint8_t media_type, uint8_t sep_type);
 
+/**
+ * @brief Endpoint Unregistration.
+ * 
+ * @param ep Pointer to bt_a2dp_ep structure.
+ * @param media_type Media type that the Endpoint is, #bt_avdtp_media_type.
+ * @param sep_type Stream endpoint type, #bt_avdtp_sep_type.
+ * 
+ * @return 0 in case of success and error code in case of error. 
+ */
+int bt_a2dp_unregister_ep(struct bt_a2dp_ep *ep);
+
 /** @brief register callback.
  *
  *  The cb is called when bt_a2dp_connect is called or it is operated by remote device.
