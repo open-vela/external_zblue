@@ -1015,6 +1015,20 @@ int bt_a2dp_register_ep(struct bt_a2dp_ep *ep, uint8_t media_type, uint8_t sep_t
 	return 0;
 }
 
+int bt_a2dp_unregister_ep(struct bt_a2dp_ep *ep)
+{
+	int err;
+
+	__ASSERT_NO_MSG(ep);
+
+	err = bt_avdtp_unregister_sep(&(ep->sep));
+	if (err < 0) {
+		return err;
+	}
+
+	return 0;
+}
+
 int bt_a2dp_register_cb(struct bt_a2dp_cb *cb)
 {
 	a2dp_cb = cb;
