@@ -469,9 +469,19 @@ struct bt_sdp_record {
  *
  *  @param service Service record declared using BT_SDP_DECLARE_SERVICE.
  *
- * @return 0 in case of success or negative value in case of error.
+ *  @return 0 in case of success or negative value in case of error.
  */
 int bt_sdp_register_service(struct bt_sdp_record *service);
+
+/** @brief Unregister a Service Record.
+ *
+ *  Unregister a Service Record.
+ *
+ *  @param service Service record declared using BT_SDP_DECLARE_SERVICE.
+ *
+ *  @return 0 in case of success or negative value in case of error.
+ */
+int bt_sdp_unregister_service(struct bt_sdp_record *service);
 
 /* Client API */
 

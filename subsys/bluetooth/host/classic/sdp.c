@@ -1473,6 +1473,42 @@ int bt_sdp_register_service(struct bt_sdp_record *service)
 	return 0;
 }
 
+int bt_sdp_unregister_service(struct bt_sdp_record *service)
+{
+	struct bt_sdp_record *node;
+
+	if (!service) {
+		LOG_ERR("service is NULL");
+		return 0;
+	}
+
+	struct bt_sdp_record head = {
+		.next = db,
+	};
+	node = &head;
+
+	while (node->next && node->next != service) {
+			node = node->next;
+	}
+
+	if (node->next == NULL)
+		return 0;
+
+	node->next = node->next->next;
+	num_services--;
+	db = head.next;
+	node = db;
+	if(node == NULL)
+		return 0;
+
+	while (node->index > service->index) {
+		node->index--;
+		node = node->next;
+	}
+
+	return 0;
+}
+
 #define GET_PARAM(__node) \
 	CONTAINER_OF(__node, struct bt_sdp_discover_params, _node)
 
