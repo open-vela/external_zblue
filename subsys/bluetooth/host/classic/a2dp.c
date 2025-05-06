@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <zephyr/sys/atomic.h>
 #include <zephyr/sys/byteorder.h>
+#include <zephyr/sys/check.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/sys/printk.h>
 
@@ -1027,6 +1028,19 @@ int bt_a2dp_unregister_ep(struct bt_a2dp_ep *ep)
 	}
 
 	return 0;
+}
+
+struct bt_conn *bt_a2dp_get_conn(struct bt_a2dp *a2dp)
+{
+	CHECKIF(a2dp == NULL) {
+		return NULL;
+	}
+
+	if (!a2dp->session.br_chan.chan.conn) {
+		return NULL;
+	}
+
+	return bt_conn_ref(a2dp->session.br_chan.chan.conn);
 }
 
 int bt_a2dp_register_cb(struct bt_a2dp_cb *cb)
