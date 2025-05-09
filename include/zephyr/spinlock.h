@@ -24,6 +24,8 @@
 extern "C" {
 #endif
 
+#undef CONFIG_SMP
+
 /**
  * @brief Spinlock APIs
  * @defgroup spinlock_apis Spinlock APIs

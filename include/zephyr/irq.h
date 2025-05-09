@@ -22,6 +22,8 @@
 extern "C" {
 #endif
 
+#undef CONFIG_SMP
+
 /**
  * @defgroup isr_apis Interrupt Service Routine APIs
  * @ingroup kernel_apis
