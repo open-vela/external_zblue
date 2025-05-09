@@ -38,6 +38,8 @@
 extern "C" {
 #endif
 
+#undef CONFIG_SMP
+
 /* NOTE: We cannot pull in kernel.h here, need some forward declarations  */
 struct arch_esf;
 struct k_thread;
