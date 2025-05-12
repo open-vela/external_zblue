@@ -70,7 +70,7 @@ config SYS_CLOCK_EXISTS
 	  this is disabled.  Obviously timeout-related APIs will not
 	  work when disabled.
 
-config SYS_CLOCK_HW_CYCLES_PER_SEC
+config ZBLUE_SYS_CLOCK_HW_CYCLES_PER_SEC
 	int "System clock's h/w timer frequency"
 	default -1
 	help
