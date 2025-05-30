@@ -10,7 +10,6 @@
 #include <stdint.h>
 
 #include <zephyr/types.h>
-#include <zephyr/spinlock.h>
 #include <zephyr/sys/util.h>
 
 #ifdef __cplusplus
@@ -18,8 +17,6 @@ extern "C" {
 #endif
 
 #include <nuttx/atomic.h>
-
-static struct k_spinlock lock;
 
 typedef int32_t atomic_val_t;
 #if INTPTR_MAX >= INT64_MAX
@@ -29,6 +26,8 @@ typedef int64_t atomic_ptr_val_t;
 typedef volatile int32_t atomic_ptr_t;
 typedef int32_t atomic_ptr_val_t;
 #endif
+
+#include <zephyr/sys/atomic_port.h>
 
 #undef atomic_set
 #define atomic_set(target, value) atomic_xchg(target, value)
@@ -61,9 +60,10 @@ static inline bool atomic_ptr_cas(atomic_ptr_t *target, atomic_ptr_val_t old_val
 
 static inline void *atomic_ptr_get(const atomic_ptr_t *target)
 {
-	return *target;
+	return (void *)*target;
 }
 
+#if (0) // Move to <zephyr/sys/atomic_port.c>
 static inline void *atomic_ptr_set(atomic_ptr_t *target, void *value)
 {
 	k_spinlock_key_t key;
@@ -93,10 +93,11 @@ static inline atomic_val_t atomic_nand(atomic_t *target, atomic_val_t value)
 
 	return ret;
 }
+#endif
 
 static inline atomic_ptr_val_t atomic_ptr_clear(atomic_ptr_t *target)
 {
-	return atomic_ptr_set(target, NULL);
+	return (atomic_ptr_val_t)atomic_ptr_set(target, NULL);
 }
 
 /* Portable higher-level utilities: */

@@ -4755,7 +4755,7 @@ static void bt_smp_connected(struct bt_l2cap_chan *chan)
 	k_work_init_delayable(&smp->work, smp_timeout);
 	smp_reset(smp);
 
-	atomic_ptr_set(&smp->auth_cb, BT_SMP_AUTH_CB_UNINITIALIZED(chan->conn->hdev));
+	atomic_ptr_set(&smp->auth_cb, (void *)BT_SMP_AUTH_CB_UNINITIALIZED(chan->conn->hdev));
 	atomic_set(&smp->bondable, BT_SMP_BONDABLE_UNINITIALIZED);
 }
 
