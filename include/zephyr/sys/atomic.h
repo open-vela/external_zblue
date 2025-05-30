@@ -1,8 +1,4 @@
 /*
- * Copyright (c) 1997-2015, Wind River Systems, Inc.
- * Copyright (c) 2021 Intel Corporation
- * Copyright (c) 2023 Nordic Semiconductor ASA
- *
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -10,35 +6,98 @@
 #define ZEPHYR_INCLUDE_SYS_ATOMIC_H_
 
 #include <stdbool.h>
-#include <zephyr/toolchain.h>
 #include <stddef.h>
+#include <stdint.h>
 
-#include <zephyr/sys/atomic_types.h> /* IWYU pragma: export */
 #include <zephyr/types.h>
+#include <zephyr/spinlock.h>
 #include <zephyr/sys/util.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* Low-level primitives come in several styles: */
+#include <nuttx/atomic.h>
 
-#if defined(CONFIG_ATOMIC_OPERATIONS_C)
-/* Generic-but-slow implementation based on kernel locking and syscalls */
-#include <zephyr/sys/atomic_c.h>
-#elif defined(CONFIG_ATOMIC_OPERATIONS_ARCH)
-/* Some architectures need their own implementation */
-# ifdef CONFIG_XTENSA
-/* Not all Xtensa toolchains support GCC-style atomic intrinsics */
-# include <zephyr/arch/xtensa/atomic_xtensa.h>
-# else
-/* Other arch specific implementation */
-# include <zephyr/sys/atomic_arch.h>
-# endif /* CONFIG_XTENSA */
+static struct k_spinlock lock;
+
+typedef int32_t atomic_val_t;
+#if INTPTR_MAX >= INT64_MAX
+typedef volatile int64_t atomic_ptr_t;
+typedef int64_t atomic_ptr_val_t;
 #else
-/* Default.  See this file for the Doxygen reference: */
-#include <zephyr/sys/atomic_builtin.h>
+typedef volatile int32_t atomic_ptr_t;
+typedef int32_t atomic_ptr_val_t;
 #endif
+
+#undef atomic_set
+#define atomic_set(target, value) atomic_xchg(target, value)
+#define atomic_get(target)        atomic_read(target)
+#define atomic_clear(target)      atomic_xchg(target, 0)
+#define atomic_inc(target)        atomic_fetch_add(target, 1)
+#define atomic_dec(target)        atomic_fetch_sub(target, 1)
+#define atomic_add(target, value) atomic_fetch_add(target, value)
+#define atomic_sub(target, value) atomic_fetch_sub(target, value)
+#define atomic_or(target, value)  atomic_fetch_or(target, value)
+#define atomic_xor(target, value) atomic_fetch_xor(target, value)
+#define atomic_and(target, value) atomic_fetch_and(target, value)
+
+static inline bool atomic_cas(atomic_t *target, atomic_val_t old_value, atomic_val_t new_value)
+{
+	atomic_val_t __old_value = old_value;
+	return atomic_cmpxchg(target, &__old_value, new_value);
+}
+
+static inline bool atomic_ptr_cas(atomic_ptr_t *target, atomic_ptr_val_t old_value,
+				  atomic_ptr_val_t new_value)
+{
+	atomic_ptr_val_t __old_value = old_value;
+#if INTPTR_MAX >= INT64_MAX
+	return atomic64_cmpxchg(target, &__old_value, new_value);
+#else
+	return atomic_cmpxchg(target, &__old_value, new_value);
+#endif
+}
+
+static inline void *atomic_ptr_get(const atomic_ptr_t *target)
+{
+	return *target;
+}
+
+static inline void *atomic_ptr_set(atomic_ptr_t *target, void *value)
+{
+	k_spinlock_key_t key;
+	void *ret;
+
+	key = k_spin_lock(&lock);
+
+	ret = *target;
+	*target = value;
+
+	k_spin_unlock(&lock, key);
+
+	return ret;
+}
+
+static inline atomic_val_t atomic_nand(atomic_t *target, atomic_val_t value)
+{
+	k_spinlock_key_t key;
+	atomic_val_t ret;
+
+	key = k_spin_lock(&lock);
+
+	ret = *target;
+	*target = ~(*target & value);
+
+	k_spin_unlock(&lock, key);
+
+	return ret;
+}
+
+static inline atomic_ptr_val_t atomic_ptr_clear(atomic_ptr_t *target)
+{
+	return atomic_ptr_set(target, NULL);
+}
 
 /* Portable higher-level utilities: */
 
@@ -73,8 +132,8 @@ extern "C" {
  * @cond INTERNAL_HIDDEN
  */
 
-#define ATOMIC_BITS            (sizeof(atomic_val_t) * BITS_PER_BYTE)
-#define ATOMIC_MASK(bit) BIT((unsigned long)(bit) & (ATOMIC_BITS - 1U))
+#define ATOMIC_BITS            (sizeof(atomic_val_t) * 8)
+#define ATOMIC_MASK(bit)       BIT((unsigned long)(bit) & (ATOMIC_BITS - 1U))
 #define ATOMIC_ELEM(addr, bit) ((addr) + ((bit) / ATOMIC_BITS))
 
 /**
@@ -87,7 +146,7 @@ extern "C" {
  *
  * @param num_bits Number of bits.
  */
-#define ATOMIC_BITMAP_SIZE(num_bits) (ROUND_UP(num_bits, ATOMIC_BITS) / ATOMIC_BITS)
+#define ATOMIC_BITMAP_SIZE(num_bits) (1 + ((num_bits) - 1) / ATOMIC_BITS)
 
 /**
  * @brief Define an array of atomic variables.
@@ -108,16 +167,16 @@ extern "C" {
  * @param name Name of array of atomic variables.
  * @param num_bits Number of bits needed.
  */
-#define ATOMIC_DEFINE(name, num_bits) \
-	atomic_t name[ATOMIC_BITMAP_SIZE(num_bits)]
+#define ATOMIC_DEFINE(name, num_bits) atomic_t name[ATOMIC_BITMAP_SIZE(num_bits)]
 
 /**
- * @brief Atomically get and test a bit.
+ * @brief Atomically test a bit.
  *
- * Atomically get a value and then test whether bit number @a bit of @a target is set or not.
+ * This routine tests whether bit number @a bit of @a target is set or not.
  * The target may be a single atomic variable or an array of them.
  *
- * @note @atomic_api
+ * @note As for all atomic APIs, includes a
+ * full/sequentially-consistent memory barrier (where applicable).
  *
  * @param target Address of atomic variable or array.
  * @param bit Bit number (starting from 0).
@@ -132,17 +191,18 @@ static inline bool atomic_test_bit(const atomic_t *target, int bit)
 }
 
 /**
- * @brief Atomically clear a bit and test it.
+ * @brief Atomically test and clear a bit.
  *
  * Atomically clear bit number @a bit of @a target and return its old value.
  * The target may be a single atomic variable or an array of them.
  *
- * @note @atomic_api
+ * @note As for all atomic APIs, includes a
+ * full/sequentially-consistent memory barrier (where applicable).
  *
  * @param target Address of atomic variable or array.
  * @param bit Bit number (starting from 0).
  *
- * @return false if the bit was already cleared, true if it wasn't.
+ * @return true if the bit was set, false if it wasn't.
  */
 static inline bool atomic_test_and_clear_bit(atomic_t *target, int bit)
 {
@@ -155,17 +215,18 @@ static inline bool atomic_test_and_clear_bit(atomic_t *target, int bit)
 }
 
 /**
- * @brief Atomically set a bit and test it.
+ * @brief Atomically set a bit.
  *
  * Atomically set bit number @a bit of @a target and return its old value.
  * The target may be a single atomic variable or an array of them.
  *
- * @note @atomic_api
+ * @note As for all atomic APIs, includes a
+ * full/sequentially-consistent memory barrier (where applicable).
  *
  * @param target Address of atomic variable or array.
  * @param bit Bit number (starting from 0).
  *
- * @return true if the bit was already set, false if it wasn't.
+ * @return true if the bit was set, false if it wasn't.
  */
 static inline bool atomic_test_and_set_bit(atomic_t *target, int bit)
 {
@@ -183,7 +244,8 @@ static inline bool atomic_test_and_set_bit(atomic_t *target, int bit)
  * Atomically clear bit number @a bit of @a target.
  * The target may be a single atomic variable or an array of them.
  *
- * @note @atomic_api
+ * @note As for all atomic APIs, includes a
+ * full/sequentially-consistent memory barrier (where applicable).
  *
  * @param target Address of atomic variable or array.
  * @param bit Bit number (starting from 0).
@@ -201,7 +263,8 @@ static inline void atomic_clear_bit(atomic_t *target, int bit)
  * Atomically set bit number @a bit of @a target.
  * The target may be a single atomic variable or an array of them.
  *
- * @note @atomic_api
+ * @note As for all atomic APIs, includes a
+ * full/sequentially-consistent memory barrier (where applicable).
  *
  * @param target Address of atomic variable or array.
  * @param bit Bit number (starting from 0).
@@ -219,7 +282,8 @@ static inline void atomic_set_bit(atomic_t *target, int bit)
  * Atomically set bit number @a bit of @a target to value @a val.
  * The target may be a single atomic variable or an array of them.
  *
- * @note @atomic_api
+ * @note As for all atomic APIs, includes a
+ * full/sequentially-consistent memory barrier (where applicable).
  *
  * @param target Address of atomic variable or array.
  * @param bit Bit number (starting from 0).
@@ -235,239 +299,6 @@ static inline void atomic_set_bit_to(atomic_t *target, int bit, bool val)
 		(void)atomic_and(ATOMIC_ELEM(target, bit), ~mask);
 	}
 }
-
-/**
- * @brief Atomic compare-and-set.
- *
- * This routine performs an atomic compare-and-set on @a target. If the current
- * value of @a target equals @a old_value, @a target is set to @a new_value.
- * If the current value of @a target does not equal @a old_value, @a target
- * is left unchanged.
- *
- * @note @atomic_api
- *
- * @param target Address of atomic variable.
- * @param old_value Original value to compare against.
- * @param new_value New value to store.
- * @return true if @a new_value is written, false otherwise.
- */
-bool atomic_cas(atomic_t *target, atomic_val_t old_value, atomic_val_t new_value);
-
-/**
- * @brief Atomic compare-and-set with pointer values
- *
- * This routine performs an atomic compare-and-set on @a target. If the current
- * value of @a target equals @a old_value, @a target is set to @a new_value.
- * If the current value of @a target does not equal @a old_value, @a target
- * is left unchanged.
- *
- * @note @atomic_api
- *
- * @param target Address of atomic variable.
- * @param old_value Original value to compare against.
- * @param new_value New value to store.
- * @return true if @a new_value is written, false otherwise.
- */
-bool atomic_ptr_cas(atomic_ptr_t *target, atomic_ptr_val_t old_value,
-		    atomic_ptr_val_t new_value);
-
-/**
- * @brief Atomic addition.
- *
- * This routine performs an atomic addition on @a target.
- *
- * @note @atomic_api
- *
- * @param target Address of atomic variable.
- * @param value Value to add.
- *
- * @return Previous value of @a target.
- */
-atomic_val_t atomic_add(atomic_t *target, atomic_val_t value);
-
-/**
- * @brief Atomic subtraction.
- *
- * This routine performs an atomic subtraction on @a target.
- *
- * @note @atomic_api
- *
- * @param target Address of atomic variable.
- * @param value Value to subtract.
- *
- * @return Previous value of @a target.
- */
-atomic_val_t atomic_sub(atomic_t *target, atomic_val_t value);
-
-/**
- * @brief Atomic increment.
- *
- * This routine performs an atomic increment by 1 on @a target.
- *
- * @note @atomic_api
- *
- * @param target Address of atomic variable.
- *
- * @return Previous value of @a target.
- */
-atomic_val_t atomic_inc(atomic_t *target);
-
-/**
- * @brief Atomic decrement.
- *
- * This routine performs an atomic decrement by 1 on @a target.
- *
- * @note @atomic_api
- *
- * @param target Address of atomic variable.
- *
- * @return Previous value of @a target.
- */
-atomic_val_t atomic_dec(atomic_t *target);
-
-/**
- * @brief Atomic get.
- *
- * This routine performs an atomic read on @a target.
- *
- * @note @atomic_api
- *
- * @param target Address of atomic variable.
- *
- * @return Value of @a target.
- */
-atomic_val_t atomic_get(const atomic_t *target);
-
-/**
- * @brief Atomic get a pointer value
- *
- * This routine performs an atomic read on @a target.
- *
- * @note @atomic_api
- *
- * @param target Address of pointer variable.
- *
- * @return Value of @a target.
- */
-atomic_ptr_val_t atomic_ptr_get(const atomic_ptr_t *target);
-
-/**
- * @brief Atomic get-and-set.
- *
- * This routine atomically sets @a target to @a value and returns
- * the previous value of @a target.
- *
- * @note @atomic_api
- *
- * @param target Address of atomic variable.
- * @param value Value to write to @a target.
- *
- * @return Previous value of @a target.
- */
-atomic_val_t atomic_set(atomic_t *target, atomic_val_t value);
-
-/**
- * @brief Atomic get-and-set for pointer values
- *
- * This routine atomically sets @a target to @a value and returns
- * the previous value of @a target.
- *
- * @note @atomic_api
- *
- * @param target Address of atomic variable.
- * @param value Value to write to @a target.
- *
- * @return Previous value of @a target.
- */
-atomic_ptr_val_t atomic_ptr_set(atomic_ptr_t *target, atomic_ptr_val_t value);
-
-/**
- * @brief Atomic clear.
- *
- * This routine atomically sets @a target to zero and returns its previous
- * value. (Hence, it is equivalent to atomic_set(target, 0).)
- *
- * @note @atomic_api
- *
- * @param target Address of atomic variable.
- *
- * @return Previous value of @a target.
- */
-atomic_val_t atomic_clear(atomic_t *target);
-
-/**
- * @brief Atomic clear of a pointer value
- *
- * This routine atomically sets @a target to zero and returns its previous
- * value. (Hence, it is equivalent to atomic_set(target, 0).)
- *
- * @note @atomic_api
- *
- * @param target Address of atomic variable.
- *
- * @return Previous value of @a target.
- */
-atomic_ptr_val_t atomic_ptr_clear(atomic_ptr_t *target);
-
-/**
- * @brief Atomic bitwise inclusive OR.
- *
- * This routine atomically sets @a target to the bitwise inclusive OR of
- * @a target and @a value.
- *
- * @note @atomic_api
- *
- * @param target Address of atomic variable.
- * @param value Value to OR.
- *
- * @return Previous value of @a target.
- */
-atomic_val_t atomic_or(atomic_t *target, atomic_val_t value);
-
-/**
- * @brief Atomic bitwise exclusive OR (XOR).
- *
- * @note @atomic_api
- *
- * This routine atomically sets @a target to the bitwise exclusive OR (XOR) of
- * @a target and @a value.
- *
- * @param target Address of atomic variable.
- * @param value Value to XOR
- *
- * @return Previous value of @a target.
- */
-atomic_val_t atomic_xor(atomic_t *target, atomic_val_t value);
-
-/**
- * @brief Atomic bitwise AND.
- *
- * This routine atomically sets @a target to the bitwise AND of @a target
- * and @a value.
- *
- * @note @atomic_api
- *
- * @param target Address of atomic variable.
- * @param value Value to AND.
- *
- * @return Previous value of @a target.
- */
-atomic_val_t atomic_and(atomic_t *target, atomic_val_t value);
-
-/**
- * @brief Atomic bitwise NAND.
- *
- * This routine atomically sets @a target to the bitwise NAND of @a target
- * and @a value. (This operation is equivalent to target = ~(target & value).)
- *
- * @note @atomic_api
- *
- * @param target Address of atomic variable.
- * @param value Value to NAND.
- *
- * @return Previous value of @a target.
- */
-atomic_val_t atomic_nand(atomic_t *target, atomic_val_t value);
 
 /**
  * @}
