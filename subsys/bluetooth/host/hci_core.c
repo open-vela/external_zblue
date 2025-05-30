@@ -2541,7 +2541,7 @@ static void hci_cmd_done(struct bt_dev *hdev, uint16_t opcode,
 	}
 
 	/* Take the original command buffer reference. */
-	buf = atomic_ptr_clear((atomic_ptr_t *)&hdev->sent_cmd);
+	buf = (struct net_buf *)atomic_ptr_clear((atomic_ptr_t *)&hdev->sent_cmd);
 
 	if (!buf) {
 		LOG_ERR("No command sent for cmd complete 0x%04x", opcode);
