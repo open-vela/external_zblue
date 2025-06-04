@@ -264,3 +264,23 @@ bool bt_avrcp_ct_check_event_support(struct bt_conn *conn, uint8_t event_id)
 	}
 	return bt_avrcp_check_event_support(session, event_id);
 }
+
+int bt_avrcp_ct_register_notification(struct bt_conn *conn, uint8_t event_id)
+{
+	struct bt_avrcp *session = avrcp_lookup_by_conn(conn);
+	if (!session) {
+		LOG_ERR("AVRC not connect!");
+		return -EIO;
+	}
+	return bt_avrcp_register_notification(session, event_id);
+}
+
+int bt_avrcp_ct_get_unit_info(struct bt_conn *conn)
+{
+	struct bt_avrcp *session = avrcp_lookup_by_conn(conn);
+	if (!session) {
+		LOG_ERR("AVRC not connect!");
+		return -EIO;
+	}
+	return bt_avrcp_get_unit_info(session);
+}
