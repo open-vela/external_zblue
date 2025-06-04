@@ -284,3 +284,13 @@ int bt_avrcp_ct_get_unit_info(struct bt_conn *conn)
 	}
 	return bt_avrcp_get_unit_info(session);
 }
+
+int bt_avrcp_ct_get_subunit_info(struct bt_conn *conn)
+{
+	struct bt_avrcp *session = avrcp_lookup_by_conn(conn);
+	if (!session) {
+		LOG_ERR("AVRC not connect!");
+		return -EIO;
+	}
+	return bt_avrcp_get_subunit_info(session);
+}
