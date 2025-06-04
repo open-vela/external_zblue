@@ -40,6 +40,8 @@ bool bt_avrcp_ct_check_event_support(struct bt_conn *conn, uint8_t event_id);
 int bt_avrcp_ct_get_play_status(struct bt_conn *conn);
 int bt_pts_avrcp_ct_get_capabilities(struct bt_conn *conn);
 int bt_pts_avrcp_ct_register_notification(struct bt_conn *conn);
+int bt_avrcp_ct_register_notification(struct bt_conn *conn, uint8_t event_id);
+int bt_avrcp_ct_get_unit_info(struct bt_conn *conn);
 #ifdef __cplusplus
 }
 #endif
