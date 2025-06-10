@@ -2996,6 +2996,10 @@ static uint8_t smp_pairing_req(struct bt_smp *smp, struct net_buf *buf)
 	} else {
 		rsp->oob_flag = legacy_oobd_present ? BT_SMP_OOB_PRESENT :
 				BT_SMP_OOB_NOT_PRESENT;
+#if 1 /* legacy pairing not deliver linkkey */
+		rsp->init_key_dist &= ~LINK_DIST;
+		rsp->resp_key_dist &= ~LINK_DIST;
+#endif
 	}
 
 	if ((rsp->auth_req & BT_SMP_AUTH_CT2) &&
@@ -3185,6 +3189,13 @@ static int smp_send_pairing_req(struct bt_conn *conn)
 		req->init_key_dist = 0;
 		req->resp_key_dist = 0;
 	}
+
+#if 1 /* legacy pairing not deliver linkkey */
+	if ((req->auth_req & BT_SMP_AUTH_SC) == 0) {
+		req->init_key_dist &= ~LINK_DIST;
+		req->resp_key_dist &= ~LINK_DIST;
+	}
+#endif
 
 	smp->local_dist = req->init_key_dist;
 	smp->remote_dist = req->resp_key_dist;
