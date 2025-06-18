@@ -104,6 +104,10 @@ const struct bt_conn_auth_cb *bt_auth;
 sys_slist_t bt_auth_info_cbs = SYS_SLIST_STATIC_INIT(&bt_auth_info_cbs);
 #endif /* CONFIG_BT_SMP || CONFIG_BT_CLASSIC */
 
+#if defined(CONFIG_BT_SMP)
+const struct bt_conn_auth_cb *le_auth;
+#endif /* CONFIG_BT_SMP */
+
 
 static sys_slist_t conn_cbs = SYS_SLIST_STATIC_INIT(&conn_cbs);
 
@@ -4091,6 +4095,30 @@ int bt_conn_auth_cb_register(const struct bt_conn_auth_cb *cb)
 }
 
 #if defined(CONFIG_BT_SMP)
+int bt_conn_le_auth_cb_register(const struct bt_conn_auth_cb *cb)
+{
+	if (!cb) {
+		le_auth = NULL;
+		return 0;
+	}
+
+	if (le_auth) {
+		return -EALREADY;
+	}
+
+	/* The cancel callback must always be provided if the app provides
+	 * interactive callbacks.
+	 */
+	if (!cb->cancel &&
+	    (cb->passkey_display || cb->passkey_entry || cb->passkey_confirm ||
+	     cb->pairing_confirm)) {
+		return -EINVAL;
+	}
+
+	le_auth = cb;
+	return 0;
+}
+
 int bt_conn_auth_cb_overlay(struct bt_conn *conn, const struct bt_conn_auth_cb *cb)
 {
 	CHECKIF(conn == NULL) {

@@ -2515,6 +2515,17 @@ struct bt_conn *bt_conn_pair_br(bt_addr_t *bdaddr, bt_security_t security);
  */
 int bt_conn_auth_cb_register(const struct bt_conn_auth_cb *cb);
 
+/** @brief Register LE authentication callbacks.
+ *
+ *  Register callbacks to handle authenticated pairing. Passing NULL
+ *  unregisters a previous callbacks structure.
+ *
+ *  @param cb Callback struct.
+ *
+ *  @return Zero on success or negative error code otherwise
+ */
+int bt_conn_le_auth_cb_register(const struct bt_conn_auth_cb *cb);
+
 /** @brief Overlay authentication callbacks used for a given connection.
  *
  *  This function can be used only for Bluetooth LE connections.
