@@ -443,6 +443,10 @@ extern sys_slist_t bt_auth_info_cbs;
 enum bt_security_err bt_security_err_get(uint8_t hci_err);
 #endif /* CONFIG_BT_SMP || CONFIG_BT_CLASSIC */
 
+#if defined(CONFIG_BT_SMP)
+extern const struct bt_conn_auth_cb *le_auth;
+#endif /* CONFIG_BT_SMP*/
+
 #if DT_HAS_CHOSEN(zephyr_bt_hci)
 int bt_hci_recv(const struct device *dev, struct net_buf *buf);
 #endif
