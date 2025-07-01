@@ -1489,9 +1489,10 @@ int bt_sdp_register_service_mc(uint8_t dev_id, struct bt_sdp_record *service)
 	return 0;
 }
 
-int bt_sdp_unregister_service(struct bt_sdp_record *service)
+int bt_sdp_unregister_service_mc(uint8_t dev_id, struct bt_sdp_record *service)
 {
 	struct bt_sdp_record *node;
+	struct bt_dev *hdev = bt_dev_get(dev_id);
 
 	if (!service) {
 		LOG_ERR("service is NULL");
@@ -1499,7 +1500,7 @@ int bt_sdp_unregister_service(struct bt_sdp_record *service)
 	}
 
 	struct bt_sdp_record head = {
-		.next = db,
+		.next = hdev->sdp_ctx->db,
 	};
 	node = &head;
 
@@ -1511,9 +1512,9 @@ int bt_sdp_unregister_service(struct bt_sdp_record *service)
 		return 0;
 
 	node->next = node->next->next;
-	num_services--;
-	db = head.next;
-	node = db;
+	hdev->sdp_ctx->num_services--;
+	hdev->sdp_ctx->db = head.next;
+	node = hdev->sdp_ctx->db;
 	if(node == NULL)
 		return 0;
 
