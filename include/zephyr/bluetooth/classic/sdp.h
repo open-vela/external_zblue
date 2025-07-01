@@ -487,7 +487,13 @@ static inline int bt_sdp_register_service(struct bt_sdp_record *service)
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_sdp_unregister_service(struct bt_sdp_record *service);
+int bt_sdp_unregister_service_mc(uint8_t dev_id, struct bt_sdp_record *service);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_sdp_unregister_service(struct bt_sdp_record *service)
+{
+       return bt_sdp_unregister_service_mc(0, service);
+}
+#endif
 
 /* Client API */
 
