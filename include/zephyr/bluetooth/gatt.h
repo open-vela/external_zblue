@@ -561,7 +561,13 @@ static inline void bt_gatt_cb_register(struct bt_gatt_cb *cb)
  *
  *  @param cb Callback struct.
  */
-void bt_gatt_cb_unregister(struct bt_gatt_cb *cb);
+void bt_gatt_cb_unregister_mc(uint8_t dev_id, struct bt_gatt_cb *cb);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline void bt_gatt_cb_unregister(struct bt_gatt_cb *cb)
+{
+	bt_gatt_cb_unregister_mc(0, cb);
+}
+#endif
 
 /** @brief Register GATT authorization callbacks.
  *
