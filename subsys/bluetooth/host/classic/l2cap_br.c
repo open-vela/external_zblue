@@ -17,15 +17,16 @@
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/conn.h>
+#include <zephyr/drivers/bluetooth/hci_driver.h>
 
 #include "host/buf_view.h"
 #include "host/hci_core.h"
 #include "host/conn_internal.h"
 #include "l2cap_br_internal.h"
-#include "avdtp_internal.h"
-#include "a2dp_internal.h"
-#include "avctp_internal.h"
-#include "avrcp_internal.h"
+//#include "avdtp_internal.h"
+//#include "a2dp_internal.h"
+//#include "avctp_internal.h"
+//#include "avrcp_internal.h"
 #include "did_internal.h"
 #include "rfcomm_internal.h"
 #include "sdp_internal.h"
@@ -982,9 +983,6 @@ destroy:
 	/* Reset internal members of common channel */
 	bt_l2cap_br_chan_set_state(chan, BT_L2CAP_DISCONNECTED);
 	BR_CHAN(chan)->psm = 0U;
-	if (L2CAP_BR_CID_IS_DYN(BR_CHAN(chan)->rx.cid)) {
-		BR_CHAN(chan)->rx.cid = 0U;
-	}
 #endif
 	if (chan->destroy) {
 		chan->destroy(chan);
@@ -2123,16 +2121,8 @@ void bt_l2cap_br_init(struct bt_dev *hdev)
 		bt_rfcomm_init();
 	}
 
-	if (IS_ENABLED(CONFIG_BT_HID_DEVICE)) {
-		bt_hid_dev_init();
-	}
-
 	if (IS_ENABLED(CONFIG_BT_AVDTP)) {
 		bt_avdtp_init();
-	}
-
-	if (IS_ENABLED(CONFIG_BT_AVCTP)) {
-		bt_avctp_init();
 	}
 
 	if (IS_ENABLED(CONFIG_BT_AVRCP)) {
