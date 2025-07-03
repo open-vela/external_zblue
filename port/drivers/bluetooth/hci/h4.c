@@ -397,7 +397,12 @@ static int h4_open(const struct device *dev, bt_hci_recv_t recv, void *hci_data)
 	h4->recv = recv;
 	h4->hci_data = hci_data;
 
-	snprintf(dev_name, sizeof(dev_name), "BT Driver %s", dev->name);
+	ret = snprintf(dev_name, sizeof(dev_name), "BT Driver %s", dev->name);
+	if (ret < 0 || ret >= sizeof(dev_name)) {
+		LOG_ERR("dev_name:%s snprintf failed, ret %d, ", dev->name, ret);
+		return -EINVAL;
+	}
+
 	k_thread_name_set(&h4->rx_thread_data, dev_name);
 	LOG_DBG("returning");
 
