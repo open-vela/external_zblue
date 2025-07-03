@@ -52,7 +52,7 @@ struct h4_data {
 	void *hci_data;
 	struct k_thread rx_thread_data;
 	K_KERNEL_STACK_DEFINE(rx_thread_stack, 3072);
-	uint8_t frame[512];
+	uint8_t frame[1026];
 };
 
 #define HCI_DEBUG 0
