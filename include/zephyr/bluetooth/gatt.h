@@ -728,7 +728,10 @@ static inline void bt_gatt_foreach_attr(uint16_t start_handle, uint16_t end_hand
  */
 struct bt_gatt_attr *bt_gatt_attr_next_mc(uint8_t dev_id, const struct bt_gatt_attr *attr);
 #ifdef CONFIG_BT_ORIGINAL_API
-struct bt_gatt_attr *bt_gatt_attr_next(const struct bt_gatt_attr *attr);
+static inline struct bt_gatt_attr *bt_gatt_attr_next(const struct bt_gatt_attr *attr)
+{
+	return bt_gatt_attr_next_mc(0, attr);
+}
 #endif
 
 /** @brief Find Attribute by UUID.
