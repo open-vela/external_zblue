@@ -415,8 +415,23 @@ bail:
 	return ret;
 }
 
+static int h4_close(const struct device *dev)
+{
+	struct h4_data *h4 = dev->data;
+
+	LOG_DBG("close h4");
+
+	k_thread_abort(&rx_thread_data);
+
+	close(h4->fd);
+	h4->fd = -1;
+
+	return 0;
+}
+
 static const struct bt_hci_driver_api h4_drv_api = {
 	.open = h4_open,
+	.close = h4_close,
 	.send = h4_send,
 };
 

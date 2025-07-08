@@ -144,4 +144,12 @@ void k_thread_resume(k_tid_t thread)
 
 void k_thread_abort(k_tid_t thread)
 {
+	pthread_t pid = (pthread_t)thread->init_data;
+
+	if (sys_dnode_is_linked(&thread->base.qnode_dlist)) {
+		sys_dlist_remove(&thread->base.qnode_dlist);
+	}
+
+	pthread_cancel(pid);
+	pthread_detach(pid);
 }
