@@ -3623,8 +3623,12 @@ static void gatt_sub_remove(struct bt_conn *conn, struct gatt_sub *sub,
 }
 
 #if defined(CONFIG_BT_GATT_CLIENT)
-static struct gatt_sub *gatt_sub_find(struct bt_dev *hdev, struct bt_conn *conn)
+static struct gatt_sub *gatt_sub_find(struct bt_conn *conn)
 {
+	struct bt_dev *hdev = conn->hdev;
+
+	__ASSERT(hdev, "hdev null\n");
+
 	for (int i = 0; i < ARRAY_SIZE(hdev->gatt_ctx->subscriptions); i++) {
 		struct gatt_sub *sub = &hdev->gatt_ctx->subscriptions[i];
 
@@ -3725,7 +3729,7 @@ void bt_gatt_notification(struct bt_conn *conn, uint16_t handle,
 
 	LOG_DBG("handle 0x%04x length %u", handle, length);
 
-	sub = gatt_sub_find(conn->hdev, conn);
+	sub = gatt_sub_find(conn);
 	if (!sub) {
 		return;
 	}
@@ -3742,7 +3746,7 @@ void bt_gatt_mult_notification(struct bt_conn *conn, const void *data,
 
 	LOG_DBG("length %u", length);
 
-	sub = gatt_sub_find(conn->hdev, conn);
+	sub = gatt_sub_find(conn);
 	if (!sub) {
 		return;
 	}
@@ -3787,7 +3791,7 @@ static void remove_subscriptions(struct bt_conn *conn)
 	struct bt_gatt_subscribe_params *params, *tmp;
 	sys_snode_t *prev = NULL;
 
-	sub = gatt_sub_find(conn->hdev, conn);
+	sub = gatt_sub_find(conn);
 	if (!sub) {
 		return;
 	}
@@ -5389,7 +5393,7 @@ static void gatt_write_ccc_rsp(struct bt_conn *conn, int err,
 		struct gatt_sub *sub;
 		sys_snode_t *node, *tmp, *prev;
 
-		sub = gatt_sub_find(conn->hdev, conn);
+		sub = gatt_sub_find(conn);
 		if (!sub) {
 			return;
 		}
@@ -5629,7 +5633,7 @@ int bt_gatt_unsubscribe(struct bt_conn *conn,
 		return -ENOTCONN;
 	}
 
-	sub = gatt_sub_find(conn->hdev, conn);
+	sub = gatt_sub_find(conn);
 	if (!sub) {
 		return -EINVAL;
 	}
@@ -5733,7 +5737,7 @@ static void add_subscriptions(struct bt_conn *conn)
 		return;
 	}
 
-	sub = gatt_sub_find(conn->hdev, conn);
+	sub = gatt_sub_find(conn);
 	if (!sub) {
 		return;
 	}
