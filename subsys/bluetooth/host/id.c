@@ -56,7 +56,7 @@ const bt_addr_le_t *bt_lookup_id_addr(struct bt_dev *hdev, uint8_t id, const bt_
 	if (IS_ENABLED(CONFIG_BT_SMP)) {
 		struct bt_keys *keys;
 
-		keys = bt_keys_find_irk(hdev, id, addr);
+		keys = bt_keys_find_irk_mc(hdev->dev_id, id, addr);
 		if (keys) {
 			LOG_DBG("Identity %s matched RPA %s", bt_addr_le_str(&keys->addr),
 				bt_addr_le_str(addr));

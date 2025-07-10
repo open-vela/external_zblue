@@ -169,7 +169,14 @@ struct bt_keys *bt_keys_find(struct bt_dev *hdev, enum bt_keys_type type,
  * @return A valid reference pointer to the key slot on success.
  *         Otherwise, a NULL value is returned.
  */
-struct bt_keys *bt_keys_find_irk(struct bt_dev *hdev, uint8_t id, const bt_addr_le_t *addr);
+struct bt_keys *bt_keys_find_irk_mc(uint8_t dev_id, uint8_t id, const bt_addr_le_t *addr);
+
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline struct bt_keys *bt_keys_find_irk(uint8_t id, const bt_addr_le_t *addr)
+{
+	return bt_keys_find_irk_mc(0, id, addr);
+}
+#endif
 
 /**
  * @brief Find a key by ID and address
