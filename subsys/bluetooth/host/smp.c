@@ -1087,7 +1087,7 @@ static void smp_br_distribute_keys(struct bt_smp_br *smp)
 		}
 
 		id_info = net_buf_add(buf, sizeof(*id_info));
-		memcpy(id_info->irk, hdev->smp_ctx->irk[conn->id], 16);
+		memcpy(id_info->irk, hdev->irk[conn->id], 16);
 
 		smp_br_send(smp, buf, NULL);
 
@@ -1099,7 +1099,7 @@ static void smp_br_distribute_keys(struct bt_smp_br *smp)
 		}
 
 		id_addr_info = net_buf_add(buf, sizeof(*id_addr_info));
-		bt_addr_le_copy(&id_addr_info->addr, &hdev->smp_ctx->id_addr[conn->id]);
+		bt_addr_le_copy(&id_addr_info->addr, &hdev->id_addr[conn->id]);
 
 		smp_br_send(smp, buf, smp_id_sent);
 	}
@@ -2129,7 +2129,7 @@ static uint8_t bt_smp_distribute_keys(struct bt_smp *smp)
 		}
 
 		id_info = net_buf_add(buf, sizeof(*id_info));
-		memcpy(id_info->irk, hdev->smp_ctx->irk[conn->id], 16);
+		memcpy(id_info->irk, hdev->irk[conn->id], 16);
 
 		smp_send(smp, buf, NULL, NULL);
 
@@ -2141,7 +2141,7 @@ static uint8_t bt_smp_distribute_keys(struct bt_smp *smp)
 		}
 
 		id_addr_info = net_buf_add(buf, sizeof(*id_addr_info));
-		bt_addr_le_copy(&id_addr_info->addr, &hdev->smp_ctx->id_addr[conn->id]);
+		bt_addr_le_copy(&id_addr_info->addr, &hdev->id_addr[conn->id]);
 
 		smp_send(smp, buf, smp_id_sent, NULL);
 	}
