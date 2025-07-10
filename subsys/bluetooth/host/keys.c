@@ -238,13 +238,18 @@ struct bt_keys *bt_keys_get_type(struct bt_dev *hdev, enum bt_keys_type type,
 	return keys;
 }
 
-struct bt_keys *bt_keys_find_irk(struct bt_dev *hdev, uint8_t id, const bt_addr_le_t *addr)
+struct bt_keys *bt_keys_find_irk_mc(uint8_t dev_id, uint8_t id, const bt_addr_le_t *addr)
 {
 	int i;
+	struct bt_dev *hdev = bt_dev_get(dev_id);
 
 	__ASSERT_NO_MSG(addr != NULL);
 
 	LOG_DBG("%s", bt_addr_le_str(addr));
+
+	if (!hdev) {
+		return NULL;
+	}
 
 	if (!bt_addr_le_is_rpa(addr)) {
 		return NULL;
