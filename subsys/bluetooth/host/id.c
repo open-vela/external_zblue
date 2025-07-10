@@ -355,7 +355,7 @@ int bt_id_set_private_addr(struct bt_dev *hdev, uint8_t id)
 
 	err = bt_rpa_create(hdev->irk[id], &rpa);
 	if (!err) {
-		err = set_random_address(&rpa);
+		err = set_random_address(hdev, &rpa);
 		if (!err) {
 			atomic_set_bit(hdev->flags, BT_DEV_RPA_VALID);
 		}
