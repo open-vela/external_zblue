@@ -482,6 +482,11 @@ struct bt_dev {
 	const struct bt_conn_auth_cb *bt_auth;
 	sys_slist_t bt_auth_info_cbs;
 #endif
+
+#if defined(CONFIG_BT_SMP)
+	const struct bt_conn_auth_cb *le_auth;
+#endif
+
 	struct bt_dev_scan_ctx *scan_ctx;
 
 #if defined(CONFIG_BT_ISO)

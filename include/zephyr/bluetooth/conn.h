@@ -2620,7 +2620,13 @@ static inline int bt_conn_auth_cb_register(const struct bt_conn_auth_cb *cb)
  *
  *  @return Zero on success or negative error code otherwise
  */
-int bt_conn_le_auth_cb_register(const struct bt_conn_auth_cb *cb);
+int bt_conn_le_auth_cb_register_mc(uint8_t dev_id, const struct bt_conn_auth_cb *cb);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_conn_le_auth_cb_register(const struct bt_conn_auth_cb *cb)
+{
+	return bt_conn_le_auth_cb_register_mc(0, cb);
+}
+#endif
 
 /** @brief Overlay authentication callbacks used for a given connection.
  *
