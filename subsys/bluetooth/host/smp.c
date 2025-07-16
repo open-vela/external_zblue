@@ -320,7 +320,7 @@ static const struct bt_conn_auth_cb *latch_auth_cb(struct bt_smp *smp)
 	struct bt_dev *hdev = conn->hdev;
 
 	(void)atomic_ptr_cas(&smp->auth_cb, BT_SMP_AUTH_CB_UNINITIALIZED(hdev),
-			     (atomic_ptr_val_t)hdev->bt_auth);
+			     (atomic_ptr_val_t)hdev->le_auth);
 
 	return atomic_ptr_get(&smp->auth_cb);
 }

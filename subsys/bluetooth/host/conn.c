@@ -4189,8 +4189,14 @@ int bt_conn_auth_cb_register_mc(uint8_t dev_id, const struct bt_conn_auth_cb *cb
 }
 
 #if defined(CONFIG_BT_SMP)
-int bt_conn_le_auth_cb_register(const struct bt_conn_auth_cb *cb)
+int bt_conn_le_auth_cb_register_mc(uint8_t dev_id, const struct bt_conn_auth_cb *cb)
 {
+	struct bt_dev *hdev = bt_dev_get(dev_id);
+
+	if (!hdev) {
+		return -ENODEV;
+	}
+
 	if (!cb) {
 		le_auth = NULL;
 		return 0;
@@ -4209,7 +4215,7 @@ int bt_conn_le_auth_cb_register(const struct bt_conn_auth_cb *cb)
 		return -EINVAL;
 	}
 
-	le_auth = cb;
+	hdev->le_auth = cb;
 	return 0;
 }
 
