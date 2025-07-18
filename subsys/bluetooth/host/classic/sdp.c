@@ -588,6 +588,7 @@ static uint16_t sdp_svc_search_req(struct bt_sdp *sdp, struct net_buf *buf,
 	uint8_t cont_state_size, cont_state = 0U, idx = 0U, count = 0U;
 	bool pkt_full = false;
 
+	memset(matching_recs, 0, sizeof(matching_recs));
 	res = find_services(hdev, buf, matching_recs);
 	if (res) {
 		/* Error in parsing */
@@ -1208,6 +1209,7 @@ static uint16_t sdp_svc_search_att_req(struct bt_sdp *sdp, struct net_buf *buf,
 	uint8_t cont_state_size, next_svc = 0U, next_att = 0U;
 	bool dry_run = false;
 
+	memset(matching_recs, 0, sizeof(matching_recs));
 	res = find_services(hdev, buf, matching_recs);
 	if (res) {
 		return res;
