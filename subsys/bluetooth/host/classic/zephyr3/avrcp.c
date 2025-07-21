@@ -477,7 +477,22 @@ static void avrcp_verdor_notify_rsp_handle(struct bt_avrcp *session,
 		session->CT_state = BT_AVRCP_STATE_REGISTER_NOTIFICATION_ED;
 	}
 }
-static void avrcp_verdor_get_attributes_rsp_handle(struct bt_avrcp *session,
+
+static int avrcp_vendor_abort_continue_packet(struct bt_avrcp *session, uint8_t pdu_id){
+	struct net_buf *buf;
+
+	buf = avrcp_create_vendor_pdu(session, BT_AVRCP_CMD, BT_AVRCP_CTYPE_CONTROL, BT_AVRCP_PDU_ID_REQUEST_ABORT_CONTINUING_RESPONSE);
+	if (!buf) {
+		LOG_ERR("avrcp cmd create error.\n");
+		return -ENOMEM;
+	}
+
+	net_buf_add_be16(buf, 1);
+	net_buf_add_u8(buf, pdu_id);
+	return avrcp_send(session, buf);
+}
+
+static void avrcp_vendor_get_attributes_rsp_handle(struct bt_avrcp *session,
 								struct net_buf *buf)
 {
 	struct bt_avrcp_vendor_getelementatt_rsp *rsp = (void *)buf->data;
@@ -536,6 +551,13 @@ static void avrcp_verdor_rsp_handle(struct bt_avrcp *session,
 {
 	struct bt_avrcp_vendor_info *info = (void *)buf->data;
 	avrcp_log("avrcp rsp pdu_id:0x%x\n", info->pdu_id);
+
+	if ((info->packet_type & 0x03) != BT_AVRCP_PKT_TYPE_SINGLE) {
+		LOG_ERR("packet type error, just support single type packet.\n");
+		avrcp_vendor_abort_continue_packet(session, info->pdu_id);
+		return;
+	}
+
 	switch (info->pdu_id) {
 	case BT_AVRCP_PDU_ID_GET_CAPABILITIES:
 		avrcp_verdor_capabilities_rsp_handle(session, buf);
@@ -547,7 +569,7 @@ static void avrcp_verdor_rsp_handle(struct bt_avrcp *session,
 		avrcp_verdor_notify_rsp_handle(session, buf);
 		break;
 	case BT_AVRCP_PDU_ID_GET_ELEMENT_ATTRIBUTES:
-		avrcp_verdor_get_attributes_rsp_handle(session, buf);
+		avrcp_vendor_get_attributes_rsp_handle(session, buf);
 		break;
 	}
 }
