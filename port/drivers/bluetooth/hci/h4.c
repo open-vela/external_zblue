@@ -421,7 +421,7 @@ static int h4_close(const struct device *dev)
 
 	LOG_DBG("close h4");
 
-	k_thread_abort(&rx_thread_data);
+	k_thread_abort(&h4->rx_thread_data);
 
 	close(h4->fd);
 	h4->fd = -1;
