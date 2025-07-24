@@ -21,10 +21,10 @@ extern struct device __device_dts_ord_DT_N_INST_0_zephyr_bt_hci_ttyHCI0_ORD;
 #define DT_CHOSEN_zephyr_bt_hci_EXISTS  1
 #define DT_CHOSEN_zephyr_bt_hci0   DT_N_INST_0_zephyr_bt_hci_ttyHCI0
 
-#define DT_N_INST_0_zephyr_bt_hci_ttyHCI0_FULL_NAME "ttyHCI0"
+#define DT_N_INST_0_zephyr_bt_hci_ttyHCI0_FULL_NAME CONFIG_BT_UART_ON_DEV_NAME
 
 extern struct device __device_dts_ord_DT_N_INST_1_zephyr_bt_hci_ttyHCI1_ORD;
 
 #define DT_CHOSEN_zephyr_bt_hci1   DT_N_INST_1_zephyr_bt_hci_ttyHCI1
 
-#define DT_N_INST_1_zephyr_bt_hci_ttyHCI1_FULL_NAME "ttyHCI1"
+#define DT_N_INST_1_zephyr_bt_hci_ttyHCI1_FULL_NAME "/dev/ttyHCI1"
