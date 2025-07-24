@@ -370,7 +370,7 @@ static int h4_open(const struct device *dev, bt_hci_recv_t recv, void *hci_data)
 		return -EINVAL;
 	}
 
-	ret = snprintf(dev_name, sizeof(dev_name), "/dev/%s", dev->name);
+	ret = snprintf(dev_name, sizeof(dev_name), "%s", dev->name);
 	if (ret < 0 || ret >= sizeof(dev_name)) {
 		LOG_ERR("dev_name:%s snprintf failed, ret %d, ", dev->name, ret);
 		return -EINVAL;
