@@ -4592,15 +4592,18 @@ int bt_disable_mc(uint8_t dev_id)
 #if !DT_HAS_CHOSEN(zephyr_bt_hci)
 	if (!hdev->drv) {
 		LOG_ERR("No HCI driver registered");
+		bt_dev_free(hdev);
 		return -ENODEV;
 	}
 
 	if (!hdev->drv->close) {
+		bt_dev_free(hdev);
 		return -ENOTSUP;
 	}
 #endif
 
 	if (atomic_test_and_set_bit(hdev->flags, BT_DEV_DISABLE)) {
+		bt_dev_free(hdev);
 		return -EALREADY;
 	}
 
@@ -4632,6 +4635,7 @@ int bt_disable_mc(uint8_t dev_id)
 	if (err == -ENOSYS) {
 		atomic_clear_bit(hdev->flags, BT_DEV_DISABLE);
 		atomic_set_bit(hdev->flags, BT_DEV_READY);
+		bt_dev_free(hdev);
 		return -ENOTSUP;
 	}
 #else
@@ -4642,6 +4646,7 @@ int bt_disable_mc(uint8_t dev_id)
 
 		/* Re-enable BT_DEV_READY to avoid inconsistent stack state */
 		atomic_set_bit(hdev->flags, BT_DEV_READY);
+		bt_dev_free(hdev);
 
 		return err;
 	}
@@ -4677,6 +4682,8 @@ int bt_disable_mc(uint8_t dev_id)
 	 * completed.
 	 */
 	atomic_clear_bit(hdev->flags, BT_DEV_ENABLE);
+
+	bt_dev_free(hdev);
 
 	return 0;
 }
