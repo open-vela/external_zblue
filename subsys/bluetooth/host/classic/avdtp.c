@@ -487,8 +487,6 @@ static void avdtp_process_configuration_cmd(struct bt_avdtp *session, struct net
 		LOG_DBG("set configuration err code:%d", error_code);
 		/* Service Category: Media Codec */
 		net_buf_add_u8(rsp_buf, BT_AVDTP_SERVICE_MEDIA_CODEC);
-		/* Length Of Service Capability */
-		net_buf_add_u8(rsp_buf, 0);
 		/* ERROR CODE */
 		net_buf_add_u8(rsp_buf, error_code);
 	}
