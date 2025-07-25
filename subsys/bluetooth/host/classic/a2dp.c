@@ -203,8 +203,18 @@ static int a2dp_process_config_ind(struct bt_avdtp *session, struct bt_avdtp_sep
 		    ((BT_A2DP_SBC_CHAN_MODE(sbc_set) & BT_A2DP_SBC_CHAN_MODE(sbc)) == 0) ||
 		    ((BT_A2DP_SBC_BLK_LEN(sbc_set) & BT_A2DP_SBC_BLK_LEN(sbc)) == 0) ||
 		    ((BT_A2DP_SBC_SUB_BAND(sbc_set) & BT_A2DP_SBC_SUB_BAND(sbc)) == 0) ||
-		    ((BT_A2DP_SBC_ALLOC_MTHD(sbc_set) & BT_A2DP_SBC_ALLOC_MTHD(sbc)) == 0)) {
-			*errcode = BT_AVDTP_BAD_ACP_SEID;
+		    ((BT_A2DP_SBC_ALLOC_MTHD(sbc_set) & BT_A2DP_SBC_ALLOC_MTHD(sbc)) == 0))
+		 {
+			if(((BT_A2DP_SBC_SAMP_FREQ(sbc_set) & BT_A2DP_SBC_SAMP_FREQ(sbc)) == 0))
+				*errcode = BT_A2DP_NOT_SUPPORTED_SAMPLING_FREQUENCY;
+			else if((BT_A2DP_SBC_CHAN_MODE(sbc_set) & BT_A2DP_SBC_CHAN_MODE(sbc)) == 0)
+				*errcode = BT_A2DP_NOT_SUPPORTED_CHANNEL_MODE;
+			else if((BT_A2DP_SBC_SUB_BAND(sbc_set) & BT_A2DP_SBC_SUB_BAND(sbc)) == 0)
+				*errcode = BT_A2DP_NOT_SUPPORTED_SUBBANDS;
+			else if((BT_A2DP_SBC_ALLOC_MTHD(sbc_set) & BT_A2DP_SBC_ALLOC_MTHD(sbc)) == 0)
+				*errcode = BT_A2DP_NOT_SUPPORTED_ALLOCATION_METHOD;								
+			else
+				*errcode = BT_AVDTP_BAD_ACP_SEID;
 			return -EINVAL;
 		}
 	}
