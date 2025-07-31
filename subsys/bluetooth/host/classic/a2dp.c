@@ -199,13 +199,25 @@ static int a2dp_process_config_ind(struct bt_avdtp *session, struct bt_avdtp_sep
 
 		sbc_set = (struct bt_a2dp_codec_sbc_params *)codec_info_element;
 		sbc = (struct bt_a2dp_codec_sbc_params *)&ep->codec_cap->codec_ie[0];
-		if (((BT_A2DP_SBC_SAMP_FREQ(sbc_set) & BT_A2DP_SBC_SAMP_FREQ(sbc)) == 0) ||
-		    ((BT_A2DP_SBC_CHAN_MODE(sbc_set) & BT_A2DP_SBC_CHAN_MODE(sbc)) == 0) ||
-		    ((BT_A2DP_SBC_BLK_LEN(sbc_set) & BT_A2DP_SBC_BLK_LEN(sbc)) == 0) ||
-		    ((BT_A2DP_SBC_SUB_BAND(sbc_set) & BT_A2DP_SBC_SUB_BAND(sbc)) == 0) ||
-		    ((BT_A2DP_SBC_ALLOC_MTHD(sbc_set) & BT_A2DP_SBC_ALLOC_MTHD(sbc)) == 0)) {
+		if(((BT_A2DP_SBC_SAMP_FREQ(sbc_set) & BT_A2DP_SBC_SAMP_FREQ(sbc)) == 0)){
+			*errcode = BT_A2DP_NOT_SUPPORTED_SAMPLING_FREQUENCY;
+			return -EINVAL;	
+		}
+		else if((BT_A2DP_SBC_CHAN_MODE(sbc_set) & BT_A2DP_SBC_CHAN_MODE(sbc)) == 0){
+			*errcode = BT_A2DP_NOT_SUPPORTED_CHANNEL_MODE;
+			return -EINVAL;	
+		}
+		else if((BT_A2DP_SBC_SUB_BAND(sbc_set) & BT_A2DP_SBC_SUB_BAND(sbc)) == 0){
+			*errcode = BT_A2DP_NOT_SUPPORTED_SUBBANDS;
+			return -EINVAL;	
+		}
+		else if((BT_A2DP_SBC_ALLOC_MTHD(sbc_set) & BT_A2DP_SBC_ALLOC_MTHD(sbc)) == 0){
+			*errcode = BT_A2DP_NOT_SUPPORTED_ALLOCATION_METHOD;
+			return -EINVAL;	
+		}						
+		else if(((BT_A2DP_SBC_BLK_LEN(sbc_set) & BT_A2DP_SBC_BLK_LEN(sbc)) == 0)){	
 			*errcode = BT_AVDTP_BAD_ACP_SEID;
-			return -EINVAL;
+			return -EINVAL;	
 		}
 	}
 
