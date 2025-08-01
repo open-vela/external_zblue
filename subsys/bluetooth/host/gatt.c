@@ -3644,13 +3644,28 @@ static struct gatt_sub *gatt_sub_find(struct bt_conn *conn)
 	return NULL;
 }
 
+static struct gatt_sub *gatt_sub_get(struct bt_dev *hdev)
+{
+	__ASSERT(hdev, "hdev null\n");
+
+	for (int i = 0; i < ARRAY_SIZE(hdev->gatt_ctx->subscriptions); i++) {
+		struct gatt_sub *sub = &hdev->gatt_ctx->subscriptions[i];
+
+		if (bt_addr_le_eq(&sub->peer, BT_ADDR_LE_ANY)) {
+			return sub;
+		}
+	}
+
+	return NULL;
+}
+
 static struct gatt_sub *gatt_sub_add(struct bt_conn *conn)
 {
 	struct gatt_sub *sub;
 
 	sub = gatt_sub_find(conn);
 	if (!sub) {
-		sub = gatt_sub_find(NULL);
+		sub = gatt_sub_get(conn->hdev);
 		if (sub) {
 			bt_addr_le_copy(&sub->peer, &conn->le.dst);
 			sub->id = conn->id;
@@ -3681,7 +3696,7 @@ static struct gatt_sub *gatt_sub_add_by_addr(struct bt_dev *hdev, uint8_t id,
 
 	sub = gatt_sub_find_by_addr(hdev, id, addr);
 	if (!sub) {
-		sub = gatt_sub_find(NULL);
+		sub = gatt_sub_get(hdev);
 		if (sub) {
 			bt_addr_le_copy(&sub->peer, addr);
 			sub->id = id;
