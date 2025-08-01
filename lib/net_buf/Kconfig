@@ -19,7 +19,7 @@ config NET_BUF_LOG
 
 module = NET_BUF
 module-str = net_buf
-source "subsys/logging/Kconfig.template.log_config"
+# source "subsys/logging/Kconfig.template.log_config"
 
 if NET_BUF_LOG
 
