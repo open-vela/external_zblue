@@ -93,7 +93,6 @@ static struct bt_dev bt_dev_pool[CONFIG_BT_NUM_CTLRS];
 
 #if 0
 struct bt_dev bt_dev = {
-	.index 	   = 0,
 	.init          = Z_WORK_INITIALIZER(init_work),
 #if defined(CONFIG_BT_PRIVACY)
 	.rpa_timeout   = CONFIG_BT_RPA_TIMEOUT,
@@ -372,7 +371,7 @@ struct net_buf *bt_hci_cmd_create(uint16_t opcode, uint8_t param_len)
 	struct bt_hci_cmd_hdr *hdr;
 	struct net_buf *buf;
 
-	LOG_DBG("opcode 0x%04x param_len %u", opcode, param_len);
+	LOG_DBG("opcode 0x%04x %s param_len %u", opcode, bt_hci_opcode_to_str(opcode), param_len);
 
 	/* net_buf_alloc(K_FOREVER) can fail when run from the syswq */
 	buf = net_buf_alloc(&hci_cmd_pool, K_FOREVER);
@@ -407,7 +406,7 @@ int bt_hci_cmd_send(struct bt_dev *hdev, uint16_t opcode, struct net_buf *buf)
 		}
 	}
 
-	LOG_DBG("opcode 0x%04x len %u", opcode, buf->len);
+	LOG_DBG("opcode 0x%04x %s len %u", opcode, bt_hci_opcode_to_str(opcode), buf->len);
 
 	/* Host Number of Completed Packets can ignore the ncmd value
 	 * and does not generate any cmd complete/status events.
@@ -451,7 +450,7 @@ int bt_hci_cmd_send_sync(struct bt_dev *hdev, uint16_t opcode, struct net_buf *b
 		}
 	}
 
-	LOG_DBG("buf %p opcode 0x%04x len %u", buf, opcode, buf->len);
+	LOG_DBG("buf %p opcode 0x%04x %s len %u", buf, opcode, bt_hci_opcode_to_str(opcode), buf->len);
 
 	/* This local sem is just for suspending the current thread until the
 	 * command is processed by the LL. It is given (and we are awaken) by
@@ -488,19 +487,19 @@ int bt_hci_cmd_send_sync(struct bt_dev *hdev, uint16_t opcode, struct net_buf *b
 			 */
 			__maybe_unused bool success = process_pending_cmd(hdev, HCI_CMD_TIMEOUT);
 
-			BT_ASSERT_MSG(success, "command opcode 0x%04x timeout", opcode);
+			BT_ASSERT_MSG(success, "command opcode 0x%04x %s timeout", opcode, bt_hci_opcode_to_str(opcode));
 		} while (buf != cmd);
 	}
 
 	/* Now that we have sent the command, suspend until the LL replies */
 	err = k_sem_take(&sync_sem, HCI_CMD_TIMEOUT);
 	BT_ASSERT_MSG(err == 0,
-		      "Controller unresponsive, command opcode 0x%04x timeout with err %d",
-		      opcode, err);
+		      "Controller unresponsive, command opcode 0x%04x %s timeout with err %d",
+		      opcode, bt_hci_opcode_to_str(opcode), err);
 
 	status = cmd(buf)->status;
 	if (status) {
-		LOG_WRN("opcode 0x%04x status 0x%02x %s", opcode,
+		LOG_WRN("opcode 0x%04x %s status 0x%02x %s", opcode, bt_hci_opcode_to_str(opcode),
 			status, bt_hci_err_to_str(status));
 		net_buf_unref(buf);
 
@@ -518,7 +517,7 @@ int bt_hci_cmd_send_sync(struct bt_dev *hdev, uint16_t opcode, struct net_buf *b
 		}
 	}
 
-	LOG_DBG("rsp %p opcode 0x%04x len %u", buf, opcode, buf->len);
+	LOG_DBG("rsp %p opcode 0x%04x %s len %u", buf, opcode, buf->len, bt_hci_opcode_to_str(opcode));
 
 	if (rsp) {
 		*rsp = buf;
@@ -2529,7 +2528,8 @@ static void hci_cmd_done(struct bt_dev *hdev, uint16_t opcode,
 	/* Original command buffer. */
 	struct net_buf *buf = NULL;
 
-	LOG_DBG("opcode 0x%04x status 0x%02x %s buf %p", opcode,
+	LOG_DBG("opcode 0x%04x %s, status 0x%02x %s buf %p", opcode,
+		bt_hci_opcode_to_str(opcode),
 		status, bt_hci_err_to_str(status), evt_buf);
 
 	/* Unsolicited cmd complete. This does not complete a command.
@@ -2548,8 +2548,8 @@ static void hci_cmd_done(struct bt_dev *hdev, uint16_t opcode,
 	}
 
 	if (cmd(buf)->opcode != opcode) {
-		LOG_ERR("OpCode 0x%04x completed instead of expected 0x%04x", opcode,
-			cmd(buf)->opcode);
+		LOG_ERR("OpCode 0x%04x %s completed instead of expected 0x%04x %s", opcode,
+			bt_hci_opcode_to_str(opcode), cmd(buf)->opcode, bt_hci_opcode_to_str(cmd(buf)->opcode));
 		buf = atomic_ptr_set((atomic_ptr_t *)&hdev->sent_cmd, buf);
 		__ASSERT_NO_MSG(!buf);
 		goto exit;
@@ -2594,7 +2594,7 @@ static void hci_cmd_complete(struct bt_dev *hdev, struct net_buf *buf)
 	ncmd = evt->ncmd;
 	opcode = sys_le16_to_cpu(evt->opcode);
 
-	LOG_DBG("opcode 0x%04x", opcode);
+	LOG_DBG("opcode 0x%04x %s", opcode, bt_hci_opcode_to_str(opcode));
 
 	/* All command return parameters have a 1-byte status in the
 	 * beginning, so we can safely make this generalization.
@@ -2629,7 +2629,7 @@ static void hci_cmd_status(struct bt_dev *hdev, struct net_buf *buf)
 	opcode = sys_le16_to_cpu(evt->opcode);
 	ncmd = evt->ncmd;
 
-	LOG_DBG("opcode 0x%04x", opcode);
+	LOG_DBG("opcode 0x%04x %s", opcode, bt_hci_opcode_to_str(opcode));
 
 	hci_cmd_done(hdev, opcode, evt->status, buf);
 
@@ -3178,7 +3178,7 @@ static void hci_core_send_cmd(struct bt_dev *hdev)
 
 	hdev->sent_cmd = net_buf_ref(buf);
 
-	LOG_DBG("Sending command 0x%04x (buf %p) to driver", cmd(buf)->opcode, buf);
+	LOG_DBG("Sending command 0x%04x %s (buf %p) to driver", cmd(buf)->opcode, bt_hci_opcode_to_str(cmd(buf)->opcode), buf);
 
 	err = bt_send(hdev, buf);
 	if (err) {
