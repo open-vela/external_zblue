@@ -517,7 +517,7 @@ int bt_hci_cmd_send_sync(struct bt_dev *hdev, uint16_t opcode, struct net_buf *b
 		}
 	}
 
-	LOG_DBG("rsp %p opcode 0x%04x %s len %u", buf, opcode, buf->len, bt_hci_opcode_to_str(opcode));
+	LOG_DBG("rsp %p opcode 0x%04x %s len %u", buf, opcode, bt_hci_opcode_to_str(opcode), buf->len);
 
 	if (rsp) {
 		*rsp = buf;
