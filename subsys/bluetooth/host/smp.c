@@ -4175,6 +4175,7 @@ static uint8_t smp_id_add_replace(struct bt_smp *smp, struct bt_keys *new_bond)
 struct addr_match {
 	const bt_addr_le_t *rpa;
 	const bt_addr_le_t *id_addr;
+	struct bt_keys *keys;
 };
 
 static void convert_to_id_on_match(struct bt_conn *conn, void *data)
@@ -4183,6 +4184,10 @@ static void convert_to_id_on_match(struct bt_conn *conn, void *data)
 
 	if (bt_addr_le_eq(&conn->le.dst, addr_match->rpa)) {
 		bt_addr_le_copy(&conn->le.dst, addr_match->id_addr);
+
+		if (conn->le.keys && conn->le.keys != addr_match->keys) {
+			bt_addr_le_copy(&conn->le.keys->addr, addr_match->id_addr);
+		}
 	}
 }
 
@@ -4250,6 +4255,7 @@ static uint8_t smp_ident_addr_info(struct bt_smp *smp, struct net_buf *buf)
 				struct addr_match addr_match = {
 					.rpa = &conn->le.dst,
 					.id_addr = &req->addr,
+					.keys = keys,
 				};
 
 				bt_conn_foreach_mc(conn->hdev->dev_id, BT_CONN_TYPE_LE,
