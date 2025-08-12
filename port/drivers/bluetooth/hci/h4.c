@@ -44,6 +44,8 @@
 LOG_MODULE_REGISTER(bt_driver);
 
 #define DT_DRV_COMPAT zephyr_bt_hci_ttyHCI
+#define RX_THREAD_STACK_USED_MODE_SIZE    (3072)
+#define RX_THREAD_STACK_DEBUG_MODE_SIZE   (4096)
 
 struct h4_data {
 	int fd;
@@ -51,7 +53,11 @@ struct h4_data {
 	bt_hci_recv_t recv;
 	void *hci_data;
 	struct k_thread rx_thread_data;
-	K_KERNEL_STACK_DEFINE(rx_thread_stack, 3072);
+#if (CONFIG_BLUETOOTH_SERVICE_LOG_LEVEL > 2 || CONFIG_BT_DEBUG_LOG > 2)
+	K_KERNEL_STACK_DEFINE(rx_thread_stack, RX_THREAD_STACK_DEBUG_MODE_SIZE);
+#else
+	K_KERNEL_STACK_DEFINE(rx_thread_stack, RX_THREAD_STACK_USED_MODE_SIZE);
+#endif //(CONFIG_BLUETOOTH_SERVICE_LOG_LEVEL > 2 || CONFIG_BT_DEBUG_LOG > 2)
 	uint8_t frame[1026];
 };
 
