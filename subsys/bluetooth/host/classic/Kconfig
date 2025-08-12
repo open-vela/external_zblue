@@ -69,6 +69,13 @@ config BT_RFCOMM_TX_MAX
 	  sending buf. Normally this can be left to the default value, which
 	  is equal to the number of session in the stack-internal pool.
 
+config BT_HID_DEVICE
+	bool "Bluetooth HID Device Profile [EXPERIMENTAL]"
+	select EXPERIMENTAL
+	default n
+	help
+	  This option enables the HID Device profile
+
 config BT_HFP_HF
 	bool "Bluetooth Handsfree profile HF Role support [EXPERIMENTAL]"
 	depends on PRINTK
