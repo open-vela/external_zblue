@@ -2119,6 +2119,10 @@ void bt_l2cap_br_init(struct bt_dev *hdev)
 		bt_rfcomm_init();
 	}
 
+	if (IS_ENABLED(CONFIG_BT_HID_DEVICE)) {
+		bt_hid_dev_init();
+	}
+
 	if (IS_ENABLED(CONFIG_BT_AVDTP)) {
 		bt_avdtp_init();
 	}
