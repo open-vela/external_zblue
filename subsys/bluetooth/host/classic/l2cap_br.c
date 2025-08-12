@@ -2146,4 +2146,8 @@ void bt_l2cap_br_init(struct bt_dev *hdev)
 	if (IS_ENABLED(CONFIG_BT_DID)) {
 		bt_did_init();
 	}
+
+	if (IS_ENABLED(CONFIG_BT_HID_DEVICE)) {
+		bt_hid_dev_init();
+	}
 }

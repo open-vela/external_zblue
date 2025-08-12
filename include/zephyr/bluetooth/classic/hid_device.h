@@ -84,9 +84,9 @@ struct bt_hid_device_cb {
 	/**
 	 * @brief HID Device Connected Callback
 	 *
-	 * The callback is called whenever an HID device connected.
+	 * The callback is called whenever an hid device connected.
 	 *
-	 *  @param hid HID device connection object.
+	 *  @param hid hid device connection object.
 	 *
 	 */
 	void (*connected)(struct bt_hid_device *hid);
@@ -94,54 +94,44 @@ struct bt_hid_device_cb {
 	/**
 	 * @brief HID Device Disconected Callback
 	 *
-	 * The callback is called whenever an HID device disconnected.
+	 * The callback is called whenever an hid device disconnected.
 	 *
-	 *  @param hid HID device connection object.
+	 *  @param hid hid device connection object.
 	 *
 	 */
 	void (*disconnected)(struct bt_hid_device *hid);
 
 	/**
-	 * @brief HID Device Accept Callback
-	 *
-	 *  An HID device connection accept from remote.
-	 *
-	 *  @param hid HID device connection object.
-	 *
-	 */
-	void (*accept)(struct bt_hid_device *hid);
-
-	/**
 	 * @brief HID Device Set Report Callback
 	 *
-	 *  An HID device set report request from remote.
+	 *  An hid device set report request from remote.
 	 *
-	 *  @param hid HID device connection object.
-	 *  @param data Value.
-	 *  @param len  Len.
+	 *  @param hid hid device connection object.
+	 *  @param data value.
+	 *  @param data len.
 	 *
 	 */
-	void (*set_report)(struct bt_hid_device *hid, const uint8_t *data, uint16_t len);
+	void (*set_report)(struct bt_hid_device *hid, uint8_t *data, uint16_t len);
 
 	/**
 	 * @brief HID Device Get Report Callback
 	 *
-	 *  An HID device get report request from remote.
+	 *  An hid device get report request from remote.
 	 *
-	 *  @param hid HID device connection object.
-	 *  @param data Value.
-	 *  @param len Len.
+	 *  @param hid hid device connection object.
+	 *  @param data value.
+	 *  @param data len.
 	 *
 	 */
-	void (*get_report)(struct bt_hid_device *hid, const uint8_t *data, uint16_t len);
+	void (*get_report)(struct bt_hid_device *hid, uint8_t *data, uint16_t len);
 
 	/**
 	 * @brief HID Device Set Protocol Callback
 	 *
-	 *  An HID device set protocol request from remote.
+	 *  An hid device set protocol request from remote.
 	 *
-	 *  @param hid HID device connection object.
-	 *  @param protocol Protocol.
+	 *  @param hid hid device connection object.
+	 *  @param protocol protocol.
 	 *
 	 */
 	void (*set_protocol)(struct bt_hid_device *hid, uint8_t protocol);
@@ -149,9 +139,9 @@ struct bt_hid_device_cb {
 	/**
 	 * @brief HID Device Get Protocol Callback
 	 *
-	 *  An HID device get protocol request from remote.
+	 *  An hid device get protocol request from remote.
 	 *
-	 *  @param hid HID device connection object.
+	 *  @param hid hid device connection object.
 	 *
 	 */
 	void (*get_protocol)(struct bt_hid_device *hid);
@@ -159,11 +149,11 @@ struct bt_hid_device_cb {
 	/**
 	 * @brief HID Device Intr data Callback
 	 *
-	 *  An HID device intr data request from remote.
+	 *  An hid device intr data request from remote.
 	 *
-	 *  @param hid HID device connection object.
-	 *  @param data Value.
-	 *  @param len  Len.
+	 *  @param hid hid device connection object.
+	 *  @param data value.
+	 *  @param data len.
 	 *
 	 */
 	void (*intr_data)(struct bt_hid_device *hid, uint8_t *data, uint16_t len);
@@ -171,9 +161,9 @@ struct bt_hid_device_cb {
 	/**
 	 * @brief HID Device Unplug Callback
 	 *
-	 *  An HID device unplug request from remote.
+	 *  An hid device unplug request from remote.
 	 *
-	 *  @param hid HID device connection object.
+	 *  @param hid hid device connection object.
 	 *
 	 */
 	void (*vc_unplug)(struct bt_hid_device *hid);
@@ -185,9 +175,9 @@ struct bt_hid_device_cb {
  *
  *  @param cb The callback function.
  *
- *  @return 0 In case of success and error code in case of error.
+ *  @return 0 in case of success and error code in case of error.
  */
-int Z_API(bt_hid_device_register)(struct bt_hid_device_cb *cb);
+int bt_hid_device_register(struct bt_hid_device_cb *cb);
 
 /** @brief HID Device Connect.
  *
@@ -197,69 +187,59 @@ int Z_API(bt_hid_device_register)(struct bt_hid_device_cb *cb);
  *
  *  @param conn Pointer to bt_conn structure.
  *
- *  @return Pointer to struct bt_hid_device in case of success or NULL in case
+ *  @return pointer to struct bt_hid_device in case of success or NULL in case
  *  of error.
  */
-struct bt_hid_device *Z_API(bt_hid_device_connect)(struct bt_conn *conn);
+struct bt_hid_device *bt_hid_device_connect(struct bt_conn *conn);
 
 /** @brief HID Device Disconnect
  *
  * This function close HID Device connection.
  *
- *  @param hid HID device connection object.
+ *  @param hid The bt_hid_device instance.
  *
  *  @return 0 in case of success and error code in case of error.
  */
-int Z_API(bt_hid_device_disconnect)(struct bt_hid_device *hid);
+int bt_hid_device_disconnect(struct bt_hid_device *hid);
 
 /** @brief HID Device Send Ctrl Data.
  *
  *  Send hid data by ctrl channel.
  *
- *  @param hid HID device connection object.
+ *  @param hid The bt_hid_device instance.
  *  @param type HID report type.
- *  @param data Send buffer.
- *  @param len Buffer size.
+ *  @param data send buffer.
+ *  @param len buffer size.
  *
  *  @return size in case of success and error code in case of error.
  */
-int Z_API(bt_hid_device_send_ctrl_data)(struct bt_hid_device *hid, uint8_t type,
-					const uint8_t *data, uint16_t len);
+int bt_hid_device_send_ctrl_data(struct bt_hid_device *hid, uint8_t type, uint8_t *data,
+				 uint16_t len);
 
 /** @brief HID Device Send Intr Data.
  *
  *  Send hid data by Intr channel.
  *
- *  @param hid HID device connection object.
+ *  @param hid The bt_hid_device instance.
  *  @param type HID report type.
- *  @param data Send buffer.
- *  @param len Buffer size.
+ *  @param data send buffer.
+ *  @param len buffer size.
  *
  *  @return size in case of success and error code in case of error.
  */
-int Z_API(bt_hid_device_send_intr_data)(struct bt_hid_device *hid, uint8_t type,
-					const uint8_t *data, uint16_t len);
+int bt_hid_device_send_intr_data(struct bt_hid_device *hid, uint8_t type, uint8_t *data,
+				 uint16_t len);
 
 /** @brief HID Device Send Error Response.
  *
  *  Send hid error response by ctrl channel.
  *
- *  @param hid HID device connection object.
- *  @param error Error code.
+ *  @param hid The bt_hid_device instance.
+ *  @param error error code.
  *
  *  @return size in case of success and error code in case of error.
  */
-int Z_API(bt_hid_device_report_error)(struct bt_hid_device *hid, uint8_t error);
-
-/** @brief HID Device Unplug.
- *
- * This function Unplug HID Device.
- *
- *  @param hid HID device connection object.
- *
- *  @return 0 in case of success and error code in case of error.
- */
-int Z_API(bt_hid_device_virtual_unplug)(struct bt_hid_device *hid);
+int bt_hid_device_report_error(struct bt_hid_device *hid, uint8_t error);
 
 #ifdef __cplusplus
 }

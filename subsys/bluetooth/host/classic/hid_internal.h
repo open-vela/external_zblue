@@ -28,9 +28,6 @@
 #define BT_HID_TYPE_DATAC        0x0b
 
 /* Parameters for Control */
-#define BT_HID_CONTROL_NOP                  0x00
-#define BT_HID_CONTROL_HARD_RESET           0x01
-#define BT_HID_CONTROL_SUSPEND_EXIT         0x02
 #define BT_HID_CONTROL_SUSPEND              0x03
 #define BT_HID_CONTROL_EXIT_SUSPEND         0x04
 #define BT_HID_CONTROL_VIRTUAL_CABLE_UNPLUG 0x05
