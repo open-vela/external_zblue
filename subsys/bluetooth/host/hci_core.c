@@ -4649,6 +4649,7 @@ int bt_disable_mc(uint8_t dev_id)
 #if defined(CONFIG_BT_RECV_WORKQ_BT)
 	/* Abort RX thread */
 	k_thread_abort(&bt_workq.thread);
+	bt_workq.flags &= ~K_WORK_QUEUE_STARTED;
 #endif
 
 	/* Some functions rely on checking this bitfield */
