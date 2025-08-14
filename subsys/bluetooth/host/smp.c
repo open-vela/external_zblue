@@ -1238,6 +1238,12 @@ static uint8_t smp_br_pairing_req(struct bt_smp_br *smp, struct net_buf *buf)
 	/* BR/EDR acceptor is like LE Peripheral and distributes keys first */
 	smp_br_distribute_keys(smp);
 
+	if (conn->hdev->smp_ctx->bondable) {
+		atomic_set_bit(smp->flags, SMP_FLAG_BOND);
+	} else {
+		atomic_clear_bit(smp->flags, SMP_FLAG_BOND);
+	}
+
 	if (smp->remote_dist & BT_SMP_DIST_ID_KEY) {
 		atomic_set_bit(smp->allowed_cmds, BT_SMP_CMD_IDENT_INFO);
 	} else if (smp->remote_dist & BT_SMP_DIST_SIGN) {
