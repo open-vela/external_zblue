@@ -3155,6 +3155,36 @@ int bt_gatt_notify_multiple(struct bt_conn *conn,
 }
 #endif /* CONFIG_BT_GATT_NOTIFY_MULTIPLE */
 
+static int gatt_indicate_mc(uint16_t handle,
+			    struct bt_gatt_indicate_params *params)
+{
+	struct notify_data data;
+	uint8_t dev_id;
+	struct bt_dev *hdev;
+
+	data.err = -ENOTCONN;
+	data.type = BT_GATT_CCC_INDICATE;
+	data.ind_params = params;
+	params->_ref = 0;
+
+	for (dev_id = 0; dev_id < CONFIG_BT_NUM_CTLRS; dev_id++) {
+		hdev = bt_dev_get(dev_id);
+
+		if (!hdev) {
+			continue;
+		}
+		if (!atomic_test_bit(hdev->flags, BT_DEV_READY)) {
+			continue;
+		}
+
+		data.hdev = hdev;
+		bt_gatt_foreach_attr_type_mc(hdev->dev_id, handle, 0xffff,
+					     BT_UUID_GATT_CCC, NULL,
+					     1, notify_cb, &data);
+	}
+
+	return data.err;
+}
 int bt_gatt_indicate(struct bt_conn *conn,
 		     struct bt_gatt_indicate_params *params)
 {
@@ -3164,7 +3194,7 @@ int bt_gatt_indicate(struct bt_conn *conn,
 	__ASSERT(params->attr || params->uuid, "invalid parameters\n");
 
 	if (!conn) {
-		return -ENOTCONN;
+		return gatt_indicate_mc(bt_gatt_attr_get_handle(data.attr), params);
 	}
 
 	if (!atomic_test_bit(conn->hdev->flags, BT_DEV_READY)) {
@@ -3203,20 +3233,8 @@ int bt_gatt_indicate(struct bt_conn *conn,
 		data.handle = bt_gatt_attr_value_handle(data.attr);
 	}
 
-	if (conn) {
-		params->_ref = 1;
-		return gatt_indicate(conn, data.handle, params);
-	}
-
-	data.err = -ENOTCONN;
-	data.type = BT_GATT_CCC_INDICATE;
-	data.ind_params = params;
-
-	params->_ref = 0;
-	bt_gatt_foreach_attr_type_mc(conn->hdev->dev_id, data.handle, 0xffff, BT_UUID_GATT_CCC, NULL,
-				  1, notify_cb, &data);
-
-	return data.err;
+	params->_ref = 1;
+	return gatt_indicate(conn, data.handle, params);
 }
 
 uint16_t bt_gatt_get_mtu(struct bt_conn *conn)
