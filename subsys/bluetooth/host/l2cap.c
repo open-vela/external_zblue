@@ -2845,8 +2845,9 @@ void bt_l2cap_init(struct bt_dev *hdev)
 {
 	struct bt_dev_l2cap_ctx *l2cap_ctx = &l2cap_ctx_pool[hdev->dev_id];
 	hdev->l2cap_ctx = l2cap_ctx;
-
+#if defined(CONFIG_BT_L2CAP_DYNAMIC_CHANNEL)
 	sys_slist_init(&l2cap_ctx->servers);
+#endif //defined(CONFIG_BT_L2CAP_DYNAMIC_CHANNEL)
 	l2cap_ctx->ident = 0;
 
 	if (IS_ENABLED(CONFIG_BT_CLASSIC)) {
