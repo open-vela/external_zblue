@@ -40,7 +40,7 @@
 #include <sys/ioctl.h>
 #include <sys/uio.h>
 
-#include "bluetooth/bluetooth.h"
+#include <zephyr/bluetooth/bluetooth.h>
 #include "drivers/bluetooth/hci_driver.h"
 
 #include <logging/log.h>
@@ -216,10 +216,8 @@ static const struct bt_hci_driver drv = {
 	.send		= native_send,
 };
 
-static int bt_native_init(const struct device *unused)
+static int bt_native_init(void)
 {
-	ARG_UNUSED(unused);
-
 	bt_hci_driver_register(&drv);
 
 	return 0;
