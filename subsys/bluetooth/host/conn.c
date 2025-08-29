@@ -4383,7 +4383,9 @@ int bt_conn_init(struct bt_dev *hdev)
 	conn_ctx->hdev = hdev;
 
 	k_fifo_init(&conn_ctx->free_tx);
+#if defined(CONFIG_BT_SMP) || defined(CONFIG_BT_CLASSIC)
 	sys_slist_init(&hdev->bt_auth_info_cbs);
+#endif //defined(CONFIG_BT_SMP) || defined(CONFIG_BT_CLASSIC)
 	sys_slist_init(&conn_ctx->conn_cbs);
 	k_sem_init(&conn_ctx->pending_recycled_events, 0, K_SEM_MAX_LIMIT);
 	k_work_init(&conn_ctx->recycled_work, recycled_work_handler);
