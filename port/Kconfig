@@ -23,6 +23,19 @@ config BT_H4
     Bluetooth H:4 UART driver. Requires hardware flow control
     lines to be available.
 
+config BT_NATIVE
+  bool "HCI over Native"
+  default y
+  help
+    Attach local controller with direct call method.
+
+config BT_NATIVE_THREAD_STACK_SIZE
+  int "Bluetooth HCI Driver Thread Stack Size"
+  default 768
+  depends on BT_NATIVE && !BT_THREAD_NO_PREEM
+  help
+    None.
+
 config BT_MC_SHELL
   bool "Bluetooth shell"
   default n
