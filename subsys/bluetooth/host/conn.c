@@ -2663,6 +2663,37 @@ int bt_conn_le_start_encryption(struct bt_conn *conn, uint8_t rand[8],
 #endif /* CONFIG_BT_SMP */
 
 #if defined(CONFIG_BT_SMP) || defined(CONFIG_BT_CLASSIC)
+uint8_t bt_conn_read_enc_key_size(const struct bt_conn *conn)
+{
+	struct bt_hci_cp_read_encryption_key_size *cp;
+	struct bt_hci_rp_read_encryption_key_size *rp;
+	struct net_buf *buf;
+	struct net_buf *rsp;
+	uint8_t key_size;
+
+	buf = bt_hci_cmd_create(BT_HCI_OP_READ_ENCRYPTION_KEY_SIZE,
+				sizeof(*cp));
+	if (!buf) {
+		return 0;
+	}
+
+	cp = net_buf_add(buf, sizeof(*cp));
+	cp->handle = sys_cpu_to_le16(conn->handle);
+
+	if (bt_hci_cmd_send_sync(conn->hdev, BT_HCI_OP_READ_ENCRYPTION_KEY_SIZE,
+				buf, &rsp)) {
+		return 0;
+	}
+
+	rp = (void *)rsp->data;
+
+	key_size = rp->status ? 0 : rp->key_size;
+
+	net_buf_unref(rsp);
+
+	return key_size;
+}
+
 uint8_t bt_conn_enc_key_size(const struct bt_conn *conn)
 {
 	if (!conn->encrypt) {
@@ -2671,33 +2702,7 @@ uint8_t bt_conn_enc_key_size(const struct bt_conn *conn)
 
 	if (IS_ENABLED(CONFIG_BT_CLASSIC) &&
 	    conn->type == BT_CONN_TYPE_BR) {
-		struct bt_hci_cp_read_encryption_key_size *cp;
-		struct bt_hci_rp_read_encryption_key_size *rp;
-		struct net_buf *buf;
-		struct net_buf *rsp;
-		uint8_t key_size;
-
-		buf = bt_hci_cmd_create(BT_HCI_OP_READ_ENCRYPTION_KEY_SIZE,
-					sizeof(*cp));
-		if (!buf) {
-			return 0;
-		}
-
-		cp = net_buf_add(buf, sizeof(*cp));
-		cp->handle = sys_cpu_to_le16(conn->handle);
-
-		if (bt_hci_cmd_send_sync(conn->hdev, BT_HCI_OP_READ_ENCRYPTION_KEY_SIZE,
-					buf, &rsp)) {
-			return 0;
-		}
-
-		rp = (void *)rsp->data;
-
-		key_size = rp->status ? 0 : rp->key_size;
-
-		net_buf_unref(rsp);
-
-		return key_size;
+			return conn->br.link_key ? conn->br.link_key->key_size : 0;
 	}
 
 	if (IS_ENABLED(CONFIG_BT_SMP)) {
