@@ -3158,7 +3158,7 @@ int bt_gatt_notify_multiple(struct bt_conn *conn,
 static int gatt_indicate_mc(uint16_t handle,
 			    struct bt_gatt_indicate_params *params)
 {
-	struct notify_data data;
+	struct notify_data data = { 0 };
 	uint8_t dev_id;
 	struct bt_dev *hdev;
 
@@ -3188,7 +3188,7 @@ static int gatt_indicate_mc(uint16_t handle,
 int bt_gatt_indicate(struct bt_conn *conn,
 		     struct bt_gatt_indicate_params *params)
 {
-	struct notify_data data;
+	struct notify_data data = { 0 };
 
 	__ASSERT(params, "invalid parameters\n");
 	__ASSERT(params->attr || params->uuid, "invalid parameters\n");
