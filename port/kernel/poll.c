@@ -240,16 +240,19 @@ int k_poll(struct k_poll_event *events, int num_events,
 		  k_timeout_t timeout)
 {
 	int events_registered;
-	k_spinlock_key_t key;
-	struct z_poller poller;
+	k_spinlock_key_t key; 
+    struct z_poller *poller = k_malloc(sizeof(*poller));
+    if (!poller) {
+		return -ENOMEM;
+	}
 
-    k_sem_init(&poller.sem, 0, 1);
-	poller.is_polling = true;
+    k_sem_init(&poller->sem, 0, 1);
+	poller->is_polling = true;
 
 	__ASSERT(events != NULL, "NULL events\n");
 	__ASSERT(num_events >= 0, "<0 events\n");
 
-	events_registered = register_events(events, num_events, &poller,
+	events_registered = register_events(events, num_events, poller,
 					    K_TIMEOUT_EQ(timeout, K_NO_WAIT));
 
 	key = k_spin_lock(&lock);
@@ -259,22 +262,24 @@ int k_poll(struct k_poll_event *events, int num_events,
 	 * condition is met, either when looping through the events here or
 	 * because one of the events registered has had its state changed.
 	 */
-	if (!poller.is_polling) {
+	if (!poller->is_polling) {
 		clear_event_registrations(events, events_registered, key);
 		k_spin_unlock(&lock, key);
+		k_free(poller);
 
 		return 0;
 	}
 
-	poller.is_polling = false;
+	poller->is_polling = false;
 
 	if (K_TIMEOUT_EQ(timeout, K_NO_WAIT)) {
 		k_spin_unlock(&lock, key);
+		k_free(poller);
 
 		return -EAGAIN;
 	}
 
-	int ret = k_sem_take(&poller.sem, timeout);
+	int ret = k_sem_take(&poller->sem, timeout);
 
 	/*
 	 * Clear all event registrations. If events happen while we're in this
@@ -288,6 +293,7 @@ int k_poll(struct k_poll_event *events, int num_events,
 	key = k_spin_lock(&lock);
 	clear_event_registrations(events, events_registered, key);
 	k_spin_unlock(&lock, key);
+	k_free(poller);
 
 	return ret;
 }
