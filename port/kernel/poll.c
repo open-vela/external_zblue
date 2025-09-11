@@ -269,6 +269,7 @@ int k_poll(struct k_poll_event *events, int num_events,
 	poller.is_polling = false;
 
 	if (K_TIMEOUT_EQ(timeout, K_NO_WAIT)) {
+		events->poller = NULL;
 		k_spin_unlock(&lock, key);
 
 		return -EAGAIN;
