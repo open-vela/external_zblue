@@ -2325,7 +2325,7 @@ static void hci_encrypt_change(struct bt_dev *hdev, struct net_buf *buf)
 			}
 		}
 
-		if (conn->encrypt) {
+		if (conn->encrypt && conn->br.link_key != NULL) {
 			conn->br.link_key->key_size = bt_conn_read_enc_key_size(conn);
 		}
 	}
