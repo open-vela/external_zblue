@@ -1515,10 +1515,8 @@ int bt_sdp_unregister_service_mc(uint8_t dev_id, struct bt_sdp_record *service)
 	hdev->sdp_ctx->num_services--;
 	hdev->sdp_ctx->db = head.next;
 	node = hdev->sdp_ctx->db;
-	if(node == NULL)
-		return 0;
 
-	while (node->index > service->index) {
+	while (node != NULL && node->index > service->index) {
 		node->index--;
 		node = node->next;
 	}
