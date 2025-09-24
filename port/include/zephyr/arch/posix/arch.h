@@ -30,6 +30,7 @@ extern "C" {
 #include <zephyr/arch/posix/thread.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/arch/common/ffs.h>
+#include <nuttx/spinlock.h>
 
 #ifdef CONFIG_64BIT
 #define ARCH_STACK_PTR_ALIGN 8
