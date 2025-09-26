@@ -1659,11 +1659,6 @@ void bt_gatt_cb_unregister_mc(uint8_t dev_id, struct bt_gatt_cb *cb)
 	sys_slist_find_and_remove(&hdev->gatt_ctx->callback_list, &cb->node);
 }
 
-void bt_gatt_cb_unregister(struct bt_gatt_cb *cb)
-{
-	sys_slist_find_and_remove(&callback_list, &cb->node);
-}
-
 #if defined(CONFIG_BT_GATT_DYNAMIC_DB)
 static void db_changed(struct bt_dev *hdev)
 {
