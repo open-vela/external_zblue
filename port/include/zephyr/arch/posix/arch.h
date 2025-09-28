@@ -33,9 +33,9 @@ extern "C" {
 #include <nuttx/spinlock.h>
 
 #ifdef CONFIG_64BIT
-#define ARCH_STACK_PTR_ALIGN 8
+#define ARCH_STACK_PTR_ALIGN 16
 #else
-#define ARCH_STACK_PTR_ALIGN 4
+#define ARCH_STACK_PTR_ALIGN 8
 #endif
 
 static inline uint32_t arch_k_cycle_get_32(void)
