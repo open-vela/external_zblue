@@ -131,7 +131,9 @@
 #endif
 
 #define Z_STRINGIFY(x) #x
+#ifndef STRINGIFY
 #define STRINGIFY(s) Z_STRINGIFY(s)
+#endif
 
 /* concatenate the values of the arguments into one */
 #define _DO_CONCAT(x, y) x ## y
