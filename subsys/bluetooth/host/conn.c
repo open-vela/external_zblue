@@ -996,7 +996,6 @@ static void acl_get_and_clear_cb(struct bt_conn *conn, struct net_buf *buf,
 
 	*cb = closure_cb(buf->user_data);
 	*ud = closure_data(buf->user_data);
-	memset(buf->user_data, 0, buf->user_data_size);
 }
 #endif	/* defined(CONFIG_BT_CONN) */
 
