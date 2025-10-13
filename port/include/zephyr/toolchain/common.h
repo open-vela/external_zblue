@@ -18,6 +18,11 @@
  * Macros to abstract compiler capabilities (common to all toolchains).
  */
 
+/* Port to NuttX, prioritizing NuttX-specific macros.*/
+#ifdef __NuttX__
+#include <nuttx/macro.h>
+#endif
+
 /* Abstract use of extern keyword for compatibility between C and C++ */
 #ifdef __cplusplus
 #define EXTERN_C extern "C"
@@ -132,6 +137,7 @@
 
 #define Z_STRINGIFY(x) #x
 #ifndef STRINGIFY
+/* Ensure STRINGIFY is defined */
 #define STRINGIFY(s) Z_STRINGIFY(s)
 #endif
 
