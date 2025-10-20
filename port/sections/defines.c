@@ -115,19 +115,6 @@ const struct bt_conn_cb *_bt_conn_cb_list[] = {
 };
 /* bt_conn_cb END */
 
-/* bt_sco_conn_cb START */
-#if defined(CONFIG_BT_CLASSIC)
-/*
- * Provide an empty, NULL-terminated iterable list for bt_sco_conn_cb.
- * This satisfies STRUCT_SECTION_FOREACH(bt_sco_conn_cb, ...) when no
- * static SCO callbacks are defined via BT_SCO_CONN_CB_DEFINE().
- */
-const struct bt_sco_conn_cb *_bt_sco_conn_cb_list[] = {
-    NULL,
-};
-#endif /* CONFIG_BT_CLASSIC */
-/* bt_sco_conn_cb END */
-
 /* net_buf_pool START */
 extern struct net_buf_pool sine_tx_pool;
 extern struct net_buf_pool tx_pool;
@@ -162,25 +149,9 @@ extern struct net_buf_pool prep_pool;
 extern struct net_buf_pool att_pool;
 extern struct net_buf_pool acl_in_pool;
 extern struct net_buf_pool acl_tx_pool;
-// extern struct net_buf_pool dummy_pool;
+extern struct net_buf_pool dummy_pool;
 // extern struct net_buf_pool a2dp_tx_pool; // for Zephyr shell
-#if defined(CONFIG_BT_RFCOMM)
-extern struct net_buf_pool rfcomm_tx_pool;
-#endif
-#if defined(CONFIG_BT_A2DP_SOURCE)
 extern struct net_buf_pool bt_a2dp_tx_pool; // for openvela sal
-#endif
-#if defined(CONFIG_BT_A2DP)
-extern struct net_buf_pool avdtp_pool;
-extern struct net_buf_pool avdtp_frag_pool;
-#endif
-#if defined(CONFIG_BT_AVRCP)
-extern struct net_buf_pool avrcp_vd_tx_pool;
-extern struct net_buf_pool avrcp_vd_rx_pool;
-extern struct net_buf_pool avctp_ctrl_rx_pool;
-extern struct net_buf_pool avctp_ctrl_tx_pool;
-extern struct net_buf_pool bt_avrcp_tx_pool;
-#endif
 
 struct net_buf_pool *_net_buf_pool_list[] = {
 #if defined(CONFIG_BT_HCI)
@@ -232,23 +203,11 @@ struct net_buf_pool *_net_buf_pool_list[] = {
 #if defined(CONFIG_BT_CLASSIC)
 	&br_sig_pool,
 	&sdp_pool,
-#if defined(CONFIG_BT_A2DP)
-	&avdtp_pool,
-	&avdtp_frag_pool,
-#endif /* CONFIG_BT_A2DP */
 #if defined(CONFIG_BT_A2DP_SOURCE)
 	&bt_a2dp_tx_pool,
 #endif /* CONFIG_BT_A2DP_SOURCE */
-#if defined(CONFIG_BT_AVRCP)
-	&avrcp_vd_tx_pool,
-	&avrcp_vd_rx_pool,
-	&avctp_ctrl_rx_pool,
-	&avctp_ctrl_tx_pool,
-	&bt_avrcp_tx_pool,
-#endif /* CONFIG_BT_AVRCP */
 #if defined(CONFIG_BT_RFCOMM)
-	// &dummy_pool,
-	&rfcomm_tx_pool,
+	&dummy_pool,
 #endif /* CONFIG_BT_RFCOMM */
 #if defined(CONFIG_BT_HFP_HF)
 	&hf_pool,
@@ -281,7 +240,6 @@ struct net_buf_pool *_net_buf_pool_list[] = {
 	&data_pool,
 	&sdp_client_pool,
 #if defined(CONFIG_BT_A2DP)
-	&bt_a2dp_tx_pool,
 	// &a2dp_tx_pool,
 #endif /* CONFIG_BT_A2DP */
 #if defined(CONFIG_BT_RFCOMM)
