@@ -129,9 +129,8 @@ struct cmd_data {
 
 struct bt_dev *bt_dev_get(uint8_t dev_id)
 {
-	if (dev_id >= CONFIG_BT_NUM_CTLRS) {
-		return NULL;
-	}
+	BT_ASSERT_MSG(dev_id < CONFIG_BT_NUM_CTLRS, "Invalid dev_id %u (max %d)",
+		 dev_id, CONFIG_BT_NUM_CTLRS);
 
 	return &bt_dev_pool[dev_id];
 }
@@ -139,7 +138,7 @@ struct bt_dev *bt_dev_get(uint8_t dev_id)
 struct bt_dev *bt_dev_alloc(uint8_t dev_id)
 {
 	struct bt_dev *hdev = NULL;
-	
+
 	if (dev_id >= CONFIG_BT_NUM_CTLRS) {
 		return NULL;
 	}
