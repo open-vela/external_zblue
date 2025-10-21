@@ -299,11 +299,9 @@ typedef int (*bt_a2dp_ctrl_req_cb)(struct bt_a2dp_stream *stream, uint8_t *rsp_e
 typedef void (*bt_a2dp_ctrl_done_cb)(struct bt_a2dp_stream *stream);
 
 static int a2dp_ctrl_ind(struct bt_avdtp *session, struct bt_avdtp_sep *sep, uint8_t *errcode,
-			 bt_a2dp_ctrl_req_cb req_cb, bt_a2dp_ctrl_done_cb done_cb,
-			 bool clear_stream)
+			 bt_a2dp_ctrl_req_cb req_cb, bt_a2dp_ctrl_done_cb done_cb)
 {
 	struct bt_a2dp_ep *ep;
-	struct bt_a2dp_stream *stream;
 
 	*errcode = 0;
 	ep = CONTAINER_OF(sep, struct bt_a2dp_ep, sep);
@@ -312,25 +310,19 @@ static int a2dp_ctrl_ind(struct bt_avdtp *session, struct bt_avdtp_sep *sep, uin
 		return -EINVAL;
 	}
 
-	stream = ep->stream;
-
 	if (req_cb != NULL) {
 		uint8_t rsp_err_code;
 		int err;
 
-		err = req_cb(stream, &rsp_err_code);
+		err = req_cb(ep->stream, &rsp_err_code);
 		if (err) {
 			*errcode = rsp_err_code;
 		}
 	}
 
 	if (*errcode == 0) {
-		if (clear_stream) {
-			ep->stream = NULL;
-		}
-
 		if (done_cb != NULL) {
-			done_cb(stream);
+			done_cb(ep->stream);
 		}
 	}
 
@@ -347,7 +339,7 @@ static int a2dp_open_ind(struct bt_avdtp *session, struct bt_avdtp_sep *sep, uin
 	req_cb = a2dp_cb != NULL ? a2dp_cb->establish_req : NULL;
 	done_cb = (ep->stream != NULL && ep->stream->ops != NULL) ? ep->stream->ops->established
 								  : NULL;
-	return a2dp_ctrl_ind(session, sep, errcode, req_cb, done_cb, false);
+	return a2dp_ctrl_ind(session, sep, errcode, req_cb, done_cb);
 }
 
 static int a2dp_start_ind(struct bt_avdtp *session, struct bt_avdtp_sep *sep, uint8_t *errcode)
@@ -359,7 +351,7 @@ static int a2dp_start_ind(struct bt_avdtp *session, struct bt_avdtp_sep *sep, ui
 	__ASSERT(sep, "Invalid sep");
 	req_cb = a2dp_cb != NULL ? a2dp_cb->start_req : NULL;
 	done_cb = (ep->stream != NULL && ep->stream->ops != NULL) ? ep->stream->ops->started : NULL;
-	return a2dp_ctrl_ind(session, sep, errcode, req_cb, done_cb, false);
+	return a2dp_ctrl_ind(session, sep, errcode, req_cb, done_cb);
 }
 
 static int a2dp_suspend_ind(struct bt_avdtp *session, struct bt_avdtp_sep *sep, uint8_t *errcode)
@@ -372,7 +364,7 @@ static int a2dp_suspend_ind(struct bt_avdtp *session, struct bt_avdtp_sep *sep, 
 	req_cb = a2dp_cb != NULL ? a2dp_cb->suspend_req : NULL;
 	done_cb =
 		(ep->stream != NULL && ep->stream->ops != NULL) ? ep->stream->ops->suspended : NULL;
-	return a2dp_ctrl_ind(session, sep, errcode, req_cb, done_cb, false);
+	return a2dp_ctrl_ind(session, sep, errcode, req_cb, done_cb);
 }
 
 static int a2dp_close_ind(struct bt_avdtp *session, struct bt_avdtp_sep *sep, uint8_t *errcode)
@@ -383,7 +375,7 @@ static int a2dp_close_ind(struct bt_avdtp *session, struct bt_avdtp_sep *sep, ui
 	req_cb = a2dp_cb != NULL ? a2dp_cb->release_req : NULL;
 
 	/* When stream is released, the `stream->ops->released` will be called. */
-	return a2dp_ctrl_ind(session, sep, errcode, req_cb, NULL, true);
+	return a2dp_ctrl_ind(session, sep, errcode, req_cb, NULL);
 }
 
 static int a2dp_abort_ind(struct bt_avdtp *session, struct bt_avdtp_sep *sep, uint8_t *errcode)
@@ -394,7 +386,7 @@ static int a2dp_abort_ind(struct bt_avdtp *session, struct bt_avdtp_sep *sep, ui
 	req_cb = a2dp_cb != NULL ? a2dp_cb->abort_req : NULL;
 
 	/* When stream is released, the `stream->ops->released` will be called. */
-	return a2dp_ctrl_ind(session, sep, errcode, req_cb, NULL, true);
+	return a2dp_ctrl_ind(session, sep, errcode, req_cb, NULL);
 }
 
 static int bt_a2dp_set_config_cb(struct bt_avdtp_req *req, struct net_buf *buf)
@@ -673,32 +665,24 @@ int bt_a2dp_stream_config(struct bt_a2dp *a2dp, struct bt_a2dp_stream *stream,
 typedef void (*bt_a2dp_rsp_cb)(struct bt_a2dp_stream *stream, uint8_t rsp_err_code);
 typedef void (*bt_a2dp_done_cb)(struct bt_a2dp_stream *stream);
 
-static int bt_a2dp_ctrl_cb(struct bt_avdtp_req *req, bt_a2dp_rsp_cb rsp_cb, bt_a2dp_done_cb done_cb,
-			   bool clear_stream)
+static int bt_a2dp_ctrl_cb(struct bt_avdtp_req *req, bt_a2dp_rsp_cb rsp_cb, bt_a2dp_done_cb done_cb)
 {
 	struct bt_a2dp *a2dp = CTRL_PARAM(CTRL_REQ(req));
 	struct bt_a2dp_ep *ep;
-	struct bt_a2dp_stream *stream;
 
 	ep = CONTAINER_OF(a2dp->ctrl_param.sep, struct bt_a2dp_ep, sep);
 	if ((ep->stream == NULL) || (CTRL_REQ(req) != &a2dp->ctrl_param)) {
 		return -EINVAL;
 	}
 
-	stream = ep->stream;
-
-	if (clear_stream) {
-		ep->stream = NULL;
-	}
-
 	LOG_DBG("ctrl result:%d", req->status);
 
 	if (rsp_cb != NULL) {
-		rsp_cb(stream, req->status);
+		rsp_cb(ep->stream, req->status);
 	}
 
 	if ((!req->status) && (done_cb != NULL)) {
-		done_cb(stream);
+		done_cb(ep->stream);
 	}
 
 	return 0;
@@ -712,7 +696,7 @@ static int bt_a2dp_open_cb(struct bt_avdtp_req *req, struct net_buf *buf)
 					  ? ep->stream->ops->established
 					  : NULL;
 
-	return bt_a2dp_ctrl_cb(req, rsp_cb, done_cb, false);
+	return bt_a2dp_ctrl_cb(req, rsp_cb, done_cb);
 }
 
 static int bt_a2dp_start_cb(struct bt_avdtp_req *req, struct net_buf *buf)
@@ -722,7 +706,7 @@ static int bt_a2dp_start_cb(struct bt_avdtp_req *req, struct net_buf *buf)
 	bt_a2dp_done_cb done_cb =
 		(ep->stream != NULL && ep->stream->ops != NULL) ? ep->stream->ops->started : NULL;
 
-	return bt_a2dp_ctrl_cb(req, rsp_cb, done_cb, false);
+	return bt_a2dp_ctrl_cb(req, rsp_cb, done_cb);
 }
 
 static int bt_a2dp_suspend_cb(struct bt_avdtp_req *req, struct net_buf *buf)
@@ -732,7 +716,7 @@ static int bt_a2dp_suspend_cb(struct bt_avdtp_req *req, struct net_buf *buf)
 	bt_a2dp_done_cb done_cb =
 		(ep->stream != NULL && ep->stream->ops != NULL) ? ep->stream->ops->suspended : NULL;
 
-	return bt_a2dp_ctrl_cb(req, rsp_cb, done_cb, false);
+	return bt_a2dp_ctrl_cb(req, rsp_cb, done_cb);
 }
 
 static int bt_a2dp_close_cb(struct bt_avdtp_req *req, struct net_buf *buf)
@@ -740,7 +724,7 @@ static int bt_a2dp_close_cb(struct bt_avdtp_req *req, struct net_buf *buf)
 	bt_a2dp_rsp_cb rsp_cb = a2dp_cb != NULL ? a2dp_cb->release_rsp : NULL;
 
 	/* When stream is released, the `stream->ops->released` will be called. */
-	return bt_a2dp_ctrl_cb(req, rsp_cb, NULL, true);
+	return bt_a2dp_ctrl_cb(req, rsp_cb, NULL);
 }
 
 static int bt_a2dp_abort_cb(struct bt_avdtp_req *req, struct net_buf *buf)
@@ -748,7 +732,7 @@ static int bt_a2dp_abort_cb(struct bt_avdtp_req *req, struct net_buf *buf)
 	bt_a2dp_rsp_cb rsp_cb = a2dp_cb != NULL ? a2dp_cb->abort_rsp : NULL;
 
 	/* When stream is released, the `stream->ops->released` will be called. */
-	return bt_a2dp_ctrl_cb(req, rsp_cb, NULL, true);
+	return bt_a2dp_ctrl_cb(req, rsp_cb, NULL);
 }
 
 static int bt_a2dp_stream_ctrl_pre(struct bt_a2dp_stream *stream, bt_avdtp_func_t cb)
