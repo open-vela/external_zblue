@@ -2952,7 +2952,14 @@ bool bt_conn_exists_le(struct bt_dev *hdev, uint8_t id, const bt_addr_le_t *peer
 
 struct bt_conn *bt_conn_add_le(struct bt_dev *hdev, uint8_t id, const bt_addr_le_t *peer)
 {
-	struct bt_conn *conn = acl_conn_new(hdev);
+	struct bt_conn *conn;
+
+	if (id >= CONFIG_BT_ID_MAX) {
+		LOG_ERR("Invalid id %u, must be less than %d", id, CONFIG_BT_ID_MAX);
+		return NULL;
+	}
+
+	conn = acl_conn_new(hdev);
 
 	if (!conn) {
 		return NULL;
