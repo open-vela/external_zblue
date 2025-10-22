@@ -3937,6 +3937,9 @@ static void bt_dev_show_info(struct bt_dev *hdev)
 {
 	int i;
 
+	BT_ASSERT_MSG(hdev->id_count <= CONFIG_BT_ID_MAX,
+		"Invalid hdev->id_count %u (max %u)", hdev->id_count, CONFIG_BT_ID_MAX);
+
 	LOG_INF("Identity%s: %s", hdev->id_count > 1 ? "[0]" : "",
 		bt_addr_le_str(&hdev->id_addr[0]));
 
