@@ -1288,6 +1288,11 @@ static int id_find(struct bt_dev *hdev, const bt_addr_le_t *addr)
 
 static int id_create(struct bt_dev *hdev, uint8_t id, bt_addr_le_t *addr, uint8_t *irk)
 {
+	if (id >= CONFIG_BT_ID_MAX) {
+		LOG_ERR("Invalid ID %u over CONFIG_BT_ID_MAX %d.", id, CONFIG_BT_ID_MAX);
+		return -EINVAL;
+	}
+
 	if (addr && !bt_addr_le_eq(addr, BT_ADDR_LE_ANY)) {
 		bt_addr_le_copy(&hdev->id_addr[id], addr);
 	} else {
@@ -1412,6 +1417,11 @@ int bt_id_reset_mc(uint8_t dev_id, uint8_t id, bt_addr_le_t *addr, uint8_t *irk)
 	int err;
 	struct bt_dev *hdev = bt_dev_get(dev_id);
 
+	if (id >= CONFIG_BT_ID_MAX) {
+		LOG_ERR("Invalid ID %u over CONFIG_BT_ID_MAX %d.", id, CONFIG_BT_ID_MAX);
+		return -EINVAL;
+	}
+
 	if (!hdev) {
 		return -ENODEV;
 	}
@@ -1467,6 +1477,11 @@ int bt_id_reset_mc(uint8_t dev_id, uint8_t id, bt_addr_le_t *addr, uint8_t *irk)
 int bt_id_delete_mc(uint8_t dev_id, uint8_t id)
 {
 	struct bt_dev *hdev = bt_dev_get(dev_id);
+
+	if (id >= CONFIG_BT_ID_MAX) {
+		LOG_ERR("Invalid ID %u over CONFIG_BT_ID_MAX %d.", id, CONFIG_BT_ID_MAX);
+		return -EINVAL;
+	}
 
 	if (!hdev) {
 		return -ENODEV;
