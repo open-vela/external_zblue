@@ -115,6 +115,19 @@ const struct bt_conn_cb *_bt_conn_cb_list[] = {
 };
 /* bt_conn_cb END */
 
+/* bt_sco_conn_cb START */
+#if defined(CONFIG_BT_CLASSIC)
+/*
+ * Provide an empty, NULL-terminated iterable list for bt_sco_conn_cb.
+ * This satisfies STRUCT_SECTION_FOREACH(bt_sco_conn_cb, ...) when no
+ * static SCO callbacks are defined via BT_SCO_CONN_CB_DEFINE().
+ */
+const struct bt_sco_conn_cb *_bt_sco_conn_cb_list[] = {
+    NULL,
+};
+#endif /* CONFIG_BT_CLASSIC */
+/* bt_sco_conn_cb END */
+
 /* net_buf_pool START */
 extern struct net_buf_pool sine_tx_pool;
 extern struct net_buf_pool tx_pool;
