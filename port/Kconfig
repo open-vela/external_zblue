@@ -43,6 +43,13 @@ config BT_MC_SHELL
   help
     Bluetooth shell.
 
+config BT_MC_DEVICE_INST
+  bool "Multiple Bluetooth H:4 UART Device Instances"
+  default y
+  depends on BT_H4
+  help
+    Enable support for multiple Bluetooth H:4 UART Device Instances.
+
 config BT_UART_ON_DEV_NAME
   string "Device Name of UART Device for Bluetooth"
   default "/dev/ttyHCI0"
