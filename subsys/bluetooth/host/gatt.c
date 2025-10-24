@@ -2929,25 +2929,60 @@ struct bt_gatt_attr *bt_gatt_find_by_uuid_mc(uint8_t dev_id, const struct bt_gat
 	return found;
 }
 
+static int gatt_notify_mc(uint16_t handle,
+			  struct bt_gatt_notify_params *params)
+{
+	struct notify_data data = { 0 };
+	uint8_t dev_id;
+	struct bt_dev *hdev;
+
+	data.err = -ENOTCONN;
+	data.type = BT_GATT_CCC_NOTIFY;
+	data.nfy_params = params;
+
+	for (dev_id = 0; dev_id < CONFIG_BT_NUM_CTLRS; dev_id++) {
+		hdev = bt_dev_get(dev_id);
+
+		if (!hdev) {
+			continue;
+		}
+
+		if (!atomic_test_bit(hdev->flags, BT_DEV_READY)) {
+			continue;
+		}
+
+		data.hdev = hdev;
+
+		bt_gatt_foreach_attr_type_mc(hdev->dev_id, handle, 0xffff,
+					     BT_UUID_GATT_CCC, NULL,
+					     1, notify_cb, &data);
+	}
+
+	return data.err;
+}
+
 int bt_gatt_notify_cb(struct bt_conn *conn,
 		      struct bt_gatt_notify_params *params)
 {
-	struct notify_data data;
+	struct notify_data data = { 0 };
 
 	__ASSERT(params, "invalid parameters\n");
 	__ASSERT(params->attr || params->uuid, "invalid parameters\n");
 
-	if (conn && conn->state != BT_CONN_CONNECTED) {
-		return -ENOTCONN;
-	}
+	if (conn) {
+		if (conn->state != BT_CONN_CONNECTED) {
+			return -ENOTCONN;
+		}
 
-	if (!atomic_test_bit(conn->hdev->flags, BT_DEV_READY)) {
-		return -EAGAIN;
+		if (!atomic_test_bit(conn->hdev->flags, BT_DEV_READY)) {
+			return -EAGAIN;
+		}
+		
+		data.hdev = conn->hdev;
 	}
 
 	data.attr = params->attr;
 	data.handle = bt_gatt_attr_get_handle(data.attr);
-	data.hdev = conn->hdev;
 
 	/* Lookup UUID if it was given */
 	if (params->uuid) {
@@ -2973,18 +3008,11 @@ int bt_gatt_notify_cb(struct bt_conn *conn,
 		data.handle = bt_gatt_attr_value_handle(data.attr);
 	}
 
-	if (conn) {
-		return gatt_notify(conn, data.handle, params);
+	if (!conn) {
+		return gatt_notify_mc(data.handle, params);
 	}
 
-	data.err = -ENOTCONN;
-	data.type = BT_GATT_CCC_NOTIFY;
-	data.nfy_params = params;
-
-	bt_gatt_foreach_attr_type_mc(conn->hdev->dev_id, data.handle, 0xffff, BT_UUID_GATT_CCC, NULL,
-				  1, notify_cb, &data);
-
-	return data.err;
+	return gatt_notify(conn, data.handle, params);
 }
 
 #if defined(CONFIG_BT_GATT_NOTIFY_MULTIPLE)
