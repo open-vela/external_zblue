@@ -768,7 +768,7 @@ static bool ltk_derive_link_key_allowed(struct bt_smp *smp)
 	}
 
 	/* Check whether it is has been bonded */
-	link_key = bt_keys_find_link_key(&conn->le.dst.a);
+	link_key = bt_keys_find_link_key(conn->hdev, &conn->le.dst.a);
 	if (link_key == NULL) {
 		return true;
 	}
@@ -810,9 +810,9 @@ static void sc_derive_link_key(struct bt_smp *smp)
 	}
 
 	/* Remove the bonding information */
-	link_key = bt_keys_find_link_key(&conn->le.dst.a);
+	link_key = bt_keys_find_link_key(conn->hdev, &conn->le.dst.a);
 	if (link_key != NULL) {
-		bt_keys_link_key_clear(link_key);
+		bt_keys_link_key_clear(conn->hdev, link_key);
 	}
 
 	/*
@@ -863,7 +863,7 @@ static void sc_derive_link_key(struct bt_smp *smp)
 
 	if (atomic_test_bit(smp->flags, SMP_FLAG_BOND)) {
 		/* Store the link key */
-		bt_keys_link_key_store(link_key);
+		bt_keys_link_key_store(conn->hdev, link_key);
 	}
 }
 
@@ -892,16 +892,16 @@ static void smp_br_reset(struct bt_smp_br *smp)
 	atomic_set_bit(smp->allowed_cmds, BT_SMP_CMD_PAIRING_REQ);
 }
 
-static void smp_br_id_add_replace(struct bt_keys *keys)
+static void smp_br_id_add_replace(struct bt_dev *hdev, struct bt_keys *keys)
 {
 	struct bt_keys *conflict;
 
 	/* Check whether key has been added to resolving list. */
 	if (keys->state & BT_KEYS_ID_ADDED) {
-		bt_id_del(keys);
+		bt_id_del(hdev, keys);
 	}
 
-	conflict = bt_id_find_conflict(keys);
+	conflict = bt_id_find_conflict(hdev, keys);
 	if (conflict != NULL) {
 		int err;
 
@@ -911,8 +911,8 @@ static void smp_br_id_add_replace(struct bt_keys *keys)
 		__ASSERT_NO_MSG(!err);
 	}
 
-	__ASSERT_NO_MSG(!bt_id_find_conflict(keys));
-	bt_id_add(keys);
+	__ASSERT_NO_MSG(!bt_id_find_conflict(hdev, keys));
+	bt_id_add(hdev, keys);
 }
 
 static void smp_pairing_br_complete(struct bt_smp_br *smp, uint8_t status)
@@ -949,7 +949,7 @@ static void smp_pairing_br_complete(struct bt_smp_br *smp, uint8_t status)
 		struct bt_conn_auth_info_cb *listener, *next;
 
 		if (keys) {
-			smp_br_id_add_replace(keys);
+			smp_br_id_add_replace(conn->hdev, keys);
 		}
 
 		if (bond_flag && keys) {
@@ -1074,10 +1074,10 @@ static void smp_br_derive_ltk(struct bt_smp_br *smp)
 	bt_addr_copy(&addr.a, &conn->br.dst);
 	addr.type = BT_ADDR_LE_PUBLIC;
 
-	keys = bt_keys_find_addr(conn->id, &addr);
+	keys = bt_keys_find_addr(conn->hdev, conn->id, &addr);
 	if (keys != NULL) {
 		LOG_DBG("Clear the current keys for %s", bt_addr_le_str(&addr));
-		bt_keys_clear(keys);
+		bt_keys_clear(conn->hdev, keys);
 	}
 
 	keys = bt_keys_get_type(conn->hdev, BT_KEYS_LTK_P256, conn->id, &addr);
@@ -1266,9 +1266,9 @@ static bool smp_br_pairing_allowed(struct bt_smp_br *smp)
 
 	addr.type = BT_ADDR_LE_PUBLIC;
 	bt_addr_copy(&addr.a, &conn->br.dst);
-	le_keys = bt_keys_find_addr(BT_ID_DEFAULT, &addr);
+	le_keys = bt_keys_find_addr(conn->hdev, BT_ID_DEFAULT, &addr);
 
-	key = bt_keys_find_link_key(&conn->br.dst);
+	key = bt_keys_find_link_key(conn->hdev, &conn->br.dst);
 	if (!key) {
 		return false;
 	}
@@ -1524,7 +1524,7 @@ static void convert_to_id_on_irk_match(struct bt_conn *conn, void *data)
 
 	if (bt_rpa_irk_matches(keys->irk.val, &conn->le.dst.a)) {
 		if (conn->le.keys != NULL && conn->le.keys != keys) {
-			bt_keys_clear(conn->le.keys);
+			bt_keys_clear(conn->hdev, conn->le.keys);
 		}
 
 		conn->le.keys = keys;
@@ -1564,7 +1564,7 @@ static uint8_t smp_br_ident_addr_info(struct bt_smp_br *smp,
 	}
 
 	/* Check the BLE connections that has RPA matched with this IRK */
-	keys = bt_keys_get_type(BT_KEYS_IRK, conn->id, &addr);
+	keys = bt_keys_get_type(conn->hdev, BT_KEYS_IRK, conn->id, &addr);
 	if (keys) {
 		bt_conn_foreach(BT_CONN_TYPE_LE, convert_to_id_on_irk_match, keys);
 	} else {

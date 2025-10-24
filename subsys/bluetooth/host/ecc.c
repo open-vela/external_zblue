@@ -151,7 +151,7 @@ done:
 
 	SYS_SLIST_FOR_EACH_CONTAINER(&hdev->pub_key_cb_slist, cb, node) {
 		if (cb->func) {
-			cb->func(err ? NULL : pub_key);
+			cb->func(hdev, err ? NULL : hdev->pub_key);
 		}
 	}
 
@@ -217,12 +217,12 @@ exit:
 		atomic_clear_bit(ecc->flags, PENDING_DHKEY);
 
 		if (err) {
-			cb(NULL);
+			cb(hdev, NULL);
 		} else {
 			uint8_t dhkey[BT_DH_KEY_LEN];
 
 			sys_memcpy_swap(dhkey, ecc->dhkey_be, sizeof(ecc->dhkey_be));
-			cb(dhkey);
+			cb(hdev, dhkey);
 		}
 	}
 
@@ -236,7 +236,7 @@ int bt_pub_key_gen(struct bt_dev *hdev, struct bt_pub_key_cb *new_cb)
 	if (IS_ENABLED(CONFIG_BT_USE_DEBUG_KEYS)) {
 		atomic_set_bit(hdev->flags, BT_DEV_HAS_PUB_KEY);
 		__ASSERT_NO_MSG(new_cb->func != NULL);
-		new_cb->func(debug_public_key);
+		new_cb->func(hdev, debug_public_key);
 		return 0;
 	}
 
@@ -264,11 +264,7 @@ int bt_pub_key_gen(struct bt_dev *hdev, struct bt_pub_key_cb *new_cb)
 
 	atomic_clear_bit(hdev->flags, BT_DEV_HAS_PUB_KEY);
 
-	if (IS_ENABLED(CONFIG_BT_LONG_WQ)) {
-		bt_long_wq_submit(&hdev->ecc.pub_key_work);
-	} else {
-		k_work_submit(&hdev->ecc.pub_key_work);
-	}
+	k_work_submit(&hdev->ecc.pub_key_work);
 
 	return 0;
 }
@@ -326,22 +322,27 @@ int bt_dh_key_gen(struct bt_dev *hdev, const uint8_t remote_pk[BT_PUB_KEY_LEN], 
 	sys_memcpy_swap(&hdev->ecc.public_key_be[BT_PUB_KEY_COORD_LEN],
 			&remote_pk[BT_PUB_KEY_COORD_LEN], BT_PUB_KEY_COORD_LEN);
 
-	if (IS_ENABLED(CONFIG_BT_LONG_WQ)) {
-		bt_long_wq_submit(&hdev->ecc.dh_key_work);
-	} else {
-		k_work_submit(&hdev->ecc.dh_key_work);
-	}
+	k_work_submit(&hdev->ecc.dh_key_work);
 
 	return 0;
 }
 
 void bt_ecc_init(struct bt_dev *hdev)
 {
+	psa_status_t status;
+
+	status = psa_crypto_init();
+
+	if (status != PSA_SUCCESS) {
+		LOG_ERR("PSA Crypto init failed: %d", status);
+		return;
+	}
+
 	memset(&hdev->ecc, 0, sizeof(hdev->ecc));
 
 	/* Initialize the ECC work queue */
-	k_work_init(hdev->ecc.pub_key_work, generate_pub_key);
-	k_work_init(hdev->ecc.dh_key_work, generate_dh_key);
+	k_work_init(&hdev->ecc.pub_key_work, generate_pub_key);
+	k_work_init(&hdev->ecc.dh_key_work, generate_dh_key);
 }
 
 #ifdef ZTEST_UNITTEST
