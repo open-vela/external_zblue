@@ -450,19 +450,42 @@ static void avdtp_process_configuration_cmd(struct bt_avdtp *session, struct net
 
 		if (!(sep->state & expected_state)) {
 			err = -ENOTSUP;
-			error_code = BT_AVDTP_BAD_STATE;
+			error_code = BT_AVDTP_SEP_IN_USE;
 		} else if (buf->len >= 1U) {
 			uint8_t int_seid;
 
 			/* INT Stream Endpoint ID */
 			int_seid = net_buf_pull_u8(buf) >> 2;
+			struct net_buf *temp_buf = net_buf_clone(buf, K_NO_WAIT);
+			if (temp_buf) {
+				while (temp_buf->len >= 2) {
+					uint8_t service_category = net_buf_pull_u8(temp_buf);
+					uint8_t losc = net_buf_pull_u8(temp_buf);
 
-			if (!reconfig) {
-				err = session->ops->set_configuration_ind(session, sep, int_seid,
-									  buf, &error_code);
-			} else {
-				err = session->ops->re_configuration_ind(session, sep, int_seid,
-									 buf, &error_code);
+					if (service_category == BT_AVDTP_SERVICE_MEDIA_TRANSPORT) {
+						if (losc != 0) {
+							err = -EINVAL;
+							error_code = BT_AVDTP_BAD_MEDIA_TRANSPORT_FORMAT;
+							LOG_ERR("media transport capability length must be 0, got %d", losc);
+						}
+						break;
+					}
+
+					if (losc > temp_buf->len) {
+						break;
+					}
+					net_buf_pull_mem(temp_buf, losc);
+				}
+				net_buf_unref(temp_buf);
+			}
+			if (err == 0) {		
+				if (!reconfig) {
+					err = session->ops->set_configuration_ind(session, sep, int_seid,
+										buf, &error_code);
+				} else {
+					err = session->ops->re_configuration_ind(session, sep, int_seid,
+										buf, &error_code);
+				}
 			}
 		} else {
 			LOG_WRN("Invalid INT SEID");
@@ -693,6 +716,7 @@ static void avdtp_start_cmd(struct bt_avdtp *session, struct net_buf *buf, uint8
 		}
 
 		LOG_DBG("start err code:%d", error_code);
+		net_buf_add_u8(rsp_buf, (sep->sep_info.id << 2));
 		net_buf_add_u8(rsp_buf, error_code);
 	}
 
