@@ -73,8 +73,7 @@ config BT_HCI_TX_PRIO
 
 choice BT_RECV_CONTEXT
 	prompt "BT RX Thread Selection"
-	default BT_RECV_WORKQ_SYS if SOC_SERIES_NRF51X
-	default BT_RECV_WORKQ_BT
+	default BT_RECV_WORKQ_SYS
 	help
 	  Selects in which context incoming low priority HCI packets are processed.
 	  The host defines some events as high priority to avoid race conditions and deadlocks.
