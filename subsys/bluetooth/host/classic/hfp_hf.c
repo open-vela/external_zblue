@@ -3467,7 +3467,7 @@ int Z_API(bt_hfp_hf_number_call)(struct bt_hfp_hf *hf, const char *number)
 	hf_call_state_update(call, BT_HFP_HF_CALL_STATE_OUTGOING);
 
 	err = hfp_hf_send_cmd(hf, NULL, atd_finish, true,
-			 BT_HFP_HF_AT_CMD_ATD_NUMBER, "ATD%s", number);
+			 BT_HFP_HF_AT_CMD_ATD_NUMBER, "ATD%s;", number);
 	if (err < 0) {
 		LOG_ERR("Fail to start phone number call on %p", hf);
 	}
@@ -3502,7 +3502,7 @@ int Z_API(bt_hfp_hf_memory_dial)(struct bt_hfp_hf *hf, const char *location)
 	hf_call_state_update(call, BT_HFP_HF_CALL_STATE_OUTGOING);
 
 	err = hfp_hf_send_cmd(hf, NULL, atd_finish, true,
-			 BT_HFP_HF_AT_CMD_ATD_MEMORY, "ATD>%s", location);
+			 BT_HFP_HF_AT_CMD_ATD_MEMORY, "ATD>%s;", location);
 	if (err < 0) {
 		LOG_ERR("Fail to last number re-Dial on %p", hf);
 	}
