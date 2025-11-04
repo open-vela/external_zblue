@@ -161,8 +161,10 @@ struct bt_dev *bt_dev_alloc(uint8_t dev_id)
 #if DT_HAS_CHOSEN(zephyr_bt_hci)
 	if (dev_id == 0) {
 		hdev->hci = DEVICE_DT_GET(BT_HCI_DEV(0));
+#if defined(CONFIG_BT_MC_DEVICE_INST)
 	} else if (dev_id == 1) {
 		hdev->hci = DEVICE_DT_GET(BT_HCI_DEV(1));
+#endif
 	} else {
 		hdev->hci = NULL;
 		return NULL;
