@@ -799,6 +799,8 @@ static void sc_derive_link_key(struct bt_smp *smp)
 	struct bt_conn *conn = smp->chan.chan.conn;
 	struct bt_keys_link_key *link_key;
 	uint8_t ilk[16];
+	struct bt_conn_auth_info_cb *listener, *next;
+	bool bond_flag = atomic_test_bit(smp->flags, SMP_FLAG_BOND);
 
 	LOG_DBG("");
 
@@ -861,9 +863,16 @@ static void sc_derive_link_key(struct bt_smp *smp)
 		link_key->flags &= ~BT_LINK_KEY_AUTHENTICATED;
 	}
 
-	if (atomic_test_bit(smp->flags, SMP_FLAG_BOND)) {
+	if (bond_flag) {
 		/* Store the link key */
 		bt_keys_link_key_store(conn->hdev, link_key);
+		SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&conn->hdev->bt_auth_info_cbs, listener,
+							next, node) {
+			if (listener->pairing_complete_ctkd) {
+				/* Derive BR Link Key over LE link */
+				listener->pairing_complete_ctkd(conn, true);
+			}
+		}
 	}
 }
 
@@ -958,9 +967,9 @@ static void smp_pairing_br_complete(struct bt_smp_br *smp, uint8_t status)
 
 		SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&conn->hdev->bt_auth_info_cbs, listener,
 						  next, node) {
-			if (listener->pairing_complete) {
-				listener->pairing_complete(smp->chan.chan.conn,
-							   bond_flag);
+			if (listener->pairing_complete_ctkd && bond_flag) {
+				/* Derive LE LTK over BR conn */
+				listener->pairing_complete_ctkd(conn, false);
 			}
 		}
 	}
