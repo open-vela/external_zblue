@@ -2587,6 +2587,17 @@ struct bt_conn_auth_info_cb {
 	 */
 	void (*link_key_notify)(struct bt_conn *conn, uint8_t *key, uint8_t key_type);
 #endif
+	/** @brief notify that pairing procedure was complete (with CTKD info).
+	 *
+	 *  Notifies that pairing is done, and whether the key was derived
+	 *  through CTKD.
+	 *
+	 *  @param conn Connection object.
+	 *  @param is_link_key True if the generated key is a BR/EDR Link Key,
+     *                     false if it is an LE LTK.
+	 */
+	void (*pairing_complete_ctkd)(struct bt_conn *conn, bool is_link_key);
+
 	/** @brief notify that pairing procedure was complete.
 	 *
 	 *  This callback notifies the application that the pairing procedure
