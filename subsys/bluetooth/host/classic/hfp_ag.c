@@ -1410,7 +1410,7 @@ static struct bt_conn *bt_hfp_ag_create_sco(struct bt_hfp_ag *ag)
 		ag->sco_chan.ops = &ops;
 
 		/* create SCO connection*/
-		ag->sco_conn = bt_conn_create_sco(&ag->acl_conn->br.dst, &ag->sco_chan);
+		ag->sco_conn = bt_conn_create_sco(ag->acl_conn->hdev, &ag->acl_conn->br.dst, &ag->sco_chan);
 		if (ag->sco_conn != NULL) {
 			LOG_DBG("Created sco %p", ag->sco_conn);
 			if (ag->sco_chan.sco == NULL) {
