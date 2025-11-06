@@ -11,6 +11,10 @@
 #ifndef ZEPHYR_INCLUDE_BLUETOOTH_HFP_AG_H_
 #define ZEPHYR_INCLUDE_BLUETOOTH_HFP_AG_H_
 
+#ifndef Z_API
+#define Z_API(func) z_##func
+#endif
+
 /**
  * @brief Hands Free Profile - Audio Gateway (HFP-AG)
  * @defgroup bt_hfp_ag Hands Free Profile - Audio Gateway (HFP-AG)
@@ -471,7 +475,7 @@ struct bt_hfp_ag_cb {
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_register(struct bt_hfp_ag_cb *cb);
+int Z_API(bt_hfp_ag_register)(struct bt_hfp_ag_cb *cb);
 
 /** @brief Create the hfp ag session
  *
@@ -483,7 +487,7 @@ int bt_hfp_ag_register(struct bt_hfp_ag_cb *cb);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_connect(struct bt_conn *conn, struct bt_hfp_ag **ag, uint8_t channel);
+int Z_API(bt_hfp_ag_connect)(struct bt_conn *conn, struct bt_hfp_ag **ag, uint8_t channel);
 
 /** @brief Disconnect the hfp ag session
  *
@@ -493,7 +497,7 @@ int bt_hfp_ag_connect(struct bt_conn *conn, struct bt_hfp_ag **ag, uint8_t chann
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_disconnect(struct bt_hfp_ag *ag);
+int Z_API(bt_hfp_ag_disconnect)(struct bt_hfp_ag *ag);
 
 /** @brief Notify HFP Unit of an incoming call
  *
@@ -504,7 +508,7 @@ int bt_hfp_ag_disconnect(struct bt_hfp_ag *ag);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_remote_incoming(struct bt_hfp_ag *ag, const char *number);
+int Z_API(bt_hfp_ag_remote_incoming)(struct bt_hfp_ag *ag, const char *number);
 
 /** @brief Put the incoming call on hold
  *
@@ -514,7 +518,7 @@ int bt_hfp_ag_remote_incoming(struct bt_hfp_ag *ag, const char *number);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_hold_incoming(struct bt_hfp_ag_call *call);
+int Z_API(bt_hfp_ag_hold_incoming)(struct bt_hfp_ag_call *call);
 
 /** @brief Reject the incoming call
  *
@@ -524,7 +528,7 @@ int bt_hfp_ag_hold_incoming(struct bt_hfp_ag_call *call);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_reject(struct bt_hfp_ag_call *call);
+int Z_API(bt_hfp_ag_reject)(struct bt_hfp_ag_call *call);
 
 /** @brief Accept the incoming call
  *
@@ -534,7 +538,7 @@ int bt_hfp_ag_reject(struct bt_hfp_ag_call *call);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_accept(struct bt_hfp_ag_call *call);
+int Z_API(bt_hfp_ag_accept)(struct bt_hfp_ag_call *call);
 
 /** @brief Terminate the active/hold call
  *
@@ -544,7 +548,7 @@ int bt_hfp_ag_accept(struct bt_hfp_ag_call *call);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_terminate(struct bt_hfp_ag_call *call);
+int Z_API(bt_hfp_ag_terminate)(struct bt_hfp_ag_call *call);
 
 /** @brief Retrieve the held call
  *
@@ -554,7 +558,7 @@ int bt_hfp_ag_terminate(struct bt_hfp_ag_call *call);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_retrieve(struct bt_hfp_ag_call *call);
+int Z_API(bt_hfp_ag_retrieve)(struct bt_hfp_ag_call *call);
 
 /** @brief Hold the active call
  *
@@ -564,7 +568,7 @@ int bt_hfp_ag_retrieve(struct bt_hfp_ag_call *call);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_hold(struct bt_hfp_ag_call *call);
+int Z_API(bt_hfp_ag_hold)(struct bt_hfp_ag_call *call);
 
 /** @brief Dial a call
  *
@@ -575,7 +579,7 @@ int bt_hfp_ag_hold(struct bt_hfp_ag_call *call);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_outgoing(struct bt_hfp_ag *ag, const char *number);
+int Z_API(bt_hfp_ag_outgoing)(struct bt_hfp_ag *ag, const char *number);
 
 /** @brief Notify HFP Unit that the remote starts ringing
  *
@@ -585,7 +589,7 @@ int bt_hfp_ag_outgoing(struct bt_hfp_ag *ag, const char *number);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_remote_ringing(struct bt_hfp_ag_call *call);
+int Z_API(bt_hfp_ag_remote_ringing)(struct bt_hfp_ag_call *call);
 
 /** @brief Notify HFP Unit that the remote rejects the call
  *
@@ -595,7 +599,7 @@ int bt_hfp_ag_remote_ringing(struct bt_hfp_ag_call *call);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_remote_reject(struct bt_hfp_ag_call *call);
+int Z_API(bt_hfp_ag_remote_reject)(struct bt_hfp_ag_call *call);
 
 /** @brief Notify HFP Unit that the remote accepts the call
  *
@@ -605,7 +609,7 @@ int bt_hfp_ag_remote_reject(struct bt_hfp_ag_call *call);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_remote_accept(struct bt_hfp_ag_call *call);
+int Z_API(bt_hfp_ag_remote_accept)(struct bt_hfp_ag_call *call);
 
 /** @brief Notify HFP Unit that the remote terminates the active/hold call
  *
@@ -615,7 +619,7 @@ int bt_hfp_ag_remote_accept(struct bt_hfp_ag_call *call);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_remote_terminate(struct bt_hfp_ag_call *call);
+int Z_API(bt_hfp_ag_remote_terminate)(struct bt_hfp_ag_call *call);
 
 /** @brief explicit call transfer
  *
@@ -628,7 +632,7 @@ int bt_hfp_ag_remote_terminate(struct bt_hfp_ag_call *call);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_explicit_call_transfer(struct bt_hfp_ag *ag);
+int Z_API(bt_hfp_ag_explicit_call_transfer)(struct bt_hfp_ag *ag);
 
 /** @brief Set the HF microphone gain
  *
@@ -639,7 +643,7 @@ int bt_hfp_ag_explicit_call_transfer(struct bt_hfp_ag *ag);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_vgm(struct bt_hfp_ag *ag, uint8_t vgm);
+int Z_API(bt_hfp_ag_vgm)(struct bt_hfp_ag *ag, uint8_t vgm);
 
 /** @brief Set the HF speaker gain
  *
@@ -650,7 +654,7 @@ int bt_hfp_ag_vgm(struct bt_hfp_ag *ag, uint8_t vgm);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_vgs(struct bt_hfp_ag *ag, uint8_t vgs);
+int Z_API(bt_hfp_ag_vgs)(struct bt_hfp_ag *ag, uint8_t vgs);
 
 /** @brief Set currently network operator
  *
@@ -665,7 +669,7 @@ int bt_hfp_ag_vgs(struct bt_hfp_ag *ag, uint8_t vgs);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_set_operator(struct bt_hfp_ag *ag, uint8_t mode, char *name);
+int Z_API(bt_hfp_ag_set_operator)(struct bt_hfp_ag *ag, uint8_t mode, char *name);
 
 /** @brief Create audio connection
  *
@@ -687,7 +691,7 @@ int bt_hfp_ag_set_operator(struct bt_hfp_ag *ag, uint8_t mode, char *name);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_audio_connect(struct bt_hfp_ag *ag, uint8_t id);
+int Z_API(bt_hfp_ag_audio_connect)(struct bt_hfp_ag *ag, uint8_t id);
 
 /** @brief Set In-Band Ring Tone
  *
@@ -698,7 +702,7 @@ int bt_hfp_ag_audio_connect(struct bt_hfp_ag *ag, uint8_t id);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_inband_ringtone(struct bt_hfp_ag *ag, bool inband);
+int Z_API(bt_hfp_ag_inband_ringtone)(struct bt_hfp_ag *ag, bool inband);
 
 /** @brief Enable/disable the voice recognition function
  *
@@ -711,7 +715,7 @@ int bt_hfp_ag_inband_ringtone(struct bt_hfp_ag *ag, bool inband);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_voice_recognition(struct bt_hfp_ag *ag, bool activate);
+int Z_API(bt_hfp_ag_voice_recognition)(struct bt_hfp_ag *ag, bool activate);
 
 /** @brief set voice recognition engine state
  *
@@ -730,7 +734,7 @@ int bt_hfp_ag_voice_recognition(struct bt_hfp_ag *ag, bool activate);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_vre_state(struct bt_hfp_ag *ag, uint8_t state);
+int Z_API(bt_hfp_ag_vre_state)(struct bt_hfp_ag *ag, uint8_t state);
 
 /** @brief set voice recognition engine state and textual representation
  *
@@ -772,7 +776,7 @@ int bt_hfp_ag_vre_state(struct bt_hfp_ag *ag, uint8_t state);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_vre_textual_representation(struct bt_hfp_ag *ag, uint8_t state, const char *id,
+int Z_API(bt_hfp_ag_vre_textual_representation)(struct bt_hfp_ag *ag, uint8_t state, const char *id,
 					 uint8_t type, uint8_t operation, const char *text);
 
 /** @brief Set signal strength
@@ -784,7 +788,7 @@ int bt_hfp_ag_vre_textual_representation(struct bt_hfp_ag *ag, uint8_t state, co
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_signal_strength(struct bt_hfp_ag *ag, uint8_t strength);
+int Z_API(bt_hfp_ag_signal_strength)(struct bt_hfp_ag *ag, uint8_t strength);
 
 /** @brief Set roaming status
  *
@@ -795,7 +799,7 @@ int bt_hfp_ag_signal_strength(struct bt_hfp_ag *ag, uint8_t strength);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_roaming_status(struct bt_hfp_ag *ag, uint8_t status);
+int Z_API(bt_hfp_ag_roaming_status)(struct bt_hfp_ag *ag, uint8_t status);
 
 /** @brief Set battery level
  *
@@ -806,7 +810,7 @@ int bt_hfp_ag_roaming_status(struct bt_hfp_ag *ag, uint8_t status);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_battery_level(struct bt_hfp_ag *ag, uint8_t level);
+int Z_API(bt_hfp_ag_battery_level)(struct bt_hfp_ag *ag, uint8_t level);
 
 /** @brief Set service availability
  *
@@ -817,7 +821,7 @@ int bt_hfp_ag_battery_level(struct bt_hfp_ag *ag, uint8_t level);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_service_availability(struct bt_hfp_ag *ag, bool available);
+int Z_API(bt_hfp_ag_service_availability)(struct bt_hfp_ag *ag, bool available);
 
 /** @brief Activate/deactivate HF indicator
  *
@@ -840,7 +844,7 @@ int bt_hfp_ag_service_availability(struct bt_hfp_ag *ag, bool available);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_hf_indicator(struct bt_hfp_ag *ag, enum hfp_ag_hf_indicators indicator, bool enable);
+int Z_API(bt_hfp_ag_hf_indicator)(struct bt_hfp_ag *ag, enum hfp_ag_hf_indicators indicator, bool enable);
 
 /** @brief Set the ongoing calls
  *
@@ -852,7 +856,7 @@ int bt_hfp_ag_hf_indicator(struct bt_hfp_ag *ag, enum hfp_ag_hf_indicators indic
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_ag_ongoing_calls(struct bt_hfp_ag *ag, struct bt_hfp_ag_ongoing_call *calls,
+int Z_API(bt_hfp_ag_ongoing_calls)(struct bt_hfp_ag *ag, struct bt_hfp_ag_ongoing_call *calls,
 			    size_t count);
 
 #ifdef __cplusplus

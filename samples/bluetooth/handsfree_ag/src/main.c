@@ -134,7 +134,7 @@ static uint8_t sdp_discover_cb(struct bt_conn *conn, struct bt_sdp_client_result
 			printk("Fail to parser RFCOMM the SDP response!\n");
 		} else {
 			printk("The server channel is %d\n", value);
-			err = bt_hfp_ag_connect(conn, &hfp_ag, value);
+			err = Z_API(bt_hfp_ag_connect)(conn, &hfp_ag, value);
 			if (err != 0) {
 				printk("Fail to create hfp AG connection (err %d)\n", err);
 			}
@@ -304,13 +304,13 @@ static void call_connect_work_handler(struct k_work *work)
 
 	printk("Dialing\n");
 
-	err = bt_hfp_ag_outgoing(hfp_ag, "test_hf");
+	err = Z_API(bt_hfp_ag_outgoing)(hfp_ag, "test_hf");
 
 	if (err != 0) {
 		printk("Fail to dial a call (err %d)\n", err);
 	}
 #else
-	int err = bt_hfp_ag_remote_incoming(hfp_ag, "test_hf");
+	int err = Z_API(bt_hfp_ag_remote_incoming)(hfp_ag, "test_hf");
 
 	if (err != 0) {
 		printk("Fail to set remote incoming call (err %d)\n", err);
@@ -337,7 +337,7 @@ static void call_remote_ringing_work_handler(struct k_work *work)
 
 	printk("Remote starts ringing\n");
 
-	err = bt_hfp_ag_remote_ringing(hfp_ag_call);
+	err = Z_API(bt_hfp_ag_remote_ringing)(hfp_ag_call);
 
 	if (err != 0) {
 		printk("Fail to notify hfp unit that the remote starts ringing (err %d)\n", err);
@@ -352,7 +352,7 @@ static void call_remote_accept_work_handler(struct k_work *work)
 
 	printk("Remote accepts the call\n");
 
-	err = bt_hfp_ag_remote_accept(hfp_ag_call);
+	err = Z_API(bt_hfp_ag_remote_accept)(hfp_ag_call);
 
 	if (err != 0) {
 		printk("Fail to notify hfp unit that the remote accepts call (err %d)\n", err);
@@ -381,7 +381,7 @@ static void bt_ready(int err)
 
 	bt_br_discovery_cb_register(&discovery_cb);
 
-	bt_hfp_ag_register(&ag_cb);
+	Z_API(bt_hfp_ag_register)(&ag_cb);
 
 	k_work_init(&discover_work, discover_work_handler);
 

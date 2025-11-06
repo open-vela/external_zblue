@@ -436,7 +436,7 @@ failed:
 	if (tx) {
 		bt_ag_tx_free(tx);
 	}
-	bt_hfp_ag_disconnect(ag);
+	z_bt_hfp_ag_disconnect(ag);
 	return err;
 }
 
@@ -1540,7 +1540,7 @@ static void bt_hfp_ag_notify_ongoing_calls(struct bt_hfp_ag *ag, void *user_data
 		case BT_HFP_AG_CALL_STATUS_DIALING:
 		case BT_HFP_AG_CALL_STATUS_ALERTING:
 			sco_created = true;
-			err = bt_hfp_ag_outgoing(ag, ongoing_call->number);
+			err = Z_API(bt_hfp_ag_outgoing)(ag, ongoing_call->number);
 			if (err != 0) {
 				sco_created = false;
 				LOG_ERR("Failed to initiate outgoing call: %d", err);
@@ -1558,7 +1558,7 @@ static void bt_hfp_ag_notify_ongoing_calls(struct bt_hfp_ag *ag, void *user_data
 		case BT_HFP_AG_CALL_STATUS_INCOMING:
 		case BT_HFP_AG_CALL_STATUS_WAITING:
 			sco_created = true;
-			err = bt_hfp_ag_remote_incoming(ag, ongoing_call->number);
+			err = Z_API(bt_hfp_ag_remote_incoming)(ag, ongoing_call->number);
 			if (err != 0) {
 				sco_created = false;
 				LOG_ERR("Failed to initiate remote incoming call: %d", err);
@@ -3911,7 +3911,7 @@ static struct bt_hfp_ag *hfp_ag_create(struct bt_conn *conn)
 	return ag;
 }
 
-int bt_hfp_ag_connect(struct bt_conn *conn, struct bt_hfp_ag **ag, uint8_t channel)
+int Z_API(bt_hfp_ag_connect)(struct bt_conn *conn, struct bt_hfp_ag **ag, uint8_t channel)
 {
 	struct bt_hfp_ag *new_ag;
 	int err;
@@ -3943,7 +3943,7 @@ int bt_hfp_ag_connect(struct bt_conn *conn, struct bt_hfp_ag **ag, uint8_t chann
 	return err;
 }
 
-int bt_hfp_ag_disconnect(struct bt_hfp_ag *ag)
+int Z_API(bt_hfp_ag_disconnect)(struct bt_hfp_ag *ag)
 {
 	LOG_DBG("");
 
@@ -4050,7 +4050,7 @@ static void hfp_ag_init(void)
 	bt_sco_conn_cb_register(&ag_sco_conn_cb);
 }
 
-int bt_hfp_ag_register(struct bt_hfp_ag_cb *cb)
+int Z_API(bt_hfp_ag_register)(struct bt_hfp_ag_cb *cb)
 {
 	if (!cb) {
 		return -EINVAL;
@@ -4120,7 +4120,7 @@ static void bt_hfp_ag_ccwa_cb(struct bt_hfp_ag *ag, void *user_data)
 }
 #endif /* CONFIG_BT_HFP_AG_3WAY_CALL */
 
-int bt_hfp_ag_remote_incoming(struct bt_hfp_ag *ag, const char *number)
+int Z_API(bt_hfp_ag_remote_incoming)(struct bt_hfp_ag *ag, const char *number)
 {
 	int err = 0;
 	size_t len;
@@ -4205,7 +4205,7 @@ int bt_hfp_ag_remote_incoming(struct bt_hfp_ag *ag, const char *number)
 	return err;
 }
 
-int bt_hfp_ag_hold_incoming(struct bt_hfp_ag_call *call)
+int Z_API(bt_hfp_ag_hold_incoming)(struct bt_hfp_ag_call *call)
 {
 	int err = 0;
 	struct bt_hfp_ag *ag;
@@ -4249,7 +4249,7 @@ int bt_hfp_ag_hold_incoming(struct bt_hfp_ag_call *call)
 	return -EINVAL;
 }
 
-int bt_hfp_ag_reject(struct bt_hfp_ag_call *call)
+int Z_API(bt_hfp_ag_reject)(struct bt_hfp_ag_call *call)
 {
 	int err = 0;
 	struct bt_hfp_ag *ag;
@@ -4327,7 +4327,7 @@ int bt_hfp_ag_reject(struct bt_hfp_ag_call *call)
 	return -EINVAL;
 }
 
-int bt_hfp_ag_accept(struct bt_hfp_ag_call *call)
+int Z_API(bt_hfp_ag_accept)(struct bt_hfp_ag_call *call)
 {
 	int err = 0;
 	struct bt_hfp_ag *ag;
@@ -4394,7 +4394,7 @@ int bt_hfp_ag_accept(struct bt_hfp_ag_call *call)
 	return -EINVAL;
 }
 
-int bt_hfp_ag_terminate(struct bt_hfp_ag_call *call)
+int Z_API(bt_hfp_ag_terminate)(struct bt_hfp_ag_call *call)
 {
 	int err = 0;
 	struct bt_hfp_ag *ag;
@@ -4441,7 +4441,7 @@ int bt_hfp_ag_terminate(struct bt_hfp_ag_call *call)
 	return 0;
 }
 
-int bt_hfp_ag_retrieve(struct bt_hfp_ag_call *call)
+int Z_API(bt_hfp_ag_retrieve)(struct bt_hfp_ag_call *call)
 {
 	struct bt_hfp_ag *ag;
 	bt_hfp_call_state_t call_state;
@@ -4482,7 +4482,7 @@ int bt_hfp_ag_retrieve(struct bt_hfp_ag_call *call)
 	return 0;
 }
 
-int bt_hfp_ag_hold(struct bt_hfp_ag_call *call)
+int Z_API(bt_hfp_ag_hold)(struct bt_hfp_ag_call *call)
 {
 	struct bt_hfp_ag *ag;
 	bt_hfp_call_state_t call_state;
@@ -4528,7 +4528,7 @@ int bt_hfp_ag_hold(struct bt_hfp_ag_call *call)
 	return 0;
 }
 
-int bt_hfp_ag_outgoing(struct bt_hfp_ag *ag, const char *number)
+int Z_API(bt_hfp_ag_outgoing)(struct bt_hfp_ag *ag, const char *number)
 {
 	LOG_DBG("");
 
@@ -4559,7 +4559,7 @@ static void bt_hfp_ag_ringing_cb(struct bt_hfp_ag *ag, void *user_data)
 	}
 }
 
-int bt_hfp_ag_remote_ringing(struct bt_hfp_ag_call *call)
+int Z_API(bt_hfp_ag_remote_ringing)(struct bt_hfp_ag_call *call)
 {
 	int err = 0;
 	struct bt_hfp_ag *ag;
@@ -4600,7 +4600,7 @@ int bt_hfp_ag_remote_ringing(struct bt_hfp_ag_call *call)
 	return err;
 }
 
-int bt_hfp_ag_remote_reject(struct bt_hfp_ag_call *call)
+int Z_API(bt_hfp_ag_remote_reject)(struct bt_hfp_ag_call *call)
 {
 	int err;
 	struct bt_hfp_ag *ag;
@@ -4640,7 +4640,7 @@ int bt_hfp_ag_remote_reject(struct bt_hfp_ag_call *call)
 	return err;
 }
 
-int bt_hfp_ag_remote_accept(struct bt_hfp_ag_call *call)
+int Z_API(bt_hfp_ag_remote_accept)(struct bt_hfp_ag_call *call)
 {
 	int err;
 	struct bt_hfp_ag *ag;
@@ -4689,7 +4689,7 @@ int bt_hfp_ag_remote_accept(struct bt_hfp_ag_call *call)
 	return err;
 }
 
-int bt_hfp_ag_remote_terminate(struct bt_hfp_ag_call *call)
+int Z_API(bt_hfp_ag_remote_terminate)(struct bt_hfp_ag_call *call)
 {
 	struct bt_hfp_ag *ag;
 
@@ -4722,7 +4722,7 @@ int bt_hfp_ag_remote_terminate(struct bt_hfp_ag_call *call)
 	return 0;
 }
 
-int bt_hfp_ag_explicit_call_transfer(struct bt_hfp_ag *ag)
+int Z_API(bt_hfp_ag_explicit_call_transfer)(struct bt_hfp_ag *ag)
 {
 #if defined(CONFIG_BT_HFP_AG_3WAY_CALL)
 	if (ag == NULL) {
@@ -4780,7 +4780,7 @@ int bt_hfp_ag_set_indicator(struct bt_hfp_ag *ag, enum bt_hfp_ag_indicator index
 	return err;
 }
 
-int bt_hfp_ag_set_operator(struct bt_hfp_ag *ag, uint8_t mode, char *name)
+int Z_API(bt_hfp_ag_set_operator)(struct bt_hfp_ag *ag, uint8_t mode, char *name)
 {
 	int len;
 
@@ -4806,7 +4806,7 @@ int bt_hfp_ag_set_operator(struct bt_hfp_ag *ag, uint8_t mode, char *name)
 	return 0;
 }
 
-int bt_hfp_ag_audio_connect(struct bt_hfp_ag *ag, uint8_t id)
+int Z_API(bt_hfp_ag_audio_connect)(struct bt_hfp_ag *ag, uint8_t id)
 {
 	int err;
 
@@ -4857,7 +4857,7 @@ int bt_hfp_ag_audio_connect(struct bt_hfp_ag *ag, uint8_t id)
 	return err;
 }
 
-int bt_hfp_ag_vgm(struct bt_hfp_ag *ag, uint8_t vgm)
+int Z_API(bt_hfp_ag_vgm)(struct bt_hfp_ag *ag, uint8_t vgm)
 {
 	int err;
 
@@ -4892,7 +4892,7 @@ int bt_hfp_ag_vgm(struct bt_hfp_ag *ag, uint8_t vgm)
 	return err;
 }
 
-int bt_hfp_ag_vgs(struct bt_hfp_ag *ag, uint8_t vgs)
+int Z_API(bt_hfp_ag_vgs)(struct bt_hfp_ag *ag, uint8_t vgs)
 {
 	int err;
 
@@ -4927,7 +4927,7 @@ int bt_hfp_ag_vgs(struct bt_hfp_ag *ag, uint8_t vgs)
 	return err;
 }
 
-int bt_hfp_ag_inband_ringtone(struct bt_hfp_ag *ag, bool inband)
+int Z_API(bt_hfp_ag_inband_ringtone)(struct bt_hfp_ag *ag, bool inband)
 {
 	int err;
 
@@ -4954,7 +4954,7 @@ int bt_hfp_ag_inband_ringtone(struct bt_hfp_ag *ag, bool inband)
 	return 0;
 }
 
-int bt_hfp_ag_voice_recognition(struct bt_hfp_ag *ag, bool activate)
+int Z_API(bt_hfp_ag_voice_recognition)(struct bt_hfp_ag *ag, bool activate)
 {
 #if defined(CONFIG_BT_HFP_AG_VOICE_RECG)
 	int err;
@@ -5004,7 +5004,7 @@ int bt_hfp_ag_voice_recognition(struct bt_hfp_ag *ag, bool activate)
 #endif /* CONFIG_BT_HFP_AG_VOICE_RECG */
 }
 
-int bt_hfp_ag_vre_state(struct bt_hfp_ag *ag, uint8_t state)
+int Z_API(bt_hfp_ag_vre_state)(struct bt_hfp_ag *ag, uint8_t state)
 {
 #if defined(CONFIG_BT_HFP_AG_ENH_VOICE_RECG)
 	int err;
@@ -5052,7 +5052,7 @@ int bt_hfp_ag_vre_state(struct bt_hfp_ag *ag, uint8_t state)
 #endif /* CONFIG_BT_HFP_AG_ENH_VOICE_RECG */
 }
 
-int bt_hfp_ag_vre_textual_representation(struct bt_hfp_ag *ag, uint8_t state, const char *id,
+int Z_API(bt_hfp_ag_vre_textual_representation)(struct bt_hfp_ag *ag, uint8_t state, const char *id,
 					 uint8_t type, uint8_t operation, const char *text)
 {
 #if defined(CONFIG_BT_HFP_AG_VOICE_RECG_TEXT)
@@ -5108,7 +5108,7 @@ int bt_hfp_ag_vre_textual_representation(struct bt_hfp_ag *ag, uint8_t state, co
 #endif /* CONFIG_BT_HFP_AG_VOICE_RECG_TEXT */
 }
 
-int bt_hfp_ag_signal_strength(struct bt_hfp_ag *ag, uint8_t strength)
+int Z_API(bt_hfp_ag_signal_strength)(struct bt_hfp_ag *ag, uint8_t strength)
 {
 	int err;
 
@@ -5134,7 +5134,7 @@ int bt_hfp_ag_signal_strength(struct bt_hfp_ag *ag, uint8_t strength)
 	return err;
 }
 
-int bt_hfp_ag_roaming_status(struct bt_hfp_ag *ag, uint8_t status)
+int Z_API(bt_hfp_ag_roaming_status)(struct bt_hfp_ag *ag, uint8_t status)
 {
 	int err;
 
@@ -5160,7 +5160,7 @@ int bt_hfp_ag_roaming_status(struct bt_hfp_ag *ag, uint8_t status)
 	return err;
 }
 
-int bt_hfp_ag_battery_level(struct bt_hfp_ag *ag, uint8_t level)
+int Z_API(bt_hfp_ag_battery_level)(struct bt_hfp_ag *ag, uint8_t level)
 {
 	int err;
 
@@ -5186,7 +5186,7 @@ int bt_hfp_ag_battery_level(struct bt_hfp_ag *ag, uint8_t level)
 	return err;
 }
 
-int bt_hfp_ag_service_availability(struct bt_hfp_ag *ag, bool available)
+int Z_API(bt_hfp_ag_service_availability)(struct bt_hfp_ag *ag, bool available)
 {
 	int err;
 
@@ -5212,7 +5212,7 @@ int bt_hfp_ag_service_availability(struct bt_hfp_ag *ag, bool available)
 	return err;
 }
 
-int bt_hfp_ag_hf_indicator(struct bt_hfp_ag *ag, enum hfp_ag_hf_indicators indicator, bool enable)
+int Z_API(bt_hfp_ag_hf_indicator)(struct bt_hfp_ag *ag, enum hfp_ag_hf_indicators indicator, bool enable)
 {
 #if defined(CONFIG_BT_HFP_AG_HF_INDICATORS)
 	int err;
@@ -5258,7 +5258,7 @@ int bt_hfp_ag_hf_indicator(struct bt_hfp_ag *ag, enum hfp_ag_hf_indicators indic
 #endif /* CONFIG_BT_HFP_HF_HF_INDICATORS */
 }
 
-int bt_hfp_ag_ongoing_calls(struct bt_hfp_ag *ag, struct bt_hfp_ag_ongoing_call *calls,
+int Z_API(bt_hfp_ag_ongoing_calls)(struct bt_hfp_ag *ag, struct bt_hfp_ag_ongoing_call *calls,
 			    size_t count)
 {
 	struct bt_hfp_ag_ongoing_call *call;
