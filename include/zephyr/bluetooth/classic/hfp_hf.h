@@ -10,6 +10,10 @@
 #ifndef ZEPHYR_INCLUDE_BLUETOOTH_HFP_HF_H_
 #define ZEPHYR_INCLUDE_BLUETOOTH_HFP_HF_H_
 
+#ifndef Z_API
+#define Z_API(func) z_##func
+#endif
+
 /**
  * @brief Hands Free Profile (HFP)
  * @defgroup bt_hfp Hands Free Profile (HFP)
@@ -512,7 +516,7 @@ struct bt_hfp_hf_cb {
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_register(struct bt_hfp_hf_cb *cb);
+int Z_API(bt_hfp_hf_register)(struct bt_hfp_hf_cb *cb);
 
 /** @brief Initiate the service level connection establishment procedure
  *
@@ -538,7 +542,7 @@ int bt_hfp_hf_register(struct bt_hfp_hf_cb *cb);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_connect(struct bt_conn *conn, struct bt_hfp_hf **hf, uint8_t channel);
+int Z_API(bt_hfp_hf_connect)(struct bt_conn *conn, struct bt_hfp_hf **hf, uint8_t channel);
 
 /** @brief Release the service level connection
  *
@@ -561,7 +565,7 @@ int bt_hfp_hf_connect(struct bt_conn *conn, struct bt_hfp_hf **hf, uint8_t chann
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_disconnect(struct bt_hfp_hf *hf);
+int Z_API(bt_hfp_hf_disconnect)(struct bt_hfp_hf *hf);
 
 /** @brief Handsfree HF enable/disable Calling Line Identification (CLI) Notification
  *
@@ -576,7 +580,7 @@ int bt_hfp_hf_disconnect(struct bt_hfp_hf *hf);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_cli(struct bt_hfp_hf *hf, bool enable);
+int Z_API(bt_hfp_hf_cli)(struct bt_hfp_hf *hf, bool enable);
 
 /** @brief Handsfree HF report Gain of Microphone (VGM)
  *
@@ -599,7 +603,7 @@ int bt_hfp_hf_cli(struct bt_hfp_hf *hf, bool enable);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_vgm(struct bt_hfp_hf *hf, uint8_t gain);
+int Z_API(bt_hfp_hf_vgm)(struct bt_hfp_hf *hf, uint8_t gain);
 
 /** @brief Handsfree HF report Gain of Speaker (VGS)
  *
@@ -622,7 +626,7 @@ int bt_hfp_hf_vgm(struct bt_hfp_hf *hf, uint8_t gain);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_vgs(struct bt_hfp_hf *hf, uint8_t gain);
+int Z_API(bt_hfp_hf_vgs)(struct bt_hfp_hf *hf, uint8_t gain);
 
 /** @brief Handsfree HF requests currently selected operator
  *
@@ -633,7 +637,7 @@ int bt_hfp_hf_vgs(struct bt_hfp_hf *hf, uint8_t gain);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_get_operator(struct bt_hfp_hf *hf);
+int Z_API(bt_hfp_hf_get_operator)(struct bt_hfp_hf *hf);
 
 /** @brief Handsfree HF accept the incoming call
  *
@@ -647,7 +651,7 @@ int bt_hfp_hf_get_operator(struct bt_hfp_hf *hf);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_accept(struct bt_hfp_hf_call *call);
+int Z_API(bt_hfp_hf_accept)(struct bt_hfp_hf_call *call);
 
 /** @brief Handsfree HF reject the incoming call
  *
@@ -661,7 +665,7 @@ int bt_hfp_hf_accept(struct bt_hfp_hf_call *call);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_reject(struct bt_hfp_hf_call *call);
+int Z_API(bt_hfp_hf_reject)(struct bt_hfp_hf_call *call);
 
 /** @brief Handsfree HF terminate the incoming call
  *
@@ -673,7 +677,7 @@ int bt_hfp_hf_reject(struct bt_hfp_hf_call *call);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_terminate(struct bt_hfp_hf_call *call);
+int Z_API(bt_hfp_hf_terminate)(struct bt_hfp_hf_call *call);
 
 /** @brief Handsfree HF put the incoming call on hold
  *
@@ -687,7 +691,7 @@ int bt_hfp_hf_terminate(struct bt_hfp_hf_call *call);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_hold_incoming(struct bt_hfp_hf_call *call);
+int Z_API(bt_hfp_hf_hold_incoming)(struct bt_hfp_hf_call *call);
 
 /** @brief Handsfree HF query respond and hold status of AG
  *
@@ -699,7 +703,7 @@ int bt_hfp_hf_hold_incoming(struct bt_hfp_hf_call *call);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_query_respond_hold_status(struct bt_hfp_hf *hf);
+int Z_API(bt_hfp_hf_query_respond_hold_status)(struct bt_hfp_hf *hf);
 
 /** @brief Handsfree HF phone number call
  *
@@ -714,7 +718,7 @@ int bt_hfp_hf_query_respond_hold_status(struct bt_hfp_hf *hf);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_number_call(struct bt_hfp_hf *hf, const char *number);
+int Z_API(bt_hfp_hf_number_call)(struct bt_hfp_hf *hf, const char *number);
 
 /** @brief Handsfree HF memory dialing call
  *
@@ -729,7 +733,7 @@ int bt_hfp_hf_number_call(struct bt_hfp_hf *hf, const char *number);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_memory_dial(struct bt_hfp_hf *hf, const char *location);
+int Z_API(bt_hfp_hf_memory_dial)(struct bt_hfp_hf *hf, const char *location);
 
 /** @brief Handsfree HF redial last number
  *
@@ -743,7 +747,7 @@ int bt_hfp_hf_memory_dial(struct bt_hfp_hf *hf, const char *location);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_redial(struct bt_hfp_hf *hf);
+int Z_API(bt_hfp_hf_redial)(struct bt_hfp_hf *hf);
 
 /** @brief Handsfree HF setup audio connection
  *
@@ -755,7 +759,7 @@ int bt_hfp_hf_redial(struct bt_hfp_hf *hf);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_audio_connect(struct bt_hfp_hf *hf);
+int Z_API(bt_hfp_hf_audio_connect)(struct bt_hfp_hf *hf);
 
 /** @brief Handsfree HF set selected codec id
  *
@@ -773,7 +777,7 @@ int bt_hfp_hf_audio_connect(struct bt_hfp_hf *hf);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_select_codec(struct bt_hfp_hf *hf, uint8_t codec_id);
+int Z_API(bt_hfp_hf_select_codec)(struct bt_hfp_hf *hf, uint8_t codec_id);
 
 /** @brief Handsfree HF set supported codec ids
  *
@@ -787,7 +791,7 @@ int bt_hfp_hf_select_codec(struct bt_hfp_hf *hf, uint8_t codec_id);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_set_codecs(struct bt_hfp_hf *hf, uint8_t codec_ids);
+int Z_API(bt_hfp_hf_set_codecs)(struct bt_hfp_hf *hf, uint8_t codec_ids);
 
 /** @brief Handsfree HF turns off AG's EC and NR
  *
@@ -801,7 +805,7 @@ int bt_hfp_hf_set_codecs(struct bt_hfp_hf *hf, uint8_t codec_ids);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_turn_off_ecnr(struct bt_hfp_hf *hf);
+int Z_API(bt_hfp_hf_turn_off_ecnr)(struct bt_hfp_hf *hf);
 
 /** @brief Handsfree HF enable/disable call waiting notification
  *
@@ -815,7 +819,7 @@ int bt_hfp_hf_turn_off_ecnr(struct bt_hfp_hf *hf);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_call_waiting_notify(struct bt_hfp_hf *hf, bool enable);
+int Z_API(bt_hfp_hf_call_waiting_notify)(struct bt_hfp_hf *hf, bool enable);
 
 /** @brief Handsfree HF release all held calls
  *
@@ -827,7 +831,7 @@ int bt_hfp_hf_call_waiting_notify(struct bt_hfp_hf *hf, bool enable);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_release_all_held(struct bt_hfp_hf *hf);
+int Z_API(bt_hfp_hf_release_all_held)(struct bt_hfp_hf *hf);
 
 /** @brief Handsfree HF set User Determined User Busy (UDUB) for a waiting call
  *
@@ -840,7 +844,7 @@ int bt_hfp_hf_release_all_held(struct bt_hfp_hf *hf);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_set_udub(struct bt_hfp_hf *hf);
+int Z_API(bt_hfp_hf_set_udub)(struct bt_hfp_hf *hf);
 
 /** @brief Handsfree HF release all active calls and accept other call
  *
@@ -853,7 +857,7 @@ int bt_hfp_hf_set_udub(struct bt_hfp_hf *hf);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_release_active_accept_other(struct bt_hfp_hf *hf);
+int Z_API(bt_hfp_hf_release_active_accept_other)(struct bt_hfp_hf *hf);
 
 /** @brief Handsfree HF hold all active calls and accept other call
  *
@@ -866,7 +870,7 @@ int bt_hfp_hf_release_active_accept_other(struct bt_hfp_hf *hf);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_hold_active_accept_other(struct bt_hfp_hf *hf);
+int Z_API(bt_hfp_hf_hold_active_accept_other)(struct bt_hfp_hf *hf);
 
 /** @brief Handsfree HF add a held call to the conversation
  *
@@ -878,7 +882,7 @@ int bt_hfp_hf_hold_active_accept_other(struct bt_hfp_hf *hf);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_join_conversation(struct bt_hfp_hf *hf);
+int Z_API(bt_hfp_hf_join_conversation)(struct bt_hfp_hf *hf);
 
 /** @brief Handsfree HF explicit call transfer
  *
@@ -891,7 +895,7 @@ int bt_hfp_hf_join_conversation(struct bt_hfp_hf *hf);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_explicit_call_transfer(struct bt_hfp_hf *hf);
+int Z_API(bt_hfp_hf_explicit_call_transfer)(struct bt_hfp_hf *hf);
 
 /** @brief Handsfree HF release call with specified index
  *
@@ -904,7 +908,7 @@ int bt_hfp_hf_explicit_call_transfer(struct bt_hfp_hf *hf);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_release_specified_call(struct bt_hfp_hf_call *call);
+int Z_API(bt_hfp_hf_release_specified_call)(struct bt_hfp_hf_call *call);
 
 /** @brief Handsfree HF request private consultation mode with specified call
  *
@@ -919,7 +923,7 @@ int bt_hfp_hf_release_specified_call(struct bt_hfp_hf_call *call);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_private_consultation_mode(struct bt_hfp_hf_call *call);
+int Z_API(bt_hfp_hf_private_consultation_mode)(struct bt_hfp_hf_call *call);
 
 /** @brief Handsfree HF enable/disable the voice recognition function
  *
@@ -932,7 +936,7 @@ int bt_hfp_hf_private_consultation_mode(struct bt_hfp_hf_call *call);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_voice_recognition(struct bt_hfp_hf *hf, bool activate);
+int Z_API(bt_hfp_hf_voice_recognition)(struct bt_hfp_hf *hf, bool activate);
 
 /** @brief Handsfree HF indicate that the HF is ready to accept audio
  *
@@ -946,7 +950,7 @@ int bt_hfp_hf_voice_recognition(struct bt_hfp_hf *hf, bool activate);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_ready_to_accept_audio(struct bt_hfp_hf *hf);
+int Z_API(bt_hfp_hf_ready_to_accept_audio)(struct bt_hfp_hf *hf);
 
 /** @brief Handsfree HF attach a phone number for a voice tag
  *
@@ -956,7 +960,7 @@ int bt_hfp_hf_ready_to_accept_audio(struct bt_hfp_hf *hf);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_request_phone_number(struct bt_hfp_hf *hf);
+int Z_API(bt_hfp_hf_request_phone_number)(struct bt_hfp_hf *hf);
 
 /** @brief Handsfree HF Transmit A specific DTMF Code
  *
@@ -970,7 +974,7 @@ int bt_hfp_hf_request_phone_number(struct bt_hfp_hf *hf);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_transmit_dtmf_code(struct bt_hfp_hf_call *call, char code);
+int Z_API(bt_hfp_hf_transmit_dtmf_code)(struct bt_hfp_hf_call *call, char code);
 
 /** @brief Handsfree HF Query Subscriber Number Information
  *
@@ -980,7 +984,7 @@ int bt_hfp_hf_transmit_dtmf_code(struct bt_hfp_hf_call *call, char code);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_query_subscriber(struct bt_hfp_hf *hf);
+int Z_API(bt_hfp_hf_query_subscriber)(struct bt_hfp_hf *hf);
 
 /* HFP HF Indicators */
 enum hfp_hf_ag_indicators {
@@ -1009,7 +1013,7 @@ enum hfp_hf_ag_indicators {
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_indicator_status(struct bt_hfp_hf *hf, uint8_t status);
+int Z_API(bt_hfp_hf_indicator_status)(struct bt_hfp_hf *hf, uint8_t status);
 
 /** @brief Handsfree HF enable/disable enhanced safety
  *
@@ -1022,7 +1026,7 @@ int bt_hfp_hf_indicator_status(struct bt_hfp_hf *hf, uint8_t status);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_enhanced_safety(struct bt_hfp_hf *hf, bool enable);
+int Z_API(bt_hfp_hf_enhanced_safety)(struct bt_hfp_hf *hf, bool enable);
 
 /** @brief Handsfree HF remaining battery level
  *
@@ -1035,7 +1039,7 @@ int bt_hfp_hf_enhanced_safety(struct bt_hfp_hf *hf, bool enable);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_battery(struct bt_hfp_hf *hf, uint8_t level);
+int Z_API(bt_hfp_hf_battery)(struct bt_hfp_hf *hf, uint8_t level);
 
 /** @brief Handsfree HF query list of current calls
  *
@@ -1047,7 +1051,7 @@ int bt_hfp_hf_battery(struct bt_hfp_hf *hf, uint8_t level);
  *
  *  @return 0 in case of success or negative value in case of error.
  */
-int bt_hfp_hf_query_list_of_current_calls(struct bt_hfp_hf *hf);
+int Z_API(bt_hfp_hf_query_list_of_current_calls)(struct bt_hfp_hf *hf);
 
 #ifdef __cplusplus
 }
