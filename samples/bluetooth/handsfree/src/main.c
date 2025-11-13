@@ -149,7 +149,7 @@ static void handsfree_enable(void)
 {
 	int err;
 
-	err = bt_hfp_hf_register(&hf_cb);
+	err = Z_API(bt_hfp_hf_register)(&hf_cb);
 	if (err < 0) {
 		printk("HFP HF Registration failed (err %d)\n", err);
 	}

@@ -2361,7 +2361,7 @@ static int cli_finish(struct at_client *hf_at, enum at_result result,
 }
 #endif /* CONFIG_BT_HFP_HF_CLI */
 
-int bt_hfp_hf_cli(struct bt_hfp_hf *hf, bool enable)
+int Z_API(bt_hfp_hf_cli)(struct bt_hfp_hf *hf, bool enable)
 {
 #if defined(CONFIG_BT_HFP_HF_CLI)
 	int err;
@@ -2402,7 +2402,7 @@ static int vgm_finish(struct at_client *hf_at, enum at_result result,
 }
 #endif /* CONFIG_BT_HFP_HF_VOLUME */
 
-int bt_hfp_hf_vgm(struct bt_hfp_hf *hf, uint8_t gain)
+int Z_API(bt_hfp_hf_vgm)(struct bt_hfp_hf *hf, uint8_t gain)
 {
 #if defined(CONFIG_BT_HFP_HF_VOLUME)
 	int err;
@@ -2449,7 +2449,7 @@ static int vgs_finish(struct at_client *hf_at, enum at_result result,
 }
 #endif /* CONFIG_BT_HFP_HF_VOLUME */
 
-int bt_hfp_hf_vgs(struct bt_hfp_hf *hf, uint8_t gain)
+int Z_API(bt_hfp_hf_vgs)(struct bt_hfp_hf *hf, uint8_t gain)
 {
 #if defined(CONFIG_BT_HFP_HF_VOLUME)
 	int err;
@@ -2538,7 +2538,7 @@ static int cops_finish(struct at_client *hf_at, enum at_result result,
 	return 0;
 }
 
-int bt_hfp_hf_get_operator(struct bt_hfp_hf *hf)
+int Z_API(bt_hfp_hf_get_operator)(struct bt_hfp_hf *hf)
 {
 	int err;
 
@@ -2609,7 +2609,7 @@ static int binp_finish(struct at_client *hf_at, enum at_result result,
 	return 0;
 }
 
-int bt_hfp_hf_request_phone_number(struct bt_hfp_hf *hf)
+int Z_API(bt_hfp_hf_request_phone_number)(struct bt_hfp_hf *hf)
 {
 	int err;
 
@@ -2644,7 +2644,7 @@ static int vts_finish(struct at_client *hf_at, enum at_result result,
 	return 0;
 }
 
-int bt_hfp_hf_transmit_dtmf_code(struct bt_hfp_hf_call *call, char code)
+int Z_API(bt_hfp_hf_transmit_dtmf_code)(struct bt_hfp_hf_call *call, char code)
 {
 	struct bt_hfp_hf *hf;
 	int err;
@@ -2697,7 +2697,7 @@ static int cnum_finish(struct at_client *hf_at, enum at_result result,
 	return 0;
 }
 
-int bt_hfp_hf_query_subscriber(struct bt_hfp_hf *hf)
+int Z_API(bt_hfp_hf_query_subscriber)(struct bt_hfp_hf *hf)
 {
 	int err;
 
@@ -2731,7 +2731,7 @@ static int bia_finish(struct at_client *hf_at, enum at_result result,
 	return 0;
 }
 
-int bt_hfp_hf_indicator_status(struct bt_hfp_hf *hf, uint8_t status)
+int Z_API(bt_hfp_hf_indicator_status)(struct bt_hfp_hf *hf, uint8_t status)
 {
 	int err;
 	size_t index;
@@ -2794,7 +2794,7 @@ static int biev_enh_safety_finish(struct at_client *hf_at,
 }
 #endif /* CONFIG_BT_HFP_HF_HF_INDICATOR_ENH_SAFETY */
 
-int bt_hfp_hf_enhanced_safety(struct bt_hfp_hf *hf, bool enable)
+int Z_API(bt_hfp_hf_enhanced_safety)(struct bt_hfp_hf *hf, bool enable)
 {
 #if defined(CONFIG_BT_HFP_HF_HF_INDICATOR_ENH_SAFETY)
 	int err;
@@ -2846,7 +2846,7 @@ static int biev_battery_finish(struct at_client *hf_at,
 }
 #endif /* CONFIG_BT_HFP_HF_HF_INDICATOR_BATTERY */
 
-int bt_hfp_hf_battery(struct bt_hfp_hf *hf, uint8_t level)
+int Z_API(bt_hfp_hf_battery)(struct bt_hfp_hf *hf, uint8_t level)
 {
 #if defined(CONFIG_BT_HFP_HF_HF_INDICATOR_BATTERY)
 	int err;
@@ -2911,7 +2911,7 @@ static int btrh_finish(struct at_client *hf_at, enum at_result result,
 	return 0;
 }
 
-int bt_hfp_hf_accept(struct bt_hfp_hf_call *call)
+int Z_API(bt_hfp_hf_accept)(struct bt_hfp_hf_call *call)
 {
 	int err;
 	struct bt_hfp_hf *hf;
@@ -2972,7 +2972,7 @@ static int chup_finish(struct at_client *hf_at, enum at_result result,
 	return 0;
 }
 
-int bt_hfp_hf_reject(struct bt_hfp_hf_call *call)
+int Z_API(bt_hfp_hf_reject)(struct bt_hfp_hf_call *call)
 {
 	int err;
 	struct bt_hfp_hf *hf;
@@ -3028,7 +3028,7 @@ int bt_hfp_hf_reject(struct bt_hfp_hf_call *call)
 	return -EINVAL;
 }
 
-int bt_hfp_hf_terminate(struct bt_hfp_hf_call *call)
+int Z_API(bt_hfp_hf_terminate)(struct bt_hfp_hf_call *call)
 {
 	int err;
 	struct bt_hfp_hf *hf;
@@ -3071,7 +3071,7 @@ int bt_hfp_hf_terminate(struct bt_hfp_hf_call *call)
 	return err;
 }
 
-int bt_hfp_hf_hold_incoming(struct bt_hfp_hf_call *call)
+int Z_API(bt_hfp_hf_hold_incoming)(struct bt_hfp_hf_call *call)
 {
 	int err;
 	struct bt_hfp_hf *hf;
@@ -3170,7 +3170,7 @@ static int query_btrh_finish(struct at_client *hf_at, enum at_result result,
 	return 0;
 }
 
-int bt_hfp_hf_query_respond_hold_status(struct bt_hfp_hf *hf)
+int Z_API(bt_hfp_hf_query_respond_hold_status)(struct bt_hfp_hf *hf)
 {
 	int err;
 
@@ -3258,7 +3258,7 @@ static int atd_finish(struct at_client *hf_at, enum at_result result,
 	return 0;
 }
 
-int bt_hfp_hf_number_call(struct bt_hfp_hf *hf, const char *number)
+int Z_API(bt_hfp_hf_number_call)(struct bt_hfp_hf *hf, const char *number)
 {
 	struct bt_hfp_hf_call *call;
 	int err;
@@ -3292,7 +3292,7 @@ int bt_hfp_hf_number_call(struct bt_hfp_hf *hf, const char *number)
 	return err;
 }
 
-int bt_hfp_hf_memory_dial(struct bt_hfp_hf *hf, const char *location)
+int Z_API(bt_hfp_hf_memory_dial)(struct bt_hfp_hf *hf, const char *location)
 {
 	struct bt_hfp_hf_call *call;
 	int err;
@@ -3358,7 +3358,7 @@ static int bldn_finish(struct at_client *hf_at, enum at_result result,
 	return 0;
 }
 
-int bt_hfp_hf_redial(struct bt_hfp_hf *hf)
+int Z_API(bt_hfp_hf_redial)(struct bt_hfp_hf *hf)
 {
 	struct bt_hfp_hf_call *call;
 	int err;
@@ -3404,7 +3404,7 @@ static int bcc_finish(struct at_client *hf_at, enum at_result result,
 }
 #endif /* CONFIG_BT_HFP_HF_CODEC_NEG */
 
-int bt_hfp_hf_audio_connect(struct bt_hfp_hf *hf)
+int Z_API(bt_hfp_hf_audio_connect)(struct bt_hfp_hf *hf)
 {
 #if defined(CONFIG_BT_HFP_HF_CODEC_NEG)
 	int err;
@@ -3444,7 +3444,7 @@ static int bcs_finish(struct at_client *hf_at, enum at_result result,
 }
 #endif /* CONFIG_BT_HFP_HF_CODEC_NEG */
 
-int bt_hfp_hf_select_codec(struct bt_hfp_hf *hf, uint8_t codec_id)
+int Z_API(bt_hfp_hf_select_codec)(struct bt_hfp_hf *hf, uint8_t codec_id)
 {
 #if defined(CONFIG_BT_HFP_HF_CODEC_NEG)
 	LOG_DBG("");
@@ -3482,7 +3482,7 @@ static int bac_finish(struct at_client *hf_at, enum at_result result,
 }
 #endif /* CONFIG_BT_HFP_HF_CODEC_NEG */
 
-int bt_hfp_hf_set_codecs(struct bt_hfp_hf *hf, uint8_t codec_ids)
+int Z_API(bt_hfp_hf_set_codecs)(struct bt_hfp_hf *hf, uint8_t codec_ids)
 {
 #if defined(CONFIG_BT_HFP_HF_CODEC_NEG)
 	char ids[sizeof(hf->hf_codec_ids)*2*8 + 1];
@@ -3533,7 +3533,7 @@ static int nrec_finish(struct at_client *hf_at, enum at_result result,
 }
 #endif /* CONFIG_BT_HFP_HF_ECNR */
 
-int bt_hfp_hf_turn_off_ecnr(struct bt_hfp_hf *hf)
+int Z_API(bt_hfp_hf_turn_off_ecnr)(struct bt_hfp_hf *hf)
 {
 #if defined(CONFIG_BT_HFP_HF_ECNR)
 	LOG_DBG("");
@@ -3571,7 +3571,7 @@ static int ccwa_finish(struct at_client *hf_at, enum at_result result,
 }
 #endif /* CONFIG_BT_HFP_HF_3WAY_CALL */
 
-int bt_hfp_hf_call_waiting_notify(struct bt_hfp_hf *hf, bool enable)
+int Z_API(bt_hfp_hf_call_waiting_notify)(struct bt_hfp_hf *hf, bool enable)
 {
 #if defined(CONFIG_BT_HFP_HF_3WAY_CALL)
 	LOG_DBG("");
@@ -3606,7 +3606,7 @@ static int chld_release_all_held_finish(struct at_client *hf_at, enum at_result 
 }
 #endif /* CONFIG_BT_HFP_HF_3WAY_CALL */
 
-int bt_hfp_hf_release_all_held(struct bt_hfp_hf *hf)
+int Z_API(bt_hfp_hf_release_all_held)(struct bt_hfp_hf *hf)
 {
 #if defined(CONFIG_BT_HFP_HF_3WAY_CALL)
 	LOG_DBG("");
@@ -3646,7 +3646,7 @@ static int chld_set_udub_finish(struct at_client *hf_at, enum at_result result,
 }
 #endif /* CONFIG_BT_HFP_HF_3WAY_CALL */
 
-int bt_hfp_hf_set_udub(struct bt_hfp_hf *hf)
+int Z_API(bt_hfp_hf_set_udub)(struct bt_hfp_hf *hf)
 {
 #if defined(CONFIG_BT_HFP_HF_3WAY_CALL)
 	LOG_DBG("");
@@ -3686,7 +3686,7 @@ static int chld_release_active_accept_other_finish(struct at_client *hf_at,
 }
 #endif /* CONFIG_BT_HFP_HF_3WAY_CALL */
 
-int bt_hfp_hf_release_active_accept_other(struct bt_hfp_hf *hf)
+int Z_API(bt_hfp_hf_release_active_accept_other)(struct bt_hfp_hf *hf)
 {
 #if defined(CONFIG_BT_HFP_HF_3WAY_CALL)
 	LOG_DBG("");
@@ -3722,7 +3722,7 @@ static int chld_hold_active_accept_other_finish(struct at_client *hf_at,
 }
 #endif /* CONFIG_BT_HFP_HF_3WAY_CALL */
 
-int bt_hfp_hf_hold_active_accept_other(struct bt_hfp_hf *hf)
+int Z_API(bt_hfp_hf_hold_active_accept_other)(struct bt_hfp_hf *hf)
 {
 #if defined(CONFIG_BT_HFP_HF_3WAY_CALL)
 	LOG_DBG("");
@@ -3758,7 +3758,7 @@ static int chld_join_conversation_finish(struct at_client *hf_at,
 }
 #endif /* CONFIG_BT_HFP_HF_3WAY_CALL */
 
-int bt_hfp_hf_join_conversation(struct bt_hfp_hf *hf)
+int Z_API(bt_hfp_hf_join_conversation)(struct bt_hfp_hf *hf)
 {
 #if defined(CONFIG_BT_HFP_HF_3WAY_CALL)
 	LOG_DBG("");
@@ -3799,7 +3799,7 @@ static int chld_explicit_call_transfer_finish(struct at_client *hf_at,
 }
 #endif /* CONFIG_BT_HFP_HF_3WAY_CALL */
 
-int bt_hfp_hf_explicit_call_transfer(struct bt_hfp_hf *hf)
+int Z_API(bt_hfp_hf_explicit_call_transfer)(struct bt_hfp_hf *hf)
 {
 #if defined(CONFIG_BT_HFP_HF_3WAY_CALL)
 	LOG_DBG("");
@@ -3840,7 +3840,7 @@ static int chld_release_specified_call_finish(struct at_client *hf_at,
 }
 #endif /* CONFIG_BT_HFP_HF_ECC */
 
-int bt_hfp_hf_release_specified_call(struct bt_hfp_hf_call *call)
+int Z_API(bt_hfp_hf_release_specified_call)(struct bt_hfp_hf_call *call)
 {
 #if defined(CONFIG_BT_HFP_HF_ECC)
 	struct bt_hfp_hf *hf;
@@ -3904,7 +3904,7 @@ static int chld_private_consultation_mode_finish(struct at_client *hf_at,
 }
 #endif /* CONFIG_BT_HFP_HF_ECC */
 
-int bt_hfp_hf_private_consultation_mode(struct bt_hfp_hf_call *call)
+int Z_API(bt_hfp_hf_private_consultation_mode)(struct bt_hfp_hf_call *call)
 {
 #if defined(CONFIG_BT_HFP_HF_ECC)
 	struct bt_hfp_hf *hf;
@@ -3990,7 +3990,7 @@ static int bvra_0_finish(struct at_client *hf_at,
 }
 #endif /* CONFIG_BT_HFP_HF_VOICE_RECG */
 
-int bt_hfp_hf_voice_recognition(struct bt_hfp_hf *hf, bool activate)
+int Z_API(bt_hfp_hf_voice_recognition)(struct bt_hfp_hf *hf, bool activate)
 {
 #if defined(CONFIG_BT_HFP_HF_VOICE_RECG)
 	at_finish_cb_t finish;
@@ -4032,7 +4032,7 @@ static int bvra_2_finish(struct at_client *hf_at,
 }
 #endif /* CONFIG_BT_HFP_HF_ENH_VOICE_RECG */
 
-int bt_hfp_hf_ready_to_accept_audio(struct bt_hfp_hf *hf)
+int Z_API(bt_hfp_hf_ready_to_accept_audio)(struct bt_hfp_hf *hf)
 {
 #if defined(CONFIG_BT_HFP_HF_ENH_VOICE_RECG)
 	LOG_DBG("");
@@ -4240,7 +4240,7 @@ static void hfp_hf_init(void)
 	bt_sdp_register_service(&hfp_rec);
 }
 
-int bt_hfp_hf_register(struct bt_hfp_hf_cb *cb)
+int Z_API(bt_hfp_hf_register)(struct bt_hfp_hf_cb *cb)
 {
 	if (!cb) {
 		return -EINVAL;
@@ -4257,7 +4257,7 @@ int bt_hfp_hf_register(struct bt_hfp_hf_cb *cb)
 	return 0;
 }
 
-int bt_hfp_hf_connect(struct bt_conn *conn, struct bt_hfp_hf **hf, uint8_t channel)
+int Z_API(bt_hfp_hf_connect)(struct bt_conn *conn, struct bt_hfp_hf **hf, uint8_t channel)
 {
 	struct bt_hfp_hf *new_hf;
 	int err;
@@ -4286,7 +4286,7 @@ int bt_hfp_hf_connect(struct bt_conn *conn, struct bt_hfp_hf **hf, uint8_t chann
 	return err;
 }
 
-int bt_hfp_hf_disconnect(struct bt_hfp_hf *hf)
+int Z_API(bt_hfp_hf_disconnect)(struct bt_hfp_hf *hf)
 {
 	LOG_DBG("");
 
@@ -4297,7 +4297,7 @@ int bt_hfp_hf_disconnect(struct bt_hfp_hf *hf)
 	return bt_rfcomm_dlc_disconnect(&hf->rfcomm_dlc);
 }
 
-int bt_hfp_hf_query_list_of_current_calls(struct bt_hfp_hf *hf)
+int Z_API(bt_hfp_hf_query_list_of_current_calls)(struct bt_hfp_hf *hf)
 {
 	int err;
 
