@@ -15,6 +15,13 @@ menuconfig BT
 
 if BT
 
+config ZBLUE_API_PREFIX_ENABLE
+	bool "Enable ZBue API prefix for Bluetooth"
+	default y
+	help
+	  This option enables API prefixing for Bluetooth to avoid symbol
+	  conflicts when integrating with other stacks.
+
 config BT_ORIGINAL_API
 	bool "Enable Original API"
 	default y
