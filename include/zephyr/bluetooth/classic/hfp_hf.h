@@ -10,10 +10,6 @@
 #ifndef ZEPHYR_INCLUDE_BLUETOOTH_HFP_HF_H_
 #define ZEPHYR_INCLUDE_BLUETOOTH_HFP_HF_H_
 
-#ifndef Z_API
-#define Z_API(func) z_##func
-#endif
-
 /**
  * @brief Hands Free Profile (HFP)
  * @defgroup bt_hfp Hands Free Profile (HFP)

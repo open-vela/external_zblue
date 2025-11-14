@@ -11,10 +11,6 @@
 #ifndef ZEPHYR_INCLUDE_BLUETOOTH_HFP_AG_H_
 #define ZEPHYR_INCLUDE_BLUETOOTH_HFP_AG_H_
 
-#ifndef Z_API
-#define Z_API(func) z_##func
-#endif
-
 /**
  * @brief Hands Free Profile - Audio Gateway (HFP-AG)
  * @defgroup bt_hfp_ag Hands Free Profile - Audio Gateway (HFP-AG)

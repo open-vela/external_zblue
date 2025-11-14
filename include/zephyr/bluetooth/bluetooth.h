@@ -11,6 +11,12 @@
 #ifndef ZEPHYR_INCLUDE_BLUETOOTH_BLUETOOTH_H_
 #define ZEPHYR_INCLUDE_BLUETOOTH_BLUETOOTH_H_
 
+#ifdef CONFIG_ZBLUE_API_PREFIX_ENABLE
+#define Z_API(func) z_##func
+#else
+#define Z_API(func) func
+#endif /* CONFIG_ZBLUE_API_PREFIX_ENABLE */
+
 /**
  * @brief Bluetooth APIs
  * @defgroup bluetooth Bluetooth APIs
