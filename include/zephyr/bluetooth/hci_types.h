@@ -558,6 +558,11 @@ struct bt_hci_cp_io_capability_neg_reply {
 	uint8_t   reason;
 } __packed;
 
+#define BT_HCI_OP_WRITE_DEFAULT_LINK_POLICY_SETTINGS BT_OP(BT_OGF_LINK_POLICY, 0x000f)
+struct bt_hci_cp_write_default_link_policy_settings {
+	uint16_t default_link_policy_settings;
+} __packed;
+
 #define BT_HCI_OP_SNIFF_MODE                    BT_OP(BT_OGF_LINK_POLICY, 0x0003) /* 0x0803 */
 struct bt_hci_cp_sniff_mode {
 	uint16_t handle;
@@ -566,6 +571,10 @@ struct bt_hci_cp_sniff_mode {
 	uint16_t attempt;
 	uint16_t timeout;
 } __packed;
+
+#define BT_HCI_LINK_POLICY_SETTINGS_ENABLE_ROLE_SWITCH  BIT(0)
+#define BT_HCI_LINK_POLICY_SETTINGS_ENABLE_HOLD_MODE    BIT(1)
+#define BT_HCI_LINK_POLICY_SETTINGS_ENABLE_SNIFF_SWITCH BIT(2)
 
 #define BT_HCI_OP_EXIT_SNIFF_MODE               BT_OP(BT_OGF_LINK_POLICY, 0x0004) /* 0x0804 */
 struct bt_hci_cp_exit_sniff_mode {
