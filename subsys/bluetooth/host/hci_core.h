@@ -614,7 +614,7 @@ int bt_setup_public_id_addr(struct bt_dev *hdev);
 
 void bt_finalize_init(struct bt_dev *hdev);
 
-void bt_hci_host_num_completed_packets(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_host_num_completed_packets(struct net_buf *buf);
 
 /* HCI event handlers */
 void bt_hci_pin_code_req(struct bt_dev *hdev, struct net_buf *buf);

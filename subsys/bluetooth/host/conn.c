@@ -2673,6 +2673,8 @@ int bt_conn_le_start_encryption(struct bt_conn *conn, uint8_t rand[8],
 		(void)memset(cp->ltk + len, 0, sizeof(cp->ltk) - len);
 	}
 
+	LOG_DBG("le ltk:%s.", bt_hex(cp->ltk, sizeof(cp->ltk)));
+
 	return bt_hci_cmd_send_sync(conn->hdev, BT_HCI_OP_LE_START_ENCRYPTION, buf, NULL);
 }
 #endif /* CONFIG_BT_SMP */
