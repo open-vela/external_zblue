@@ -126,6 +126,16 @@ struct bt_avdtp_single_sig_hdr {
 	uint8_t signal_id;
 } __packed;
 
+struct bt_avdtp_start_sig_hdr {
+	uint8_t hdr;
+	uint8_t num_of_signal_pkts;
+	uint8_t signal_id;
+} __packed;
+
+struct bt_avdtp_continue_end_sig_hdr {
+	uint8_t hdr;
+} __packed;
+
 struct bt_avdtp_media_hdr {
 #ifdef CONFIG_LITTLE_ENDIAN
 	uint8_t CSRC_count: 4;
@@ -166,6 +176,7 @@ struct bt_avdtp_set_configuration_params {
 	uint8_t media_codec_type;
 	uint8_t codec_specific_ie_len;
 	uint8_t *codec_specific_ie;
+	bool delay_report;
 };
 
 /* avdtp_open, avdtp_close, avdtp_start, avdtp_suspend */
@@ -173,6 +184,13 @@ struct bt_avdtp_ctrl_params {
 	struct bt_avdtp_req req;
 	struct bt_avdtp_sep *sep;
 	uint8_t acp_stream_ep_id;
+};
+
+struct bt_avdtp_delay_report_params {
+	struct bt_avdtp_req req;
+	struct bt_avdtp_sep *sep;
+	uint8_t acp_stream_ep_id;
+	uint16_t delay_report;
 };
 
 struct bt_avdtp_generic_service_cap {
@@ -251,8 +269,8 @@ struct bt_avdtp_ops_cb {
 
 	int (*abort_ind)(struct bt_avdtp *session, struct bt_avdtp_sep *sep, uint8_t *errcode);
 
-	/* stream l2cap is closed */
-	int (*stream_l2cap_disconnected)(struct bt_avdtp *session, struct bt_avdtp_sep *sep);
+	int (*delay_report_ind)(struct bt_avdtp *session, struct bt_avdtp_sep *sep,
+				struct net_buf *buf, uint8_t *errcode);
 };
 
 /** @brief Global AVDTP session structure. */
@@ -262,8 +280,12 @@ struct bt_avdtp {
 	const struct bt_avdtp_ops_cb *ops;
 	struct bt_avdtp_sep *current_sep;
 	struct k_work_delayable timeout_work;
+	struct k_work _release_work;
 	/* semaphore for lock/unlock */
 	struct k_sem sem_lock;
+	struct net_buf *reasm_buf;
+	uint8_t num_of_signal_pkts;
+	uint8_t tid_sent;
 };
 
 struct bt_avdtp_event_cb {
@@ -300,7 +322,8 @@ int bt_avdtp_get_capabilities(struct bt_avdtp *session,
 
 /* Parse the codec type of capabilities */
 int bt_avdtp_parse_capability_codec(struct net_buf *buf, uint8_t *codec_type,
-				    uint8_t **codec_info_element, uint16_t *codec_info_element_len);
+				    uint8_t **codec_info_element, uint16_t *codec_info_element_len,
+				    bool *delay_report);
 
 /* AVDTP Set Configuration */
 int bt_avdtp_set_configuration(struct bt_avdtp *session,
@@ -323,6 +346,9 @@ int bt_avdtp_suspend(struct bt_avdtp *session, struct bt_avdtp_ctrl_params *para
 
 /* AVDTP ABORT */
 int bt_avdtp_abort(struct bt_avdtp *session, struct bt_avdtp_ctrl_params *param);
+
+/* AVDTP send delay report */
+int bt_avdtp_delay_report(struct bt_avdtp *session, struct bt_avdtp_delay_report_params *param);
 
 /* AVDTP send data */
 int bt_avdtp_send_media_data(struct bt_avdtp_sep *sep, struct net_buf *buf);
