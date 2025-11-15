@@ -823,6 +823,15 @@ struct bt_uuid_128 {
 #define BT_UUID_PBA \
 	BT_UUID_DECLARE_16(BT_UUID_PBA_VAL)
 /**
+ *  @brief Ranging Service UUID value
+ */
+#define BT_UUID_RANGING_VAL 0x185B
+/**
+ *  @brief Ranging Service
+ */
+#define BT_UUID_RANGING \
+	BT_UUID_DECLARE_16(BT_UUID_RANGING_VAL)
+/**
  *  @brief GATT Primary Service UUID value
  */
 #define BT_UUID_GATT_PRIMARY_VAL 0x2800
@@ -5153,6 +5162,60 @@ struct bt_uuid_128 {
  *  @brief Gaming Audio Profile Broadcast Game Receiver Features
  */
 #define BT_UUID_GMAP_BGR_FEAT	  BT_UUID_DECLARE_16(BT_UUID_GMAP_BGR_FEAT_VAL)
+
+/**
+ *  @brief Ranging Feature Characteristic UUID value
+ */
+#define BT_UUID_RANG_FEAT_VAL 0x2C14
+/**
+ *  @brief Ranging Feature
+ */
+#define BT_UUID_RANG_FEAT	  BT_UUID_DECLARE_16(BT_UUID_RANG_FEAT_VAL)
+
+/**
+ *  @brief Real-time Ranging Data Characteristic UUID value
+ */
+#define BT_UUID_RANG_RT_DT_VAL 0x2C15
+/**
+ *  @brief Real-time Ranging Data
+ */
+#define BT_UUID_RANG_RT_DT	  BT_UUID_DECLARE_16(BT_UUID_RANG_RT_DT_VAL)
+
+/**
+ *  @brief On-demand Ranging Data Characteristic UUID value
+ */
+#define BT_UUID_RANG_ON_DEM_DT_VAL 0x2C16
+/**
+ *  @brief On-demand Ranging Data Data
+ */
+#define BT_UUID_RANG_ON_DEM_DT	  BT_UUID_DECLARE_16(BT_UUID_RANG_ON_DEM_DT_VAL)
+
+/**
+ *  @brief Ranging Service Control Point Characteristic UUID value
+ */
+#define BT_UUID_RANG_RAS_CTR_POINT_VAL 0x2C17
+/**
+ *  @brief Ranging Service Control Point
+ */
+#define BT_UUID_RANG_RAS_CTR_POINT	  BT_UUID_DECLARE_16(BT_UUID_RANG_RAS_CTR_POINT_VAL)
+
+/**
+ *  @brief Ranging Data Ready Characteristic UUID value
+ */
+#define BT_UUID_RANG_DT_RD_VAL 0x2C18
+/**
+ *  @brief Ranging Data Ready
+ */
+#define BT_UUID_RANG_DT_RD	  BT_UUID_DECLARE_16(BT_UUID_RANG_DT_RD_VAL)
+
+/**
+ *  @brief Ranging Data Overwritten Characteristic UUID value
+ */
+#define BT_UUID_RANG_DT_OV_WR_VAL 0x2C19
+/**
+ *  @brief Ranging Data Overwritten
+ */
+#define BT_UUID_RANG_DT_OV_WR	  BT_UUID_DECLARE_16(BT_UUID_RANG_DT_OV_WR_VAL)
 
 /*
  * Protocol UUIDs

@@ -2485,6 +2485,8 @@ static void le_ltk_reply(struct bt_dev *hdev, uint16_t handle, uint8_t *ltk)
 	cp->handle = sys_cpu_to_le16(handle);
 	memcpy(cp->ltk, ltk, sizeof(cp->ltk));
 
+	LOG_DBG("----------- le ltk:%s. ------------", bt_hex(cp->ltk, sizeof(cp->ltk)));
+
 	bt_hci_cmd_send(hdev, BT_HCI_OP_LE_LTK_REQ_REPLY, buf);
 }
 
