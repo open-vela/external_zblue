@@ -853,6 +853,7 @@ int bt_br_init(struct bt_dev *hdev)
 	struct bt_hci_cp_write_inquiry_mode *inq_cp;
 	struct bt_hci_write_local_name *name_cp;
 	struct bt_hci_cp_write_class_of_device *cod;
+	struct bt_hci_cp_write_default_link_policy_settings *policy_cp;
 	int err;
 
 	/* Read extended local features */
@@ -957,6 +958,23 @@ int bt_br_init(struct bt_dev *hdev)
 		if (err) {
 			return err;
 		}
+	}
+
+	/* Set default link policy*/
+	buf = bt_hci_cmd_create(BT_HCI_OP_WRITE_DEFAULT_LINK_POLICY_SETTINGS, sizeof(*policy_cp));
+	if (!buf) {
+		return -ENOBUFS;
+	}
+
+	policy_cp = net_buf_add(buf, sizeof(*policy_cp));
+	policy_cp->default_link_policy_settings =
+		BT_HCI_LINK_POLICY_SETTINGS_ENABLE_ROLE_SWITCH |
+		BT_HCI_LINK_POLICY_SETTINGS_ENABLE_HOLD_MODE |
+		BT_HCI_LINK_POLICY_SETTINGS_ENABLE_SNIFF_SWITCH;
+
+	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_WRITE_DEFAULT_LINK_POLICY_SETTINGS, buf, NULL);
+	if (err) {
+		return err;
 	}
 
 	return 0;
