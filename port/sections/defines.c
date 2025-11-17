@@ -165,6 +165,8 @@ extern struct net_buf_pool acl_tx_pool;
 // extern struct net_buf_pool dummy_pool;
 // extern struct net_buf_pool a2dp_tx_pool; // for Zephyr shell
 extern struct net_buf_pool bt_a2dp_tx_pool; // for openvela sal
+extern struct net_buf_pool avdtp_pool;
+extern struct net_buf_pool avdtp_frag_pool;
 
 struct net_buf_pool *_net_buf_pool_list[] = {
 #if defined(CONFIG_BT_HCI)
@@ -216,6 +218,10 @@ struct net_buf_pool *_net_buf_pool_list[] = {
 #if defined(CONFIG_BT_CLASSIC)
 	&br_sig_pool,
 	&sdp_pool,
+#if defined(CONFIG_BT_A2DP)
+	&avdtp_pool,
+	&avdtp_frag_pool,
+#endif /* CONFIG_BT_A2DP */
 #if defined(CONFIG_BT_A2DP_SOURCE)
 	&bt_a2dp_tx_pool,
 #endif /* CONFIG_BT_A2DP_SOURCE */
