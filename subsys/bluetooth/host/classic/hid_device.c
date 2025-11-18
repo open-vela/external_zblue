@@ -152,7 +152,7 @@ static int hid_control_handle(struct bt_l2cap_chan *chan, struct net_buf *buf, u
 
 	switch (control) {
 	case BT_HID_CONTROL_VIRTUAL_CABLE_UNPLUG:
-		bt_hid_device_disconnect(hid);
+		err = Z_API(bt_hid_device_disconnect)(hid);
 		hid->pending_vc_unplug = 1;
 		break;
 	case BT_HID_CONTROL_SUSPEND:
@@ -635,10 +635,11 @@ static int hid_l2cap_intr_accept(struct bt_conn *conn, struct bt_l2cap_server *s
 	hid->state = BT_HID_STATE_INTR_CONNECTING;
 	*chan = &hid->intr_session.br_chan.chan;
 
+	hid_cb->accept(hid);
 	return 0;
 }
 
-int bt_hid_device_send_ctrl_data(struct bt_hid_device *hid, uint8_t type, uint8_t *data,
+int Z_API(bt_hid_device_send_ctrl_data)(struct bt_hid_device *hid, uint8_t type, uint8_t *data,
 				 uint16_t len)
 {
 	__ASSERT_NO_MSG(hid);
@@ -646,7 +647,7 @@ int bt_hid_device_send_ctrl_data(struct bt_hid_device *hid, uint8_t type, uint8_
 	return hid_send_data(&hid->ctrl_session, type, data, len);
 }
 
-int bt_hid_device_send_intr_data(struct bt_hid_device *hid, uint8_t type, uint8_t *data,
+int Z_API(bt_hid_device_send_intr_data)(struct bt_hid_device *hid, uint8_t type, uint8_t *data,
 				 uint16_t len)
 {
 	__ASSERT_NO_MSG(hid);
@@ -654,14 +655,14 @@ int bt_hid_device_send_intr_data(struct bt_hid_device *hid, uint8_t type, uint8_
 	return hid_send_data(&hid->intr_session, type, data, len);
 }
 
-int bt_hid_device_report_error(struct bt_hid_device *hid, uint8_t error)
+int Z_API(bt_hid_device_report_error)(struct bt_hid_device *hid, uint8_t error)
 {
 	__ASSERT_NO_MSG(hid);
 
 	return hid_send_handshake(&hid->ctrl_session, error);
 }
 
-struct bt_hid_device *bt_hid_device_connect(struct bt_conn *conn)
+struct bt_hid_device *Z_API(bt_hid_device_connect)(struct bt_conn *conn)
 {
 	struct bt_hid_device *hid;
 	int err;
@@ -689,7 +690,7 @@ struct bt_hid_device *bt_hid_device_connect(struct bt_conn *conn)
 	return hid;
 }
 
-int bt_hid_device_disconnect(struct bt_hid_device *hid)
+int Z_API(bt_hid_device_disconnect)(struct bt_hid_device *hid)
 {
 	int err;
 
@@ -710,7 +711,28 @@ int bt_hid_device_disconnect(struct bt_hid_device *hid)
 	return 0;
 }
 
-int bt_hid_device_register(struct bt_hid_device_cb *cb)
+int Z_API(bt_hid_device_virtual_unplug)(struct bt_hid_device *hid)
+{
+	int err;
+
+	__ASSERT_NO_MSG(hid);
+
+	if (hid->state != BT_HID_STATE_CONNECTED) {
+		LOG_ERR("HID device not connected, state:%d", hid->state);
+		return -ENOTCONN;
+	}
+
+	err = Z_API(bt_hid_device_send_ctrl_data)(hid, BT_HID_CONTROL_VIRTUAL_CABLE_UNPLUG, NULL, 0);
+	if (err != 0) {
+		LOG_WRN("HID send vc unplug failed, err:%d", err);
+		return err;
+	}
+
+	hid->pending_vc_unplug = 1;
+	return 0;
+}
+
+int Z_API(bt_hid_device_register)(struct bt_hid_device_cb *cb)
 {
 	LOG_DBG("");
 
