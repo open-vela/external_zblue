@@ -75,6 +75,14 @@ LOG_MODULE_REGISTER(bt_hci_core);
 #define BT_HCI_BUS  BT_DT_HCI_BUS_GET(BT_HCI_DEV(0))
 #define BT_HCI_NAME BT_DT_HCI_NAME_GET(BT_HCI_DEV(0))
 
+#ifndef BT_ASSERT
+#define BT_ASSERT(cond)
+#endif
+
+#ifndef BT_ASSERT_MSG
+#define BT_ASSERT_MSG(cond, msg, ...)
+#endif
+
 void bt_tx_irq_raise(struct bt_dev *hdev);
 
 #define HCI_CMD_TIMEOUT      K_SECONDS(10)
