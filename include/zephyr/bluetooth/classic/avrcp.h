@@ -16,6 +16,7 @@
 extern "C" {
 #endif
 
+#define AVRCP_SDP_BY_APP
 #define BT_AVRCP_COMPANY_ID_SIZE          (3)
 #define BT_AVRCP_COMPANY_ID_BLUETOOTH_SIG (0x001958)
 
