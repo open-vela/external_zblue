@@ -1366,6 +1366,17 @@ int bt_avrcp_browsing_disconnect(struct bt_conn *conn);
  */
 int bt_avrcp_ct_register_cb(const struct bt_avrcp_ct_cb *cb);
 
+/** @brief Unregister callback.
+ *
+ *  Unregister the AVRCP CT callback function to stop state monitoring and interaction
+ *  with the remote device.
+ *
+ *  @param cb The AVRCP CT callback function.
+ *
+ *  @return 0 in case of success or error code in case of error.
+ */
+int bt_avrcp_ct_unregister_cb(const struct bt_avrcp_ct_cb *cb);
+
 /** @brief Get AVRCP Capabilities.
  *
  *  This function gets the capabilities supported by remote device.
@@ -2024,6 +2035,17 @@ struct bt_avrcp_tg_cb {
  *  @return 0 in case of success or error code in case of error.
  */
 int bt_avrcp_tg_register_cb(const struct bt_avrcp_tg_cb *cb);
+
+/** @brief Unregister callback.
+ *
+ *  Unregister the AVRCP TG callback function to stop state monitoring and interaction
+ *  with the remote device.
+ *
+ *  @param cb The AVRCP TG callback function.
+ *
+ *  @return 0 in case of success or error code in case of error.
+ */
+int bt_avrcp_tg_unregister_cb(const struct bt_avrcp_tg_cb *cb);
 
 /** @brief Send the unit info response.
  *

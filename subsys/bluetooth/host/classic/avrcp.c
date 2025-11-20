@@ -3803,6 +3803,26 @@ int bt_avrcp_tg_register_cb(const struct bt_avrcp_tg_cb *cb)
 	return 0;
 }
 
+int bt_avrcp_ct_unregister_cb(const struct bt_avrcp_ct_cb *cb)
+{
+	if (avrcp_ct_cb != cb)
+		return EINVAL;
+
+	avrcp_ct_cb = NULL;
+
+	return 0;
+}
+
+int bt_avrcp_tg_unregister_cb(const struct bt_avrcp_tg_cb *cb)
+{
+	if (avrcp_tg_cb != cb)
+		return EINVAL;
+
+	avrcp_tg_cb = NULL;
+
+	return 0;
+}
+
 int bt_avrcp_tg_send_unit_info_rsp(struct bt_avrcp_tg *tg, uint8_t tid,
 				   struct bt_avrcp_unit_info_rsp *rsp)
 {
