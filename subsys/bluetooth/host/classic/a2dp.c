@@ -1563,3 +1563,5 @@ int bt_a2dp_register_cb(struct bt_a2dp_cb *cb)
 	a2dp_cb = cb;
 	return 0;
 }
+
+/** This is a test for GitHub commit-id v2 */
