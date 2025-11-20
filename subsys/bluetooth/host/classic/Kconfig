@@ -69,13 +69,6 @@ config BT_RFCOMM_TX_MAX
 	  sending buf. Normally this can be left to the default value, which
 	  is equal to the number of session in the stack-internal pool.
 
-config BT_HID_DEVICE
-	bool "Bluetooth HID Device Profile [EXPERIMENTAL]"
-	select EXPERIMENTAL
-	default y
-	help
-	  This option enables the HID Device profile
-
 config BT_HFP_HF
 	bool "Bluetooth Handsfree profile HF Role support [EXPERIMENTAL]"
 	depends on PRINTK
@@ -146,9 +139,9 @@ config BT_HFP_HF_ECC
 
 config BT_HFP_HF_MAX_CALLS
 	int "Maximum supported calls for HFP HF [EXPERIMENTAL]"
-	default 3 if BT_HFP_HF_3WAY_CALL
+	default 2 if BT_HFP_HF_3WAY_CALL
 	default 1
-	range 1 4
+	range 1 2
 	help
 	  This option sets maximum supported calls for HFP HF
 
@@ -212,9 +205,9 @@ config BT_HFP_AG_3WAY_CALL
 
 config BT_HFP_AG_MAX_CALLS
 	int "Maximum supported calls for HFP AG [EXPERIMENTAL]"
-	default 3 if BT_HFP_AG_3WAY_CALL
+	default 2 if BT_HFP_AG_3WAY_CALL
 	default 1
-	range 1 4
+	range 1 2
 	help
 	  This option sets maximum supported calls for HFP AG
 
@@ -393,14 +386,12 @@ endif # BT_A2DP
 
 config BT_AVCTP
 	bool "Bluetooth AVCTP protocol support [EXPERIMENTAL]"
-	default y
 	select EXPERIMENTAL
 	help
 	  This option enables Bluetooth AVCTP support
 
 config BT_AVRCP
 	bool "Bluetooth AVRCP Profile [EXPERIMENTAL]"
-	default y
 	select BT_AVCTP
 	select EXPERIMENTAL
 	help
@@ -410,66 +401,15 @@ if BT_AVRCP
 
 config BT_AVRCP_TARGET
 	bool "Bluetooth AVRCP Profile Target Function"
-	default y
 	help
 	  This option enables the AVRCP profile target function
 
 config BT_AVRCP_CONTROLLER
 	bool "Bluetooth AVRCP Profile Controller Function"
-	default y
 	help
 	  This option enables the AVRCP profile controller function
 
-config BT_AVRCP_VD_RX_SIZE
-	int "AVRCP Vendor Dependent RX data buffer Size"
-	default 1024
-	range 512 $(INT16_MAX)
-	help
-	  Size of the AVRCP Vendor Dependent RX data buffer in bytes.
-	  This buffer is used for reassembling fragmented AVRCP Vendor Dependent
-	  commands and responses received from the CT device. If the remote CT
-	  sends large Vendor-specific PDUs or frequent fragmentation occurs,
-	  consider increasing this value to avoid incomplete message handling.
-
-config BT_AVRCP_BROWSING
-	bool "Bluetooth AVRCP Browsing channel support [EXPERIMENTAL]"
-	select EXPERIMENTAL
-	select BT_L2CAP_ENH_RET
-	help
-	  This option enables support for the AVRCP Browsing channel
-	  over Bluetooth BR/EDR.
-
 endif # BT_AVRCP
-
-config BT_DID
-	bool "Bluetooth DID Profile [EXPERIMENTAL]"
-	select EXPERIMENTAL
-	help
-	  This option enables the DID profile
-
-if BT_DID
-config BT_DEVICE_VEDNOR_ID
-	hex "Bluetooth Device Vendor ID"
-	range 0x0000 $(UINT16_MAX)
-	default 0x0000
-	help
-	  This option sets the device vendor id
-
-config BT_DEVICE_PRODUCT_ID
-	hex "Bluetooth Device Product ID"
-	range 0x0000 $(UINT16_MAX)
-	default 0x0000
-	help
-	  This option sets the device product id
-
-config BT_DEVICE_VERSION
-	hex "Bluetooth Device Version"
-	range 0x0000 $(UINT16_MAX)
-	default 0x0000
-	help
-	  This option sets the device version
-
-endif # BT_DID
 
 config BT_DID
 	bool "Bluetooth DID Profile [EXPERIMENTAL]"
