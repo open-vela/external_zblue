@@ -501,6 +501,17 @@ struct bt_hfp_hf_cb {
 	 *  @param call Current call information.
 	 */
 	void (*query_call)(struct bt_hfp_hf *hf, struct bt_hfp_hf_current_call *call);
+
+	/** @brief Vendor specific command callback
+	 * 
+	 * If this callback is provided it will be called whenever the
+	 * vendor specific command is received from AG.
+	 * If thr request if finished, the callback will be called with a null response.
+	 * 
+	 * @param hf HFP HF object.
+	 * @param response Vendor specific response string.
+	 */
+	void (*vendor_specific)(struct bt_hfp_hf *hf, const char *response);
 };
 
 /** @brief Register HFP HF profile
@@ -1048,6 +1059,15 @@ int Z_API(bt_hfp_hf_battery)(struct bt_hfp_hf *hf, uint8_t level);
  *  @return 0 in case of success or negative value in case of error.
  */
 int Z_API(bt_hfp_hf_query_list_of_current_calls)(struct bt_hfp_hf *hf);
+
+/** @brief Handsfree HF send vendor specific command
+ * 
+ * It allows HF to send vendor specific command to AG.
+ * 
+ * @param hf HFP HF object.
+ * @param cmd Vendor specific command string.
+ */
+int Z_API(bt_hfp_hf_send_vendor)(struct bt_hfp_hf *hf, char* cmd);
 
 #ifdef __cplusplus
 }

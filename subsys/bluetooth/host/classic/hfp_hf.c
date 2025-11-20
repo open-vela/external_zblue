@@ -276,6 +276,49 @@ int hfp_hf_send_cmd(struct bt_hfp_hf *hf, at_resp_cb_t resp,
 	return 0;
 }
 
+int vendor_handle(struct at_client *hf_at)
+{
+	char *val;
+
+	val = at_get_string(hf_at);
+	if (!val) {
+		LOG_ERR("Error getting value");
+		return 0;
+	}
+
+	LOG_DBG("Vendor specific value: %s", log_strdup(val));
+
+	return 0;
+}
+
+int vendor_resp(struct at_client *hf_at, struct net_buf *buf)
+{
+	LOG_DBG("Vendor specific response received");
+
+	int err = at_parse_cmd_input(hf_at, buf, "VENDOR", vendor_handle,
+		AT_CMD_TYPE_NORMAL);
+
+	return err;
+}
+
+int vendor_finish(struct at_client *hf_at, enum at_result result,
+		          enum at_cme cme_err)
+{
+	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
+	LOG_DBG("Vendor specific response received");
+
+	bt_hf->vendor_specific(hf, NULL);
+
+	atomic_clear_bit(hf->flags, BT_HFP_HF_FLAG_VENDOR_PENDING);
+
+	return 0;
+}
+
+int bt_hfp_hf_send_vendor(struct bt_hfp_hf *hf, char* cmd) {
+	int err = hfp_hf_send_cmd(hf, vendor_resp, vendor_finish, "%s", cmd);
+	return err;
+}
+
 int brsf_handle(struct at_client *hf_at)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
