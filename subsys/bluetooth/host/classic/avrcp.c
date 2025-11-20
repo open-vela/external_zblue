@@ -138,6 +138,12 @@ NET_BUF_POOL_FIXED_DEFINE(avrcp_vd_tx_pool, CONFIG_BT_MAX_CONN,
 			  sizeof(struct bt_avctp_header_start),
 			  CONFIG_BT_CONN_TX_USER_DATA_SIZE, avrcp_tx_buf_destroy);
 
+/**
+ * The attribute defined in zblue includes AVRCP_BROWSING_ENABLE,
+ * but since we currently don't support browsing, use the attribute
+ * from sal instead.
+ */
+#ifndef AVRCP_SDP_BY_APP
 #if defined(CONFIG_BT_AVRCP_TARGET)
 static struct bt_sdp_attribute avrcp_tg_attrs[] = {
 	BT_SDP_NEW_SERVICE,
@@ -243,6 +249,7 @@ static struct bt_sdp_attribute avrcp_tg_attrs[] = {
 
 static struct bt_sdp_record avrcp_tg_rec = BT_SDP_RECORD(avrcp_tg_attrs);
 #endif /* CONFIG_BT_AVRCP_TARGET */
+#endif
 
 #if defined(CONFIG_BT_AVRCP_CONTROLLER)
 static struct bt_sdp_attribute avrcp_ct_attrs[] = {
@@ -2944,6 +2951,7 @@ int bt_avrcp_init(void)
 	}
 #endif /* CONFIG_BT_AVRCP_BROWSING */
 
+#ifndef AVRCP_SDP_BY_APP
 #if defined(CONFIG_BT_AVRCP_TARGET)
 	bt_sdp_register_service(&avrcp_tg_rec);
 #endif /* CONFIG_BT_AVRCP_CONTROLLER */
@@ -2951,6 +2959,7 @@ int bt_avrcp_init(void)
 #if defined(CONFIG_BT_AVRCP_CONTROLLER)
 	bt_sdp_register_service(&avrcp_ct_rec);
 #endif /* CONFIG_BT_AVRCP_CONTROLLER */
+#endif
 
 	/* Init CT and TG connection pool*/
 	__ASSERT(ARRAY_SIZE(bt_avrcp_ct_pool) == ARRAY_SIZE(avrcp_connection), "CT size mismatch");
