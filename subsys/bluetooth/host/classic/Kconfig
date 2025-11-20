@@ -386,12 +386,14 @@ endif # BT_A2DP
 
 config BT_AVCTP
 	bool "Bluetooth AVCTP protocol support [EXPERIMENTAL]"
+	default y
 	select EXPERIMENTAL
 	help
 	  This option enables Bluetooth AVCTP support
 
 config BT_AVRCP
 	bool "Bluetooth AVRCP Profile [EXPERIMENTAL]"
+	default y
 	select BT_AVCTP
 	select EXPERIMENTAL
 	help
@@ -401,13 +403,34 @@ if BT_AVRCP
 
 config BT_AVRCP_TARGET
 	bool "Bluetooth AVRCP Profile Target Function"
+	default y
 	help
 	  This option enables the AVRCP profile target function
 
 config BT_AVRCP_CONTROLLER
 	bool "Bluetooth AVRCP Profile Controller Function"
+	default y
 	help
 	  This option enables the AVRCP profile controller function
+
+config BT_AVRCP_VD_RX_SIZE
+	int "AVRCP Vendor Dependent RX data buffer Size"
+	default 1024
+	range 512 $(INT16_MAX)
+	help
+	  Size of the AVRCP Vendor Dependent RX data buffer in bytes.
+	  This buffer is used for reassembling fragmented AVRCP Vendor Dependent
+	  commands and responses received from the CT device. If the remote CT
+	  sends large Vendor-specific PDUs or frequent fragmentation occurs,
+	  consider increasing this value to avoid incomplete message handling.
+
+config BT_AVRCP_BROWSING
+	bool "Bluetooth AVRCP Browsing channel support [EXPERIMENTAL]"
+	select EXPERIMENTAL
+	select BT_L2CAP_ENH_RET
+	help
+	  This option enables support for the AVRCP Browsing channel
+	  over Bluetooth BR/EDR.
 
 endif # BT_AVRCP
 
