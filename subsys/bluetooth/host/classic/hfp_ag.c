@@ -3180,7 +3180,7 @@ static void bt_hfp_ag_vr_activate(struct bt_hfp_ag *ag, void *user_data)
 	if (bt_ag && bt_ag->voice_recognition) {
 		bt_ag->voice_recognition(ag, true);
 	} else {
-		(void)bt_hfp_ag_audio_connect(ag, BT_HFP_AG_CODEC_CVSD);
+		(void)Z_API(bt_hfp_ag_audio_connect)(ag, BT_HFP_AG_CODEC_CVSD);
 	}
 #endif /* CONFIG_BT_HFP_AG_VOICE_RECG */
 
