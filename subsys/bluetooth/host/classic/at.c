@@ -15,7 +15,7 @@
 #include <stdarg.h>
 #include <zephyr/net_buf.h>
 
-#include "at.h"
+#include "at_internal.h"
 
 static void next_list(struct at_client *at)
 {
@@ -73,16 +73,16 @@ static bool str_has_prefix(const char *str, const char *prefix)
 }
 
 static int at_parse_result(const char *str, struct net_buf *buf,
-			   enum at_result *result)
+			   enum bt_at_result *result)
 {
 	/* Map the result and check for end lf */
 	if ((!strncmp(str, "OK", 2)) && (at_check_byte(buf, '\n') == 0)) {
-		*result = AT_RESULT_OK;
+		*result = BT_AT_RESULT_OK;
 		return 0;
 	}
 
 	if ((!strncmp(str, "ERROR", 5)) && (at_check_byte(buf, '\n')) == 0) {
-		*result = AT_RESULT_ERROR;
+		*result = BT_AT_RESULT_ERROR;
 		return 0;
 	}
 
@@ -263,8 +263,8 @@ static bool is_ring(struct at_client *at)
 
 static int at_state_process_result(struct at_client *at, struct net_buf *buf)
 {
-	enum at_cme cme_err;
-	enum at_result result;
+	enum bt_at_cme cme_err;
+	enum bt_at_result result;
 
 	if (is_ring(at)) {
 		at->state = AT_STATE_UNSOLICITED_CMD;
@@ -274,7 +274,7 @@ static int at_state_process_result(struct at_client *at, struct net_buf *buf)
 	if (at_parse_result(at->buf, buf, &result) == 0) {
 		if (at->finish) {
 			/* cme_err is 0 - Is invalid until result is
-			 * AT_RESULT_CME_ERROR
+			 * BT_AT_RESULT_CME_ERROR
 			 */
 			cme_err = 0;
 			at->finish(at, result, cme_err);
@@ -290,17 +290,17 @@ static int at_state_process_result(struct at_client *at, struct net_buf *buf)
 
 int cme_handle(struct at_client *at)
 {
-	enum at_cme cme_err;
+	enum bt_at_cme cme_err;
 	uint32_t val;
 
-	if (!at_get_number(at, &val) && val <= CME_ERROR_NETWORK_NOT_ALLOWED) {
+	if (!at_get_number(at, &val) && val <= BT_AT_CME_ERROR_NETWORK_NOT_ALLOWED) {
 		cme_err = val;
 	} else {
-		cme_err = CME_ERROR_UNKNOWN;
+		cme_err = BT_AT_CME_ERROR_UNKNOWN;
 	}
 
 	if (at->finish) {
-		at->finish(at, AT_RESULT_CME_ERROR, cme_err);
+		at->finish(at, BT_AT_RESULT_CME_ERROR, cme_err);
 	}
 
 	return 0;

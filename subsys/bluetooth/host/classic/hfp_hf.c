@@ -24,7 +24,7 @@
 #include "host/conn_internal.h"
 #include "l2cap_br_internal.h"
 #include "rfcomm_internal.h"
-#include "at.h"
+#include "at_internal.h"
 #include "sco_internal.h"
 #include "hfp_hf_internal.h"
 
@@ -47,12 +47,14 @@ static struct bt_hfp_hf bt_hfp_hf_pool[CONFIG_BT_MAX_CONN];
 struct at_callback_set {
 	void *resp;
 	void *finish;
+	bool notify_result;
 } __packed;
 
-static inline void make_at_callback_set(void *storage, void *resp, void *finish)
+static inline void make_at_callback_set(void *storage, void *resp, void *finish, bool notify_result)
 {
 	((struct at_callback_set *)storage)->resp = resp;
 	((struct at_callback_set *)storage)->finish = finish;
+	((struct at_callback_set *)storage)->notify_result = notify_result;
 }
 
 static inline void *at_callback_set_resp(void *storage)
@@ -63,6 +65,11 @@ static inline void *at_callback_set_resp(void *storage)
 static inline void *at_callback_set_finish(void *storage)
 {
 	return ((struct at_callback_set *)storage)->finish;
+}
+
+static inline bool at_callback_set_notify(void *callback_set)
+{
+	return ((struct at_callback_set *)callback_set)->notify_result;
 }
 
 /* The order should follow the enum hfp_hf_ag_indicators */
@@ -173,13 +180,13 @@ static void hfp_hf_send_failed(struct bt_hfp_hf *hf)
 
 static void hfp_hf_send_data(struct bt_hfp_hf *hf);
 
-static int hfp_hf_common_finish(struct at_client *at, enum at_result result,
-			  enum at_cme cme_err)
+static int hfp_hf_common_finish(struct at_client *at, enum bt_at_result result,
+			  enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(at, struct bt_hfp_hf, at);
 	int err = 0;
 
-	if (result != AT_RESULT_OK) {
+	if (result != BT_AT_RESULT_OK) {
 		LOG_WRN("Fail to send AT command (result %d, cme err %d) on %p",
 		    result, cme_err, hf);
 	}
@@ -187,6 +194,13 @@ static int hfp_hf_common_finish(struct at_client *at, enum at_result result,
 	if (hf->backup_finish) {
 		err = hf->backup_finish(at, result, cme_err);
 		hf->backup_finish = NULL;
+	}
+
+	bool notify = atomic_test_and_clear_bit(hf->flags,
+			 BT_HFP_HF_FLAG_NOTIFY_RESULT);
+
+	if (notify && bt_hf && bt_hf->at_cmd_complete) {
+		bt_hf->at_cmd_complete(hf, result, cme_err);
 	}
 
 	if (atomic_test_and_clear_bit(hf->flags, BT_HFP_HF_FLAG_TX_ONGOING)) {
@@ -223,6 +237,12 @@ static void hfp_hf_send_data(struct bt_hfp_hf *hf)
 	resp = (at_resp_cb_t)at_callback_set_resp(buf->user_data);
 	finish = (at_finish_cb_t)at_callback_set_finish(buf->user_data);
 
+	if (at_callback_set_notify(buf->user_data)) {
+		atomic_set_bit(hf->flags, BT_HFP_HF_FLAG_NOTIFY_RESULT);
+	} else {
+		atomic_clear_bit(hf->flags, BT_HFP_HF_FLAG_NOTIFY_RESULT);
+	}
+
 	/*
 	 * Backup the `finish` callback.
 	 * Provide a default finish callback to drive the next sending.
@@ -230,7 +250,7 @@ static void hfp_hf_send_data(struct bt_hfp_hf *hf)
 	hf->backup_finish = finish;
 	finish = hfp_hf_common_finish;
 
-	make_at_callback_set(buf->user_data, NULL, NULL);
+	make_at_callback_set(buf->user_data, NULL, NULL, false);
 	at_register(&hf->at, resp, finish);
 
 	err = bt_rfcomm_dlc_send(&hf->rfcomm_dlc, buf);
@@ -243,7 +263,7 @@ static void hfp_hf_send_data(struct bt_hfp_hf *hf)
 }
 
 int hfp_hf_send_cmd(struct bt_hfp_hf *hf, at_resp_cb_t resp,
-		    at_finish_cb_t finish, const char *format, ...)
+		    at_finish_cb_t finish, bool notify_result, const char *format, ...)
 {
 	struct net_buf *buf;
 	va_list vargs;
@@ -255,7 +275,7 @@ int hfp_hf_send_cmd(struct bt_hfp_hf *hf, at_resp_cb_t resp,
 		return -ENOMEM;
 	}
 
-	make_at_callback_set(buf->user_data, resp, finish);
+	make_at_callback_set(buf->user_data, resp, finish, notify_result);
 
 	va_start(vargs, format);
 	ret = vsnprintk(buf->data, (net_buf_tailroom(buf) - 1), format, vargs);
@@ -493,14 +513,14 @@ static void clear_call_without_clcc(struct bt_hfp_hf *hf)
 	}
 }
 
-static int clcc_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int clcc_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
 	LOG_DBG("AT+CLCC (result %d) on %p", result, hf);
 
-	if (result == AT_RESULT_OK) {
+	if (result == BT_AT_RESULT_OK) {
 		clear_call_without_clcc(hf);
 	}
 
@@ -559,7 +579,7 @@ static int hf_query_current_calls(struct bt_hfp_hf *hf)
 
 	clear_call_clcc_state(hf);
 
-	err = hfp_hf_send_cmd(hf, NULL, clcc_finish, "AT+CLCC");
+	err = hfp_hf_send_cmd(hf, NULL, clcc_finish, atomic_test_bit(hf->flags, BT_HFP_HF_FLAG_USR_CLCC_CMD), "AT+CLCC");
 	if (err < 0) {
 		LOG_ERR("Fail to query current calls on %p", hf);
 	}
@@ -1918,14 +1938,14 @@ int unsolicited_cb(struct at_client *hf_at, struct net_buf *buf)
 static int send_at_cmee(struct bt_hfp_hf *hf, at_finish_cb_t cb)
 {
 	if (hf->ag_features & BT_HFP_AG_FEATURE_EXT_ERR) {
-		return hfp_hf_send_cmd(hf, NULL, cb, "AT+CMEE=1");
+		return hfp_hf_send_cmd(hf, NULL, cb, false, "AT+CMEE=1");
 	} else {
 		return -ENOTSUP;
 	}
 }
 
-static int at_cmee_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int at_cmee_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -1936,11 +1956,11 @@ static int at_cmee_finish(struct at_client *hf_at, enum at_result result,
 
 static int send_at_cops(struct bt_hfp_hf *hf, at_finish_cb_t cb)
 {
-	return hfp_hf_send_cmd(hf, NULL, cb, "AT+COPS=3,0");
+	return hfp_hf_send_cmd(hf, NULL, cb, false, "AT+COPS=3,0");
 }
 
-static int at_cops_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int at_cops_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -1952,11 +1972,11 @@ static int at_cops_finish(struct at_client *hf_at, enum at_result result,
 #if defined(CONFIG_BT_HFP_HF_CLI)
 static int send_at_clip(struct bt_hfp_hf *hf, at_finish_cb_t cb)
 {
-	return hfp_hf_send_cmd(hf, NULL, cb, "AT+CLIP=1");
+	return hfp_hf_send_cmd(hf, NULL, cb, false, "AT+CLIP=1");
 }
 
-static int at_clip_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int at_clip_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -1969,11 +1989,11 @@ static int at_clip_finish(struct at_client *hf_at, enum at_result result,
 #if defined(CONFIG_BT_HFP_HF_VOLUME)
 static int send_at_vgm(struct bt_hfp_hf *hf, at_finish_cb_t cb)
 {
-	return hfp_hf_send_cmd(hf, NULL, cb, "AT+VGM=%d", hf->vgm);
+	return hfp_hf_send_cmd(hf, NULL, cb, false, "AT+VGM=%d", hf->vgm);
 }
 
-static int at_vgm_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int at_vgm_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -1984,11 +2004,11 @@ static int at_vgm_finish(struct at_client *hf_at, enum at_result result,
 
 static int send_at_vgs(struct bt_hfp_hf *hf, at_finish_cb_t cb)
 {
-	return hfp_hf_send_cmd(hf, NULL, cb, "AT+VGS=%d", hf->vgs);
+	return hfp_hf_send_cmd(hf, NULL, cb, false, "AT+VGS=%d", hf->vgs);
 }
 
-static int at_vgs_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int at_vgs_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -2009,11 +2029,11 @@ static int send_at_ccwa(struct bt_hfp_hf *hf, at_finish_cb_t cb)
 		return -ENOTSUP;
 	}
 
-	return hfp_hf_send_cmd(hf, NULL, cb, "AT+CCWA=1");
+	return hfp_hf_send_cmd(hf, NULL, cb, false, "AT+CCWA=1");
 }
 
-static int at_ccwa_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int at_ccwa_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -2047,13 +2067,13 @@ static struct at_cmd_init
 
 static int at_cmd_init_start(struct bt_hfp_hf *hf);
 
-static int at_cmd_init_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int at_cmd_init_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 	at_finish_cb_t finish;
 
-	if (result != AT_RESULT_OK) {
+	if (result != BT_AT_RESULT_OK) {
 		LOG_WRN("It is ERROR response of AT command %d.", hf->cmd_init_seq);
 	}
 
@@ -2134,7 +2154,7 @@ static void slc_completed(struct at_client *hf_at)
 #if defined(CONFIG_BT_HFP_HF_HF_INDICATORS)
 static int send_at_bind_status(struct bt_hfp_hf *hf, at_finish_cb_t cb)
 {
-	return hfp_hf_send_cmd(hf, NULL, cb, "AT+BIND?");
+	return hfp_hf_send_cmd(hf, NULL, cb, false, "AT+BIND?");
 }
 
 static int send_at_bind_hf_supported(struct bt_hfp_hf *hf, at_finish_cb_t cb)
@@ -2167,36 +2187,36 @@ static int send_at_bind_hf_supported(struct bt_hfp_hf *hf, at_finish_cb_t cb)
 
 	bind--;
 	*bind = '\0';
-	return hfp_hf_send_cmd(hf, NULL, cb, "AT+BIND=%s", buffer);
+	return hfp_hf_send_cmd(hf, NULL, cb, false, "AT+BIND=%s", buffer);
 }
 
 static int send_at_bind_supported(struct bt_hfp_hf *hf, at_finish_cb_t cb)
 {
-	return hfp_hf_send_cmd(hf, NULL, cb, "AT+BIND=?");
+	return hfp_hf_send_cmd(hf, NULL, cb, false, "AT+BIND=?");
 }
 #endif /* CONFIG_BT_HFP_HF_HF_INDICATORS */
 
 #if defined(CONFIG_BT_HFP_HF_3WAY_CALL)
 static int send_at_chld_supported(struct bt_hfp_hf *hf, at_finish_cb_t cb)
 {
-	return hfp_hf_send_cmd(hf, NULL, cb, "AT+CHLD=?");
+	return hfp_hf_send_cmd(hf, NULL, cb, false, "AT+CHLD=?");
 }
 #endif /* CONFIG_BT_HFP_HF_3WAY_CALL */
 
 static int send_at_cmer(struct bt_hfp_hf *hf, at_finish_cb_t cb)
 {
 	at_register_unsolicited(&hf->at, unsolicited_cb);
-	return hfp_hf_send_cmd(hf, NULL, cb, "AT+CMER=3,0,0,1");
+	return hfp_hf_send_cmd(hf, NULL, cb, false, "AT+CMER=3,0,0,1");
 }
 
 static int send_at_cind_status(struct bt_hfp_hf *hf, at_finish_cb_t cb)
 {
-	return hfp_hf_send_cmd(hf, cind_status_resp, cb, "AT+CIND?");
+	return hfp_hf_send_cmd(hf, cind_status_resp, cb, false, "AT+CIND?");
 }
 
 static int send_at_cind_supported(struct bt_hfp_hf *hf, at_finish_cb_t cb)
 {
-	return hfp_hf_send_cmd(hf, cind_resp, cb, "AT+CIND=?");
+	return hfp_hf_send_cmd(hf, cind_resp, cb, false, "AT+CIND=?");
 }
 
 #if defined(CONFIG_BT_HFP_HF_CODEC_NEG)
@@ -2227,13 +2247,13 @@ static int send_at_bac(struct bt_hfp_hf *hf, at_finish_cb_t cb)
 	char ids[sizeof(hf->hf_codec_ids)*2*8 + 1];
 
 	get_codec_ids(hf, &ids[0], ARRAY_SIZE(ids));
-	return hfp_hf_send_cmd(hf, NULL, cb, "AT+BAC=%s", ids);
+	return hfp_hf_send_cmd(hf, NULL, cb, false, "AT+BAC=%s", ids);
 }
 #endif /* CONFIG_BT_HFP_HF_CODEC_NEG */
 
 static int send_at_brsf(struct bt_hfp_hf *hf, at_finish_cb_t cb)
 {
-	return hfp_hf_send_cmd(hf, brsf_resp, cb, "AT+BRSF=%u", hf->hf_features);
+	return hfp_hf_send_cmd(hf, brsf_resp, cb, false, "AT+BRSF=%u", hf->hf_features);
 }
 
 static struct slc_init
@@ -2261,12 +2281,12 @@ static struct slc_init
 
 static int slc_init_start(struct bt_hfp_hf *hf);
 
-static int slc_init_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int slc_init_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
-	if (result != AT_RESULT_OK) {
+	if (result != BT_AT_RESULT_OK) {
 		LOG_WRN("It is ERROR response of AT command %d.", hf->cmd_init_seq);
 		if (slc_init_list[hf->cmd_init_seq].disconnect) {
 			hf_slc_error(&hf->at);
@@ -2349,8 +2369,8 @@ int hf_slc_establish(struct bt_hfp_hf *hf)
 }
 
 #if defined(CONFIG_BT_HFP_HF_CLI)
-static int cli_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int cli_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -2378,7 +2398,7 @@ int Z_API(bt_hfp_hf_cli)(struct bt_hfp_hf *hf, bool enable)
 		return -EINVAL;
 	}
 
-	err = hfp_hf_send_cmd(hf, NULL, cli_finish, "AT+CLIP=%d", enable ? 1 : 0);
+	err = hfp_hf_send_cmd(hf, NULL, cli_finish, true, "AT+CLIP=%d", enable ? 1 : 0);
 	if (err < 0) {
 		LOG_ERR("HFP HF CLI set failed on %p", hf);
 	}
@@ -2390,8 +2410,8 @@ int Z_API(bt_hfp_hf_cli)(struct bt_hfp_hf *hf, bool enable)
 }
 
 #if defined(CONFIG_BT_HFP_HF_VOLUME)
-static int vgm_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int vgm_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -2425,7 +2445,7 @@ int Z_API(bt_hfp_hf_vgm)(struct bt_hfp_hf *hf, uint8_t gain)
 		return 0;
 	}
 
-	err = hfp_hf_send_cmd(hf, NULL, vgm_finish, "AT+VGM=%d", gain);
+	err = hfp_hf_send_cmd(hf, NULL, vgm_finish, true, "AT+VGM=%d", gain);
 	if (err < 0) {
 		LOG_ERR("HFP HF VGM set failed on %p", hf);
 	}
@@ -2437,8 +2457,8 @@ int Z_API(bt_hfp_hf_vgm)(struct bt_hfp_hf *hf, uint8_t gain)
 }
 
 #if defined(CONFIG_BT_HFP_HF_VOLUME)
-static int vgs_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int vgs_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -2472,7 +2492,7 @@ int Z_API(bt_hfp_hf_vgs)(struct bt_hfp_hf *hf, uint8_t gain)
 		return 0;
 	}
 
-	err = hfp_hf_send_cmd(hf, NULL, vgs_finish, "AT+VGS=%d", gain);
+	err = hfp_hf_send_cmd(hf, NULL, vgs_finish, true, "AT+VGS=%d", gain);
 	if (err < 0) {
 		LOG_ERR("HFP HF VGS set failed on %p", hf);
 	}
@@ -2528,8 +2548,8 @@ static int cops_resp(struct at_client *hf_at, struct net_buf *buf)
 	return 0;
 }
 
-static int cops_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int cops_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -2553,7 +2573,7 @@ int Z_API(bt_hfp_hf_get_operator)(struct bt_hfp_hf *hf)
 		return 0;
 	}
 
-	err = hfp_hf_send_cmd(hf, cops_resp, cops_finish, "AT+COPS?");
+	err = hfp_hf_send_cmd(hf, cops_resp, cops_finish, true, "AT+COPS?");
 	if (err < 0) {
 		LOG_ERR("Fail to read the currently selected operator on %p", hf);
 	}
@@ -2593,8 +2613,8 @@ static int binp_resp(struct at_client *hf_at, struct net_buf *buf)
 	return 0;
 }
 
-static int binp_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int binp_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -2626,7 +2646,7 @@ int Z_API(bt_hfp_hf_request_phone_number)(struct bt_hfp_hf *hf)
 
 	atomic_clear_bit(hf->flags, BT_HFP_HF_FLAG_BINP);
 
-	err = hfp_hf_send_cmd(hf, binp_resp, binp_finish, "AT+BINP=1");
+	err = hfp_hf_send_cmd(hf, binp_resp, binp_finish, true, "AT+BINP=1");
 	if (err < 0) {
 		LOG_ERR("Fail to request phone number to the AG on %p", hf);
 	}
@@ -2634,8 +2654,8 @@ int Z_API(bt_hfp_hf_request_phone_number)(struct bt_hfp_hf *hf)
 	return err;
 }
 
-static int vts_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int vts_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -2679,7 +2699,7 @@ int Z_API(bt_hfp_hf_transmit_dtmf_code)(struct bt_hfp_hf_call *call, char code)
 		return -EINVAL;
 	}
 
-	err = hfp_hf_send_cmd(hf, NULL, vts_finish, "AT+VTS=%c", code);
+	err = hfp_hf_send_cmd(hf, NULL, vts_finish, true, "AT+VTS=%c", code);
 	if (err < 0) {
 		LOG_ERR("Fail to tramsit DTMF Codes on %p", hf);
 	}
@@ -2687,8 +2707,8 @@ int Z_API(bt_hfp_hf_transmit_dtmf_code)(struct bt_hfp_hf_call *call, char code)
 	return err;
 }
 
-static int cnum_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int cnum_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -2713,7 +2733,7 @@ int Z_API(bt_hfp_hf_query_subscriber)(struct bt_hfp_hf *hf)
 		return -ENOTCONN;
 	}
 
-	err = hfp_hf_send_cmd(hf, NULL, cnum_finish, "AT+CNUM");
+	err = hfp_hf_send_cmd(hf, NULL, cnum_finish, true, "AT+CNUM");
 	if (err < 0) {
 		LOG_ERR("Fail to query subscriber number information on %p", hf);
 	}
@@ -2721,8 +2741,8 @@ int Z_API(bt_hfp_hf_query_subscriber)(struct bt_hfp_hf *hf)
 	return err;
 }
 
-static int bia_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int bia_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -2774,7 +2794,7 @@ int Z_API(bt_hfp_hf_indicator_status)(struct bt_hfp_hf *hf, uint8_t status)
 	bia_status--;
 	*bia_status = '\0';
 
-	err = hfp_hf_send_cmd(hf, NULL, bia_finish, "AT+BIA=%s", buffer);
+	err = hfp_hf_send_cmd(hf, NULL, bia_finish, true, "AT+BIA=%s", buffer);
 	if (err < 0) {
 		LOG_ERR("Fail to activated/deactivated AG indicators on %p", hf);
 	}
@@ -2784,7 +2804,7 @@ int Z_API(bt_hfp_hf_indicator_status)(struct bt_hfp_hf *hf, uint8_t status)
 
 #if defined(CONFIG_BT_HFP_HF_HF_INDICATOR_ENH_SAFETY)
 static int biev_enh_safety_finish(struct at_client *hf_at,
-		   enum at_result result, enum at_cme cme_err)
+		   enum bt_at_result result, enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -2822,8 +2842,8 @@ int Z_API(bt_hfp_hf_enhanced_safety)(struct bt_hfp_hf *hf, bool enable)
 		return -EINVAL;
 	}
 
-	err = hfp_hf_send_cmd(hf, NULL, biev_enh_safety_finish, "AT+BIEV=%d,%d",
-		HFP_HF_ENHANCED_SAFETY_IND, enable ? 1 : 0);
+	err = hfp_hf_send_cmd(hf, NULL, biev_enh_safety_finish, true,
+		"AT+BIEV=%d,%d", HFP_HF_ENHANCED_SAFETY_IND, enable ? 1 : 0);
 	if (err < 0) {
 		LOG_ERR("Fail to transfer enhanced safety value on %p", hf);
 	}
@@ -2836,7 +2856,7 @@ int Z_API(bt_hfp_hf_enhanced_safety)(struct bt_hfp_hf *hf, bool enable)
 
 #if defined(CONFIG_BT_HFP_HF_HF_INDICATOR_BATTERY)
 static int biev_battery_finish(struct at_client *hf_at,
-		   enum at_result result, enum at_cme cme_err)
+		   enum bt_at_result result, enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -2879,8 +2899,8 @@ int Z_API(bt_hfp_hf_battery)(struct bt_hfp_hf *hf, uint8_t level)
 		return -EINVAL;
 	}
 
-	err = hfp_hf_send_cmd(hf, NULL, biev_battery_finish, "AT+BIEV=%d,%d",
-		HFP_HF_BATTERY_LEVEL_IND, level);
+	err = hfp_hf_send_cmd(hf, NULL, biev_battery_finish, true,
+		"AT+BIEV=%d,%d", HFP_HF_BATTERY_LEVEL_IND, level);
 	if (err < 0) {
 		LOG_ERR("Fail to transfer remaining battery level on %p", hf);
 	}
@@ -2891,8 +2911,8 @@ int Z_API(bt_hfp_hf_battery)(struct bt_hfp_hf *hf, uint8_t level)
 #endif /* CONFIG_BT_HFP_HF_HF_INDICATOR_BATTERY */
 }
 
-static int ata_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int ata_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -2901,8 +2921,8 @@ static int ata_finish(struct at_client *hf_at, enum at_result result,
 	return 0;
 }
 
-static int btrh_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int btrh_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -2942,7 +2962,7 @@ int Z_API(bt_hfp_hf_accept)(struct bt_hfp_hf_call *call)
 	}
 
 	if (atomic_get(call->state) == BT_HFP_HF_CALL_STATE_WAITING) {
-		err = hfp_hf_send_cmd(hf, NULL, ata_finish, "ATA");
+		err = hfp_hf_send_cmd(hf, NULL, ata_finish, true, "ATA");
 		if (err < 0) {
 			LOG_ERR("Fail to accept the incoming call on %p", hf);
 		}
@@ -2951,7 +2971,7 @@ int Z_API(bt_hfp_hf_accept)(struct bt_hfp_hf_call *call)
 
 	if (atomic_test_bit(call->flags, BT_HFP_HF_CALL_INCOMING_HELD) &&
 		(atomic_get(call->state) == BT_HFP_HF_CALL_STATE_ACTIVE)) {
-		err = hfp_hf_send_cmd(hf, NULL, btrh_finish, "AT+BTRH=%d",
+		err = hfp_hf_send_cmd(hf, NULL, btrh_finish, true, "AT+BTRH=%d",
 			BT_HFP_BTRH_ACCEPTED);
 		if (err < 0) {
 			LOG_ERR("Fail to accept the held incoming call on %p", hf);
@@ -2962,8 +2982,8 @@ int Z_API(bt_hfp_hf_accept)(struct bt_hfp_hf_call *call)
 	return -EINVAL;
 }
 
-static int chup_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int chup_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -3008,7 +3028,7 @@ int Z_API(bt_hfp_hf_reject)(struct bt_hfp_hf_call *call)
 	}
 
 	if (atomic_get(call->state) == BT_HFP_HF_CALL_STATE_WAITING) {
-		err = hfp_hf_send_cmd(hf, NULL, chup_finish, "AT+CHUP");
+		err = hfp_hf_send_cmd(hf, NULL, chup_finish, true, "AT+CHUP");
 		if (err < 0) {
 			LOG_ERR("Fail to reject the incoming call on %p", hf);
 		}
@@ -3017,7 +3037,7 @@ int Z_API(bt_hfp_hf_reject)(struct bt_hfp_hf_call *call)
 
 	if (atomic_test_bit(call->flags, BT_HFP_HF_CALL_INCOMING_HELD) &&
 		(atomic_get(call->state) == BT_HFP_HF_CALL_STATE_ACTIVE)) {
-		err = hfp_hf_send_cmd(hf, NULL, btrh_finish, "AT+BTRH=%d",
+		err = hfp_hf_send_cmd(hf, NULL, btrh_finish, true, "AT+BTRH=%d",
 			BT_HFP_BTRH_REJECTED);
 		if (err < 0) {
 			LOG_ERR("Fail to reject the held incoming call on %p", hf);
@@ -3063,7 +3083,7 @@ int Z_API(bt_hfp_hf_terminate)(struct bt_hfp_hf_call *call)
 		return -EINVAL;
 	}
 
-	err = hfp_hf_send_cmd(hf, NULL, chup_finish, "AT+CHUP");
+	err = hfp_hf_send_cmd(hf, NULL, chup_finish, true, "AT+CHUP");
 	if (err < 0) {
 		LOG_ERR("Fail to terminate the none held call on %p", hf);
 	}
@@ -3106,7 +3126,7 @@ int Z_API(bt_hfp_hf_hold_incoming)(struct bt_hfp_hf_call *call)
 		return -EINVAL;
 	}
 
-	err = hfp_hf_send_cmd(hf, NULL, btrh_finish, "AT+BTRH=%d",
+	err = hfp_hf_send_cmd(hf, NULL, btrh_finish, true, "AT+BTRH=%d",
 		BT_HFP_BTRH_ON_HOLD);
 	if (err < 0) {
 		LOG_ERR("Fail to hold the incoming call on %p", hf);
@@ -3160,8 +3180,8 @@ static int query_btrh_resp(struct at_client *hf_at, struct net_buf *buf)
 	return 0;
 }
 
-static int query_btrh_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int query_btrh_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -3181,7 +3201,7 @@ int Z_API(bt_hfp_hf_query_respond_hold_status)(struct bt_hfp_hf *hf)
 		return -ENOTCONN;
 	}
 
-	err = hfp_hf_send_cmd(hf, query_btrh_resp, query_btrh_finish, "AT+BTRH?");
+	err = hfp_hf_send_cmd(hf, query_btrh_resp, query_btrh_finish, true, "AT+BTRH?");
 	if (err < 0) {
 		LOG_ERR("Fail to query respond and hold status of AG on %p", hf);
 	}
@@ -3189,33 +3209,33 @@ int Z_API(bt_hfp_hf_query_respond_hold_status)(struct bt_hfp_hf *hf)
 	return err;
 }
 
-static int bt_hfp_ag_get_cme_err(enum at_cme cme_err)
+static int bt_hfp_ag_get_cme_err(enum bt_at_cme cme_err)
 {
 	int err;
 
 	switch (cme_err) {
-	case CME_ERROR_OPERATION_NOT_SUPPORTED:
+	case BT_AT_CME_ERROR_OPERATION_NOT_SUPPORTED:
 		err = -EOPNOTSUPP;
 		break;
-	case CME_ERROR_AG_FAILURE:
+	case BT_AT_CME_ERROR_AG_FAILURE:
 		err = -EFAULT;
 		break;
-	case CME_ERROR_MEMORY_FAILURE:
+	case BT_AT_CME_ERROR_MEMORY_FAILURE:
 		err = -ENOSR;
 		break;
-	case CME_ERROR_MEMORY_FULL:
+	case BT_AT_CME_ERROR_MEMORY_FULL:
 		err = -ENOMEM;
 		break;
-	case CME_ERROR_DIAL_STRING_TO_LONG:
+	case BT_AT_CME_ERROR_DIAL_STRING_TOO_LONG:
 		err = -ENAMETOOLONG;
 		break;
-	case CME_ERROR_INVALID_INDEX:
+	case BT_AT_CME_ERROR_INVALID_INDEX:
 		err = -EINVAL;
 		break;
-	case CME_ERROR_OPERATION_NOT_ALLOWED:
+	case BT_AT_CME_ERROR_OPERATION_NOT_ALLOWED:
 		err = -ENOTSUP;
 		break;
-	case CME_ERROR_NO_CONNECTION_TO_PHONE:
+	case BT_AT_CME_ERROR_NO_CONNECTION_TO_PHONE:
 		err = -ENOTCONN;
 		break;
 	default:
@@ -3226,8 +3246,8 @@ static int bt_hfp_ag_get_cme_err(enum at_cme cme_err)
 	return err;
 }
 
-static int atd_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int atd_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 	int err;
@@ -3235,9 +3255,9 @@ static int atd_finish(struct at_client *hf_at, enum at_result result,
 
 	LOG_DBG("ATD (result %d) on %p", result, hf);
 
-	if (result == AT_RESULT_CME_ERROR) {
+	if (result == BT_AT_RESULT_CME_ERROR) {
 		err = bt_hfp_ag_get_cme_err(cme_err);
-	} else if (result == AT_RESULT_ERROR) {
+	} else if (result == BT_AT_RESULT_ERROR) {
 		err = -ENOTSUP;
 	} else {
 		err = 0;
@@ -3284,7 +3304,7 @@ int Z_API(bt_hfp_hf_number_call)(struct bt_hfp_hf *hf, const char *number)
 
 	hf_call_state_update(call, BT_HFP_HF_CALL_STATE_OUTGOING);
 
-	err = hfp_hf_send_cmd(hf, NULL, atd_finish, "ATD%s", number);
+	err = hfp_hf_send_cmd(hf, NULL, atd_finish, true, "ATD%s", number);
 	if (err < 0) {
 		LOG_ERR("Fail to start phone number call on %p", hf);
 	}
@@ -3318,7 +3338,7 @@ int Z_API(bt_hfp_hf_memory_dial)(struct bt_hfp_hf *hf, const char *location)
 
 	hf_call_state_update(call, BT_HFP_HF_CALL_STATE_OUTGOING);
 
-	err = hfp_hf_send_cmd(hf, NULL, atd_finish, "ATD>%s", location);
+	err = hfp_hf_send_cmd(hf, NULL, atd_finish, true, "ATD>%s", location);
 	if (err < 0) {
 		LOG_ERR("Fail to last number re-Dial on %p", hf);
 	}
@@ -3326,8 +3346,8 @@ int Z_API(bt_hfp_hf_memory_dial)(struct bt_hfp_hf *hf, const char *location)
 	return err;
 }
 
-static int bldn_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int bldn_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 	int err;
@@ -3335,9 +3355,9 @@ static int bldn_finish(struct at_client *hf_at, enum at_result result,
 
 	LOG_DBG("AT+BLDN (result %d) on %p", result, hf);
 
-	if (result == AT_RESULT_CME_ERROR) {
+	if (result == BT_AT_RESULT_CME_ERROR) {
 		err = bt_hfp_ag_get_cme_err(cme_err);
-	} else if (result == AT_RESULT_ERROR) {
+	} else if (result == BT_AT_RESULT_ERROR) {
 		err = -ENOTSUP;
 	} else {
 		err = 0;
@@ -3384,7 +3404,7 @@ int Z_API(bt_hfp_hf_redial)(struct bt_hfp_hf *hf)
 
 	hf_call_state_update(call, BT_HFP_HF_CALL_STATE_OUTGOING);
 
-	err = hfp_hf_send_cmd(hf, NULL, bldn_finish, "AT+BLDN");
+	err = hfp_hf_send_cmd(hf, NULL, bldn_finish, true, "AT+BLDN");
 	if (err < 0) {
 		LOG_ERR("Fail to start memory dialing on %p", hf);
 	}
@@ -3393,8 +3413,8 @@ int Z_API(bt_hfp_hf_redial)(struct bt_hfp_hf *hf)
 }
 
 #if defined(CONFIG_BT_HFP_HF_CODEC_NEG)
-static int bcc_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int bcc_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -3421,7 +3441,7 @@ int Z_API(bt_hfp_hf_audio_connect)(struct bt_hfp_hf *hf)
 		return -ECONNREFUSED;
 	}
 
-	err = hfp_hf_send_cmd(hf, NULL, bcc_finish, "AT+BCC");
+	err = hfp_hf_send_cmd(hf, NULL, bcc_finish, true, "AT+BCC");
 	if (err < 0) {
 		LOG_ERR("Fail to setup audio connection on %p", hf);
 	}
@@ -3433,8 +3453,8 @@ int Z_API(bt_hfp_hf_audio_connect)(struct bt_hfp_hf *hf)
 }
 
 #if defined(CONFIG_BT_HFP_HF_CODEC_NEG)
-static int bcs_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int bcs_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -3464,15 +3484,15 @@ int Z_API(bt_hfp_hf_select_codec)(struct bt_hfp_hf *hf, uint8_t codec_id)
 		return -ESRCH;
 	}
 
-	return hfp_hf_send_cmd(hf, NULL, bcs_finish, "AT+BCS=%d", codec_id);
+	return hfp_hf_send_cmd(hf, NULL, bcs_finish, true, "AT+BCS=%d", codec_id);
 #else
 	return -ENOTSUP;
 #endif /* CONFIG_BT_HFP_HF_CODEC_NEG */
 }
 
 #if defined(CONFIG_BT_HFP_HF_CODEC_NEG)
-static int bac_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int bac_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -3503,24 +3523,24 @@ int Z_API(bt_hfp_hf_set_codecs)(struct bt_hfp_hf *hf, uint8_t codec_ids)
 	hf->hf_codec_ids = codec_ids;
 
 	get_codec_ids(hf, &ids[0], ARRAY_SIZE(ids));
-	return hfp_hf_send_cmd(hf, NULL, bac_finish, "AT+BAC=%s", ids);
+	return hfp_hf_send_cmd(hf, NULL, bac_finish, true, "AT+BAC=%s", ids);
 #else
 	return -ENOTSUP;
 #endif /* CONFIG_BT_HFP_HF_CODEC_NEG */
 }
 
 #if defined(CONFIG_BT_HFP_HF_ECNR)
-static int nrec_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int nrec_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 	int err;
 
 	LOG_DBG("AT+NREC=0 (result %d) on %p", result, hf);
 
-	if (result == AT_RESULT_CME_ERROR) {
+	if (result == BT_AT_RESULT_CME_ERROR) {
 		err = bt_hfp_ag_get_cme_err(cme_err);
-	} else if (result == AT_RESULT_ERROR) {
+	} else if (result == BT_AT_RESULT_ERROR) {
 		err = -ENOTSUP;
 	} else {
 		err = 0;
@@ -3553,15 +3573,15 @@ int Z_API(bt_hfp_hf_turn_off_ecnr)(struct bt_hfp_hf *hf)
 		return -EBUSY;
 	}
 
-	return hfp_hf_send_cmd(hf, NULL, nrec_finish, "AT+NREC=0");
+	return hfp_hf_send_cmd(hf, NULL, nrec_finish, true, "AT+NREC=0");
 #else
 	return -ENOTSUP;
 #endif /* CONFIG_BT_HFP_HF_ECNR */
 }
 
 #if defined(CONFIG_BT_HFP_HF_3WAY_CALL)
-static int ccwa_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int ccwa_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -3586,15 +3606,16 @@ int Z_API(bt_hfp_hf_call_waiting_notify)(struct bt_hfp_hf *hf, bool enable)
 		return -ENOTSUP;
 	}
 
-	return hfp_hf_send_cmd(hf, NULL, ccwa_finish, "AT+CCWA=%d", enable ? 1 : 0);
+	return hfp_hf_send_cmd(hf, NULL, ccwa_finish,
+		      true, "AT+CCWA=%d", enable ? 1 : 0);
 #else
 	return -ENOTSUP;
 #endif /* CONFIG_BT_HFP_HF_3WAY_CALL */
 }
 
 #if defined(CONFIG_BT_HFP_HF_3WAY_CALL)
-static int chld_release_all_held_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int chld_release_all_held_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -3626,15 +3647,15 @@ int Z_API(bt_hfp_hf_release_all_held)(struct bt_hfp_hf *hf)
 		return -ENOTSUP;
 	}
 
-	return hfp_hf_send_cmd(hf, NULL, chld_release_all_held_finish, "AT+CHLD=0");
+	return hfp_hf_send_cmd(hf, NULL, chld_release_all_held_finish, true, "AT+CHLD=0");
 #else
 	return -ENOTSUP;
 #endif /* CONFIG_BT_HFP_HF_3WAY_CALL */
 }
 
 #if defined(CONFIG_BT_HFP_HF_3WAY_CALL)
-static int chld_set_udub_finish(struct at_client *hf_at, enum at_result result,
-		   enum at_cme cme_err)
+static int chld_set_udub_finish(struct at_client *hf_at, enum bt_at_result result,
+		   enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -3666,7 +3687,7 @@ int Z_API(bt_hfp_hf_set_udub)(struct bt_hfp_hf *hf)
 		return -ENOTSUP;
 	}
 
-	return hfp_hf_send_cmd(hf, NULL, chld_set_udub_finish, "AT+CHLD=0");
+	return hfp_hf_send_cmd(hf, NULL, chld_set_udub_finish, true, "AT+CHLD=0");
 #else
 	return -ENOTSUP;
 #endif /* CONFIG_BT_HFP_HF_3WAY_CALL */
@@ -3674,7 +3695,7 @@ int Z_API(bt_hfp_hf_set_udub)(struct bt_hfp_hf *hf)
 
 #if defined(CONFIG_BT_HFP_HF_3WAY_CALL)
 static int chld_release_active_accept_other_finish(struct at_client *hf_at,
-		   enum at_result result, enum at_cme cme_err)
+		   enum bt_at_result result, enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -3701,7 +3722,7 @@ int Z_API(bt_hfp_hf_release_active_accept_other)(struct bt_hfp_hf *hf)
 		return -ENOTSUP;
 	}
 
-	return hfp_hf_send_cmd(hf, NULL, chld_release_active_accept_other_finish,
+	return hfp_hf_send_cmd(hf, NULL, chld_release_active_accept_other_finish, true,
 	    "AT+CHLD=1");
 #else
 	return -ENOTSUP;
@@ -3710,7 +3731,7 @@ int Z_API(bt_hfp_hf_release_active_accept_other)(struct bt_hfp_hf *hf)
 
 #if defined(CONFIG_BT_HFP_HF_3WAY_CALL)
 static int chld_hold_active_accept_other_finish(struct at_client *hf_at,
-		   enum at_result result, enum at_cme cme_err)
+		   enum bt_at_result result, enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -3737,7 +3758,7 @@ int Z_API(bt_hfp_hf_hold_active_accept_other)(struct bt_hfp_hf *hf)
 		return -ENOTSUP;
 	}
 
-	return hfp_hf_send_cmd(hf, NULL, chld_hold_active_accept_other_finish,
+	return hfp_hf_send_cmd(hf, NULL, chld_hold_active_accept_other_finish, true,
 	    "AT+CHLD=2");
 #else
 	return -ENOTSUP;
@@ -3746,7 +3767,7 @@ int Z_API(bt_hfp_hf_hold_active_accept_other)(struct bt_hfp_hf *hf)
 
 #if defined(CONFIG_BT_HFP_HF_3WAY_CALL)
 static int chld_join_conversation_finish(struct at_client *hf_at,
-		   enum at_result result, enum at_cme cme_err)
+		   enum bt_at_result result, enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -3778,7 +3799,7 @@ int Z_API(bt_hfp_hf_join_conversation)(struct bt_hfp_hf *hf)
 		return -ENOTSUP;
 	}
 
-	return hfp_hf_send_cmd(hf, NULL, chld_join_conversation_finish,
+	return hfp_hf_send_cmd(hf, NULL, chld_join_conversation_finish, true,
 	    "AT+CHLD=3");
 #else
 	return -ENOTSUP;
@@ -3787,7 +3808,7 @@ int Z_API(bt_hfp_hf_join_conversation)(struct bt_hfp_hf *hf)
 
 #if defined(CONFIG_BT_HFP_HF_3WAY_CALL)
 static int chld_explicit_call_transfer_finish(struct at_client *hf_at,
-		   enum at_result result, enum at_cme cme_err)
+		   enum bt_at_result result, enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -3819,7 +3840,7 @@ int Z_API(bt_hfp_hf_explicit_call_transfer)(struct bt_hfp_hf *hf)
 		return -ENOTSUP;
 	}
 
-	return hfp_hf_send_cmd(hf, NULL, chld_explicit_call_transfer_finish,
+	return hfp_hf_send_cmd(hf, NULL, chld_explicit_call_transfer_finish, true,
 	    "AT+CHLD=4");
 #else
 	return -ENOTSUP;
@@ -3828,7 +3849,7 @@ int Z_API(bt_hfp_hf_explicit_call_transfer)(struct bt_hfp_hf *hf)
 
 #if defined(CONFIG_BT_HFP_HF_ECC)
 static int chld_release_specified_call_finish(struct at_client *hf_at,
-		   enum at_result result, enum at_cme cme_err)
+		   enum bt_at_result result, enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -3883,7 +3904,7 @@ int Z_API(bt_hfp_hf_release_specified_call)(struct bt_hfp_hf_call *call)
 		return -EINVAL;
 	}
 
-	return hfp_hf_send_cmd(hf, NULL, chld_release_specified_call_finish,
+	return hfp_hf_send_cmd(hf, NULL, chld_release_specified_call_finish, true,
 	    "AT+CHLD=1%d", call->index);
 #else
 	return -ENOTSUP;
@@ -3892,7 +3913,7 @@ int Z_API(bt_hfp_hf_release_specified_call)(struct bt_hfp_hf_call *call)
 
 #if defined(CONFIG_BT_HFP_HF_ECC)
 static int chld_private_consultation_mode_finish(struct at_client *hf_at,
-		   enum at_result result, enum at_cme cme_err)
+		   enum bt_at_result result, enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -3947,7 +3968,7 @@ int Z_API(bt_hfp_hf_private_consultation_mode)(struct bt_hfp_hf_call *call)
 		return -EINVAL;
 	}
 
-	return hfp_hf_send_cmd(hf, NULL, chld_private_consultation_mode_finish,
+	return hfp_hf_send_cmd(hf, NULL, chld_private_consultation_mode_finish, true,
 			       "AT+CHLD=2%d", call->index);
 #else
 	return -ENOTSUP;
@@ -3956,13 +3977,13 @@ int Z_API(bt_hfp_hf_private_consultation_mode)(struct bt_hfp_hf_call *call)
 
 #if defined(CONFIG_BT_HFP_HF_VOICE_RECG)
 static int bvra_1_finish(struct at_client *hf_at,
-		   enum at_result result, enum at_cme cme_err)
+		   enum bt_at_result result, enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
 	LOG_DBG("AT+BVRA=1 (result %d) on %p", result, hf);
 
-	if (result == AT_RESULT_OK) {
+	if (result == BT_AT_RESULT_OK) {
 		if (!atomic_test_and_set_bit(hf->flags, BT_HFP_HF_FLAG_VRE_ACTIVATE)) {
 			if (bt_hf->voice_recognition) {
 				bt_hf->voice_recognition(hf, true);
@@ -3974,7 +3995,7 @@ static int bvra_1_finish(struct at_client *hf_at,
 }
 
 static int bvra_0_finish(struct at_client *hf_at,
-		   enum at_result result, enum at_cme cme_err)
+		   enum bt_at_result result, enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -4013,7 +4034,7 @@ int Z_API(bt_hfp_hf_voice_recognition)(struct bt_hfp_hf *hf, bool activate)
 		finish = bvra_0_finish;
 	}
 
-	return hfp_hf_send_cmd(hf, NULL, finish, "AT+BVRA=%d",
+	return hfp_hf_send_cmd(hf, NULL, finish, true, "AT+BVRA=%d",
 		activate ? 1 : 0);
 #else
 	return -ENOTSUP;
@@ -4022,7 +4043,7 @@ int Z_API(bt_hfp_hf_voice_recognition)(struct bt_hfp_hf *hf, bool activate)
 
 #if defined(CONFIG_BT_HFP_HF_ENH_VOICE_RECG)
 static int bvra_2_finish(struct at_client *hf_at,
-		   enum at_result result, enum at_cme cme_err)
+		   enum bt_at_result result, enum bt_at_cme cme_err)
 {
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 
@@ -4057,7 +4078,7 @@ int Z_API(bt_hfp_hf_ready_to_accept_audio)(struct bt_hfp_hf *hf)
 		return -ENOTCONN;
 	}
 
-	return hfp_hf_send_cmd(hf, NULL, bvra_2_finish, "AT+BVRA=2");
+	return hfp_hf_send_cmd(hf, NULL, bvra_2_finish, true, "AT+BVRA=2");
 #else
 	return -ENOTSUP;
 #endif /* CONFIG_BT_HFP_HF_ENH_VOICE_RECG */
