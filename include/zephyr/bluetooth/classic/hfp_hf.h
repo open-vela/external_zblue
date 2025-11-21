@@ -18,6 +18,7 @@
  */
 
 #include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/bluetooth/classic/at.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -501,6 +502,20 @@ struct bt_hfp_hf_cb {
 	 *  @param call Current call information.
 	 */
 	void (*query_call)(struct bt_hfp_hf *hf, struct bt_hfp_hf_current_call *call);
+
+	/** User-triggered AT command completion callback
+	 *
+	 *  Invoked whenever an AT command initiated through a public HFP HF API
+	 *  finishes (i.e. the AG responds with OK, ERROR or +CME ERROR).
+	 *
+	 *  @param hf HFP HF object.
+	 *  @param result Result category of the AT response
+	 *             @ref bt_at_result.
+	 *  @param err CME error code reported by the AG when
+	 *             @p result is @ref BT_AT_RESULT_CME_ERROR, ignored otherwise.
+	 */	
+	void (*at_cmd_complete)(struct bt_hfp_hf *hf,
+				 enum bt_at_result result, enum bt_at_cme err);
 };
 
 /** @brief Register HFP HF profile

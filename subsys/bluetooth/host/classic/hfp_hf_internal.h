@@ -147,6 +147,7 @@ enum {
 	BT_HFP_HF_FLAG_QUERY_CALLS,   /* Require to query list of current calls */
 	BT_HFP_HF_FLAG_USR_CLCC_CMD,  /* User-initiated AT+CLCC command */
 	BT_HFP_HF_FLAG_USR_CLCC_PND,  /* User-initiated AT+CLCC command is pending */
+	BT_HFP_HF_FLAG_NOTIFY_RESULT, /* Current AT command should report result */
 	/* Total number of flags - must be at the end of the enum */
 	BT_HFP_HF_NUM_FLAGS,
 };
