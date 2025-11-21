@@ -164,14 +164,20 @@ extern struct net_buf_pool acl_in_pool;
 extern struct net_buf_pool acl_tx_pool;
 // extern struct net_buf_pool dummy_pool;
 // extern struct net_buf_pool a2dp_tx_pool; // for Zephyr shell
+#if defined(CONFIG_BT_A2DP_SOURCE)
 extern struct net_buf_pool bt_a2dp_tx_pool; // for openvela sal
+#endif
+#if defined(CONFIG_BT_A2DP)
 extern struct net_buf_pool avdtp_pool;
 extern struct net_buf_pool avdtp_frag_pool;
+#endif
+#if defined(CONFIG_BT_AVRCP)
 extern struct net_buf_pool avrcp_vd_tx_pool;
 extern struct net_buf_pool avrcp_vd_rx_pool;
 extern struct net_buf_pool avctp_ctrl_rx_pool;
 extern struct net_buf_pool avctp_ctrl_tx_pool;
 extern struct net_buf_pool bt_avrcp_tx_pool;
+#endif
 
 struct net_buf_pool *_net_buf_pool_list[] = {
 #if defined(CONFIG_BT_HCI)
