@@ -386,7 +386,6 @@ static int cmd_hid_disconnect(const struct shell *sh, size_t argc, char *argv[])
 	}
 
 	bt_hid_device_disconnect(default_hid);
-	default_hid = NULL;
 
 	return 0;
 }
