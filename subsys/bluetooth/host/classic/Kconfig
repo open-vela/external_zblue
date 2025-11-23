@@ -72,7 +72,7 @@ config BT_RFCOMM_TX_MAX
 config BT_HID_DEVICE
 	bool "Bluetooth HID Device Profile [EXPERIMENTAL]"
 	select EXPERIMENTAL
-	default n
+	default y
 	help
 	  This option enables the HID Device profile
 
