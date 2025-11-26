@@ -102,6 +102,8 @@ struct bt_hfp_hf_current_call {
 	const char *number;
 	/** Phone number type format identifier */
 	uint8_t type;
+	/** HFP HF call object */
+	struct bt_hfp_hf_call *call;
 };
 
 /** @brief HFP profile application callback */
