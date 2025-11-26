@@ -869,6 +869,7 @@ static int clcc_handle(struct at_client *hf_at)
 		current_call.multiparty = mpty > 0 ? true : false;
 		current_call.number = number;
 		current_call.type = (uint8_t)type;
+		current_call.call = call;
 
 		bt_hf->query_call(hf, &current_call);
 	}
