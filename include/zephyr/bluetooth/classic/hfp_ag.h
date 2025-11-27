@@ -460,6 +460,37 @@ struct bt_hfp_ag_cb {
 	 */
 	void (*hf_indicator_value)(struct bt_hfp_ag *ag, enum hfp_ag_hf_indicators indicator,
 				   uint32_t value);
+
+	/** Vendor specific / custom AT command callback
+	 *
+	 *  If this callback is provided it will be called whenever an AT command
+	 *  is received from the HF that is not handled by the HFP AG stack.
+	 *
+	 *  The @p cmd string contains the full AT command line as received on
+	 *  the RFCOMM link, without the terminating carriage return character.
+	 *  Example: "AT+VENDOR=1,2".
+	 *
+	 *  The return value controls how the stack replies:
+	 *  - ret == -EINPROGRESS: The application is responsible for sending all responses,
+	 *                         including the final "OK" / "ERROR" / "+CME ERROR:<code>",
+	 *                         by calling @ref bt_hfp_ag_send_vendor from an appropriate
+	 *                         context. The stack will NOT send any result code in
+	 *                         this case.
+	 *  - ret == 0:            The command was handled successfully and the stack will
+	 *                         send the standard "OK" final result code.
+	 *  - ret > 0:             The command is rejected and the stack will send the
+	 *                         standard "ERROR" or "+CME ERROR:<code>" depending on
+	 *                         the CMEE setting. CME error code can be provided by
+	 *                         writing it to the location pointed by @p cme_code .
+	 * 						   If no specific CME code is provided it will default to 0.
+	 *
+	 *  @param ag HFP AG object.
+	 *  @param cmd Zero-terminated AT command line without trailing <CR>.
+	 *  @param cme_code Pointer to CME error code.
+	 *
+	 *  @return Application-defined result as described above.
+	 */
+	int (*vendor_at_cmd)(struct bt_hfp_ag *ag, const char *cmd, uint8_t *cme_code);
 };
 
 /** @brief Register HFP AG profile
@@ -854,6 +885,26 @@ int Z_API(bt_hfp_ag_hf_indicator)(struct bt_hfp_ag *ag, enum hfp_ag_hf_indicator
  */
 int Z_API(bt_hfp_ag_ongoing_calls)(struct bt_hfp_ag *ag, struct bt_hfp_ag_ongoing_call *calls,
 			    size_t count);
+
+/** @brief Send vendor specific / custom AT response from the AG
+ *
+ *  Send a vendor specific or otherwise custom AT result or unsolicited
+ *  response line from the AG to the HF.
+ *  The given string is sent as-is and will be wrapped with the standard
+ *  "\r\n" prefix and suffix on the wire.
+ *
+ *  Examples (rsp non-NULL): 
+ *  - rsp == NULL        -> sends a standard final result "OK"
+ *                          (i.e. "\r\nOK\r\n").
+ *  - rsp = "+CUSTOM:0"  -> sends "\r\n+CUSTOM:0\r\n"
+ *  - rsp = "+VENDOR:1"  -> sends "\r\n+VENDOR:1\r\n"
+ *
+ *  @param ag HFP AG object.
+ *  @param rsp AT response string without CR/LF terminators, or NULL to send "OK".
+ *
+ *  @return 0 in case of success or negative value in case of error.
+ */
+int Z_API(bt_hfp_ag_send_vendor)(struct bt_hfp_ag *ag, const char *rsp);
 
 #ifdef __cplusplus
 }
