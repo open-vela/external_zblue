@@ -1602,7 +1602,7 @@ int bcs_handle(struct at_client *hf_at)
 
 	if (!(hf->hf_codec_ids & BIT(codec_id))) {
 		LOG_ERR("Invalid codec id %d", codec_id);
-		err = bt_hfp_hf_set_codecs(hf, hf->hf_codec_ids);
+		err = Z_API(bt_hfp_hf_set_codecs)(hf, hf->hf_codec_ids);
 		return err;
 	}
 
@@ -1613,7 +1613,7 @@ int bcs_handle(struct at_client *hf_at)
 		return 0;
 	}
 
-	err = bt_hfp_hf_select_codec(hf, codec_id);
+	err = Z_API(bt_hfp_hf_select_codec)(hf, codec_id);
 	return err;
 }
 #endif /* CONFIG_BT_HFP_HF_CODEC_NEG */
