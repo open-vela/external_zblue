@@ -343,7 +343,6 @@ static bool eir_has_name(const uint8_t *eir)
 
 void bt_br_discovery_reset(struct bt_dev *hdev)
 {
-	sys_slist_init(&hdev->discovery_cbs);
 	hdev->discovery_results = NULL;
 	hdev->discovery_results_size = 0;
 	hdev->discovery_results_count = 0;
