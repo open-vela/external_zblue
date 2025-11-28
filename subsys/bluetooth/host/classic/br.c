@@ -1079,7 +1079,7 @@ int bt_br_discovery_stop_mc(uint8_t dev_id)
 
 	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_INQUIRY_CANCEL, NULL, NULL);
 	if (err) {
-		return err;
+		LOG_ERR("Failed to cancel inquiry (err %d)", err);
 	}
 
 	for (i = 0; i < hdev->discovery_results_count; i++) {
@@ -1110,7 +1110,7 @@ int bt_br_discovery_stop_mc(uint8_t dev_id)
 	hdev->discovery_results_size = 0;
 	hdev->discovery_results_count = 0;
 
-	return 0;
+	return err;
 }
 
 void bt_br_discovery_cb_register_mc(uint8_t dev_id, struct bt_br_discovery_cb *cb)
