@@ -5307,12 +5307,13 @@ int Z_API(bt_hfp_ag_hf_indicator)(struct bt_hfp_ag *ag, enum hfp_ag_hf_indicator
 }
 
 int Z_API(bt_hfp_ag_ongoing_calls)(struct bt_hfp_ag *ag, struct bt_hfp_ag_ongoing_call *calls,
-			    size_t count)
+			    size_t count, const struct bt_hfp_ag_indicator_value *indicators, size_t ind_count)
 {
 	struct bt_hfp_ag_ongoing_call *call;
 	bool valid;
 	size_t len;
 	int err = -EINVAL;
+	size_t indicator_max = ARRAY_SIZE(ag->indicator_value);
 
 	LOG_DBG("");
 
@@ -5390,6 +5391,14 @@ int Z_API(bt_hfp_ag_ongoing_calls)(struct bt_hfp_ag *ag, struct bt_hfp_ag_ongoin
 			ag->ongoing_call_count = 0;
 			goto failed;
 		}
+	}
+
+	for (size_t i = 0; i < ind_count; i++) {
+		if (indicators[i].indicator >= indicator_max) {
+			LOG_ERR("Indicator index out of range, ignore.");
+			continue;
+		}
+		ag->indicator_value[indicators[i].indicator] = indicators[i].value;
 	}
 
 	err = 0;

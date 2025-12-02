@@ -36,6 +36,11 @@ enum bt_hfp_ag_indicator {
 	BT_HFP_AG_IND_MAX             /* Indicator MAX value */
 };
 
+struct bt_hfp_ag_indicator_value {
+	enum bt_hfp_ag_indicator indicator;
+	uint8_t value;
+};
+
 /* HFP CODEC */
 #define BT_HFP_AG_CODEC_CVSD    0x01
 #define BT_HFP_AG_CODEC_MSBC    0x02
@@ -884,7 +889,7 @@ int Z_API(bt_hfp_ag_hf_indicator)(struct bt_hfp_ag *ag, enum hfp_ag_hf_indicator
  *  @return 0 in case of success or negative value in case of error.
  */
 int Z_API(bt_hfp_ag_ongoing_calls)(struct bt_hfp_ag *ag, struct bt_hfp_ag_ongoing_call *calls,
-			    size_t count);
+			    size_t count, const struct bt_hfp_ag_indicator_value *indicators, size_t ind_count);
 
 /** @brief Send vendor specific / custom AT response from the AG
  *
