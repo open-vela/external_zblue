@@ -196,6 +196,7 @@ struct bt_hfp_hf {
 	/* AT command sending queue */
 	at_finish_cb_t backup_finish;
 	struct k_fifo tx_pending;
+	enum bt_hfp_hf_at_cmd current_cmd;
 	/* SCO Channel */
 	struct bt_sco_chan chan;
 	char hf_buffer[HF_MAX_BUF_LEN];

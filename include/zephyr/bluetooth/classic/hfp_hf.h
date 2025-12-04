@@ -106,6 +106,53 @@ struct bt_hfp_hf_current_call {
 	struct bt_hfp_hf_call *call;
 };
 
+/** @brief Identifiers for AT commands. */
+enum bt_hfp_hf_at_cmd {
+	BT_HFP_HF_AT_CMD_UNKNOWN = 0,
+	BT_HFP_HF_AT_CMD_VENDOR_SPECIFIC,
+	BT_HFP_HF_AT_CMD_CLCC,
+	BT_HFP_HF_AT_CMD_CMEE,
+	BT_HFP_HF_AT_CMD_COPS_SET_FORMAT,
+	BT_HFP_HF_AT_CMD_COPS_QUERY,
+	BT_HFP_HF_AT_CMD_CLIP,
+	BT_HFP_HF_AT_CMD_VGM,
+	BT_HFP_HF_AT_CMD_VGS,
+	BT_HFP_HF_AT_CMD_CCWA,
+	BT_HFP_HF_AT_CMD_BIND_READ,
+	BT_HFP_HF_AT_CMD_BIND_SET,
+	BT_HFP_HF_AT_CMD_BIND_TEST,
+	BT_HFP_HF_AT_CMD_CHLD_TEST,
+	BT_HFP_HF_AT_CMD_CMER,
+	BT_HFP_HF_AT_CMD_CIND_STATUS,
+	BT_HFP_HF_AT_CMD_CIND_TEST,
+	BT_HFP_HF_AT_CMD_BAC,
+	BT_HFP_HF_AT_CMD_BRSF,
+	BT_HFP_HF_AT_CMD_BINP,
+	BT_HFP_HF_AT_CMD_VTS,
+	BT_HFP_HF_AT_CMD_CNUM,
+	BT_HFP_HF_AT_CMD_BIA,
+	BT_HFP_HF_AT_CMD_BIEV,
+	BT_HFP_HF_AT_CMD_BTRH_SET,
+	BT_HFP_HF_AT_CMD_BTRH_QUERY,
+	BT_HFP_HF_AT_CMD_CHUP,
+	BT_HFP_HF_AT_CMD_ATA,
+	BT_HFP_HF_AT_CMD_ATD_NUMBER,
+	BT_HFP_HF_AT_CMD_ATD_MEMORY,
+	BT_HFP_HF_AT_CMD_BLDN,
+	BT_HFP_HF_AT_CMD_BCC,
+	BT_HFP_HF_AT_CMD_BCS,
+	BT_HFP_HF_AT_CMD_NREC,
+	BT_HFP_HF_AT_CMD_CHLD_0,
+	BT_HFP_HF_AT_CMD_CHLD_1,
+	BT_HFP_HF_AT_CMD_CHLD_2,
+	BT_HFP_HF_AT_CMD_CHLD_3,
+	BT_HFP_HF_AT_CMD_CHLD_4,
+	BT_HFP_HF_AT_CMD_CHLD_RELEASE_SPECIFIC,
+	BT_HFP_HF_AT_CMD_CHLD_PRIVATE_CONSULT,
+	BT_HFP_HF_AT_CMD_BVRA,
+	BT_HFP_HF_AT_CMD_BVRA_READY,
+};
+
 /** @brief HFP profile application callback */
 struct bt_hfp_hf_cb {
 	/** HF connected callback to application
@@ -523,13 +570,14 @@ struct bt_hfp_hf_cb {
 	 *  finishes (i.e. the AG responds with OK, ERROR or +CME ERROR).
 	 *
 	 *  @param hf HFP HF object.
+	 *  @param cmd Identifier describing which AT command completed.
 	 *  @param result Result category of the AT response
 	 *             @ref bt_at_result.
 	 *  @param err CME error code reported by the AG when
 	 *             @p result is @ref BT_AT_RESULT_CME_ERROR, ignored otherwise.
 	 */	
-	void (*at_cmd_complete)(struct bt_hfp_hf *hf,
-				 enum bt_at_result result, enum bt_at_cme err);
+	void (*at_cmd_complete)(struct bt_hfp_hf *hf, enum bt_hfp_hf_at_cmd cmd,
+			 enum bt_at_result result, enum bt_at_cme err);
 };
 
 /** @brief Register HFP HF profile
