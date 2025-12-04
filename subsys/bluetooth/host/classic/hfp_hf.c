@@ -384,9 +384,19 @@ static int vendor_finish(struct at_client *hf_at, enum bt_at_result result,
 	return 0;
 }
 
-int Z_API(bt_hfp_hf_send_vendor)(struct bt_hfp_hf *hf, const char* cmd) {
+int Z_API(bt_hfp_hf_send_vendor)(struct bt_hfp_hf *hf, const char* cmd)
+{
+	if (!cmd){
+		return -EINVAL;
+	}
+
+	if (cmd[0] != 'A' || cmd[1] != 'T') {
+		return -EINVAL;
+	}
+
 	int err = hfp_hf_send_cmd(hf, vendor_resp, vendor_finish, true,
 				 BT_HFP_HF_AT_CMD_VENDOR_SPECIFIC, "%s", cmd);
+
 	return err;
 }
 
