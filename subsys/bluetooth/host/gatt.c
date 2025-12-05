@@ -5254,6 +5254,7 @@ int bt_gatt_write_without_response_cb(struct bt_conn *conn, uint16_t handle,
 
 	return bt_att_send(conn, buf);
 }
+#endif /* CONFIG_BT_GATT_CLIENT */
 
 int bt_gatt_send_read_rsp(struct bt_conn *conn, int err, uint16_t handle,
 			      const void *data, uint16_t length)
@@ -5362,6 +5363,7 @@ int bt_gatt_send_write_rsp(struct bt_conn *conn, int err, uint16_t handle)
 	return bt_att_send(conn, buf);
 }
 
+#if defined(CONFIG_BT_GATT_CLIENT)
 static int gatt_exec_encode(struct net_buf *buf, size_t len, void *user_data)
 {
 	struct bt_att_exec_write_req *req;
