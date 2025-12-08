@@ -146,9 +146,9 @@ config BT_HFP_HF_ECC
 
 config BT_HFP_HF_MAX_CALLS
 	int "Maximum supported calls for HFP HF [EXPERIMENTAL]"
-	default 2 if BT_HFP_HF_3WAY_CALL
+	default 3 if BT_HFP_HF_3WAY_CALL
 	default 1
-	range 1 2
+	range 1 4
 	help
 	  This option sets maximum supported calls for HFP HF
 
@@ -212,9 +212,9 @@ config BT_HFP_AG_3WAY_CALL
 
 config BT_HFP_AG_MAX_CALLS
 	int "Maximum supported calls for HFP AG [EXPERIMENTAL]"
-	default 2 if BT_HFP_AG_3WAY_CALL
+	default 3 if BT_HFP_AG_3WAY_CALL
 	default 1
-	range 1 2
+	range 1 4
 	help
 	  This option sets maximum supported calls for HFP AG
 
