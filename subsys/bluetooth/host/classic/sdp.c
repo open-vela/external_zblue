@@ -1461,6 +1461,7 @@ int bt_sdp_register_service_mc(uint8_t dev_id, struct bt_sdp_record *service)
 {
 	uint32_t handle = SDP_SERVICE_HANDLE_BASE;
 	struct bt_dev *hdev = bt_dev_get(dev_id);
+	struct bt_sdp_record *tmp;
 
 	if (!hdev) {
 		LOG_ERR("Invalid device id %u", dev_id);
@@ -1470,6 +1471,13 @@ int bt_sdp_register_service_mc(uint8_t dev_id, struct bt_sdp_record *service)
 	if (!service) {
 		LOG_ERR("No service record specified");
 		return 0;
+	}
+
+	for (tmp = hdev->sdp_ctx->db; tmp != NULL; tmp = tmp->next) {
+		if (tmp == service) {
+			LOG_ERR("SDP service already registered: %p", service);
+			return -EALREADY;
+		}
 	}
 
 	if (hdev->sdp_ctx->num_services == BT_SDP_MAX_SERVICES) {
@@ -1523,6 +1531,8 @@ int bt_sdp_unregister_service_mc(uint8_t dev_id, struct bt_sdp_record *service)
 		node->index--;
 		node = node->next;
 	}
+
+	service->next = NULL;
 
 	return 0;
 }
