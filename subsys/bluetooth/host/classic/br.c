@@ -218,6 +218,20 @@ void bt_hci_synchronous_conn_complete(struct bt_dev *hdev, struct net_buf *buf)
 	bt_conn_unref(sco_conn);
 }
 
+static void br_report_connection_state(struct bt_conn *conn)
+{
+	bt_conn_connected(conn);
+
+	if (atomic_test_bit(conn->flags, BT_CONN_BR_PAIRING_CONN_PEND)) {
+		atomic_clear_bit(conn->flags, BT_CONN_BR_PAIRING_CONN_PEND);
+		if (bt_conn_set_security(conn, conn->attempt_sec_level)) {
+			bt_conn_security_changed(conn, BT_HCI_ERR_AUTH_FAIL,
+						BT_SECURITY_ERR_AUTH_FAIL);
+			bt_conn_disconnect(conn, BT_HCI_ERR_AUTH_FAIL);
+		}
+	}
+}
+
 void bt_hci_conn_complete(struct bt_dev *hdev, struct net_buf *buf)
 {
 	struct bt_hci_evt_conn_complete *evt = (void *)buf->data;
@@ -259,25 +273,14 @@ void bt_hci_conn_complete(struct bt_dev *hdev, struct net_buf *buf)
 
 	atomic_set_bit_to(conn->flags, BT_CONN_BR_BONDABLE, bt_get_bondable_mc(hdev->dev_id));
 
-	bt_conn_connected(conn);
-
-	if (atomic_test_bit(conn->flags, BT_CONN_BR_PAIRING_CONN_PEND)) {
-		atomic_clear_bit(conn->flags, BT_CONN_BR_PAIRING_CONN_PEND);
-		if (bt_conn_set_security(conn, conn->attempt_sec_level)) {
-			bt_conn_security_changed(conn, BT_HCI_ERR_AUTH_FAIL,
-						BT_SECURITY_ERR_AUTH_FAIL);
-			bt_conn_disconnect(conn, BT_HCI_ERR_AUTH_FAIL);
-			bt_conn_unref(conn);
-			return;
-		}
+	buf = bt_hci_cmd_create(BT_HCI_OP_READ_REMOTE_FEATURES, sizeof(*cp));
+	if (!buf) {
+		br_report_connection_state(conn);
+		bt_conn_unref(conn);
+		return;
 	}
 
 	bt_conn_unref(conn);
-
-	buf = bt_hci_cmd_create(BT_HCI_OP_READ_REMOTE_FEATURES, sizeof(*cp));
-	if (!buf) {
-		return;
-	}
 
 	cp = net_buf_add(buf, sizeof(*cp));
 	cp->handle = evt->handle;
@@ -677,8 +680,11 @@ void bt_hci_read_remote_features_complete(struct bt_dev *hdev, struct net_buf *b
 	cp->page = 0x01;
 
 	bt_hci_cmd_send_sync(hdev, BT_HCI_OP_READ_REMOTE_EXT_FEATURES, buf, NULL);
+	bt_conn_unref(conn);
+	return;
 
 done:
+	br_report_connection_state(conn);
 	bt_conn_unref(conn);
 }
 
@@ -700,6 +706,7 @@ void bt_hci_read_remote_ext_features_complete(struct bt_dev *hdev, struct net_bu
 		memcpy(conn->br.features[1], evt->features, sizeof(conn->br.features[1]));
 	}
 
+	br_report_connection_state(conn);
 	bt_conn_unref(conn);
 }
 
