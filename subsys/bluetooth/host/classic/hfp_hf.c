@@ -197,7 +197,25 @@ static struct bt_sdp_attribute hfp_attrs[] = {
 	BT_SDP_SUPPORTED_FEATURES(BT_HFP_HF_SDP_SUPPORTED_FEATURES),
 };
 
+static void hfp_hf_send_data(struct bt_hfp_hf *hf);
+
+static int hfp_hf_accept(struct bt_conn *conn, struct bt_rfcomm_server *server,
+			 struct bt_rfcomm_dlc **dlc);
+
+static int bt_hfp_hf_sco_accept(const struct bt_sco_accept_info *info,
+		     struct bt_sco_chan **chan);
+
 static struct bt_sdp_record hfp_rec = BT_SDP_RECORD(hfp_attrs);
+
+static struct bt_rfcomm_server hfp_hf_rfcomm_chan = {
+	.channel = BT_RFCOMM_CHAN_HFP_HF,
+	.accept = hfp_hf_accept,
+};
+
+static struct bt_sco_server hfp_hf_sco_server = {
+	.sec_level = BT_SECURITY_L0,
+	.accept = bt_hfp_hf_sco_accept,
+};
 
 void hf_slc_error(struct at_client *hf_at)
 {
@@ -222,8 +240,6 @@ static void hfp_hf_send_failed(struct bt_hfp_hf *hf)
 		LOG_ERR("Fail to disconnect: %d", err);
 	}
 }
-
-static void hfp_hf_send_data(struct bt_hfp_hf *hf);
 
 static int hfp_hf_common_finish(struct at_client *at, enum bt_at_result result,
 			  enum bt_at_cme cme_err)
@@ -4404,21 +4420,20 @@ static int bt_hfp_hf_sco_accept(const struct bt_sco_accept_info *info,
 
 static void hfp_hf_init(void)
 {
-	static struct bt_rfcomm_server chan = {
-		.channel = BT_RFCOMM_CHAN_HFP_HF,
-		.accept = hfp_hf_accept,
-	};
+	bt_rfcomm_server_register(&hfp_hf_rfcomm_chan);
 
-	bt_rfcomm_server_register(&chan);
-
-	static struct bt_sco_server sco_server = {
-		.sec_level = BT_SECURITY_L0,
-		.accept = bt_hfp_hf_sco_accept,
-	};
-
-	bt_sco_server_register(&sco_server);
+	bt_sco_server_register(&hfp_hf_sco_server);
 
 	bt_sdp_register_service(&hfp_rec);
+}
+
+static void hfp_hf_deinit(void)
+{
+	// bt_rfcomm_server_unregister(&hfp_hf_rfcomm_chan);
+
+	bt_sco_server_unregister(&hfp_hf_sco_server);
+
+	bt_sdp_unregister_service(&hfp_rec);
 }
 
 int Z_API(bt_hfp_hf_register)(struct bt_hfp_hf_cb *cb)
@@ -4435,6 +4450,14 @@ int Z_API(bt_hfp_hf_register)(struct bt_hfp_hf_cb *cb)
 
 	hfp_hf_init();
 
+	return 0;
+}
+
+int Z_API(bt_hfp_hf_unregister)(void)
+{
+	bt_hf = NULL;
+
+	hfp_hf_deinit();
 	return 0;
 }
 
