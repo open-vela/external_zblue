@@ -232,6 +232,30 @@ int bt_rfcomm_server_register(struct bt_rfcomm_server *server)
 	return 0;
 }
 
+int bt_rfcomm_server_unregister(struct bt_rfcomm_server *server)
+{
+	struct bt_rfcomm_server *tmp;
+
+	if (!servers) {
+		return -EINVAL;
+	}
+
+	if (servers == server) {
+		servers = servers->_next;
+		return 0;
+	}
+
+	for (tmp = servers; tmp->_next != server; tmp = tmp->_next) {
+		if (!tmp->_next) {
+			return -EINVAL;
+		}
+	}
+
+	tmp->_next = server->_next;
+
+	return 0;
+}
+
 static void rfcomm_dlc_tx_trigger(struct bt_rfcomm_dlc *dlc)
 {
 	int err;
