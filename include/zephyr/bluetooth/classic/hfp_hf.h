@@ -591,6 +591,15 @@ struct bt_hfp_hf_cb {
  */
 int Z_API(bt_hfp_hf_register)(struct bt_hfp_hf_cb *cb);
 
+/** @brief Unregister HFP HF profile
+ *
+ *  Unregister the Handsfree profile callbacks previously registered with
+ *  bt_hfp_hf_register(). 
+ *
+ *  @return 0 in case of success or negative value in case of error.
+ */
+int Z_API(bt_hfp_hf_unregister)(void);
+
 /** @brief Initiate the service level connection establishment procedure
  *
  *  Initiate the service level connection establishment procedure on the
