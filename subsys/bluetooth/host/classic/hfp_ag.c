@@ -159,7 +159,23 @@ static struct bt_sdp_attribute hfp_ag_attrs[] = {
 	BT_SDP_SUPPORTED_FEATURES(BT_HFP_AG_SDP_SUPPORTED_FEATURES),
 };
 
+static int hfp_ag_accept(struct bt_conn *conn, struct bt_rfcomm_server *server,
+			 struct bt_rfcomm_dlc **dlc);
+
+static int bt_hfp_ag_sco_accept(const struct bt_sco_accept_info *info,
+		     struct bt_sco_chan **chan);
+
 static struct bt_sdp_record hfp_ag_rec = BT_SDP_RECORD(hfp_ag_attrs);
+
+static struct bt_rfcomm_server hfp_ag_rfcomm_chan = {
+	.channel = BT_RFCOMM_CHAN_HFP_AG,
+	.accept = hfp_ag_accept,
+};
+
+static struct bt_sco_server hfp_ag_sco_server = {
+	.sec_level = BT_SECURITY_L0,
+	.accept = bt_hfp_ag_sco_accept,
+};
 
 static enum bt_at_cme bt_hfp_ag_get_cme_err(int err)
 {
@@ -3982,6 +3998,24 @@ int Z_API(bt_hfp_ag_disconnect)(struct bt_hfp_ag *ag)
 	return bt_rfcomm_dlc_disconnect(&ag->rfcomm_dlc);
 }
 
+static int hfp_ag_disconnect_all(void)
+{
+	int err = 0;
+
+	ARRAY_FOR_EACH(bt_hfp_ag_pool, i) {
+		struct bt_hfp_ag *ag = &bt_hfp_ag_pool[i];
+
+		if (ag->acl_conn) {
+			int rc = z_bt_hfp_ag_disconnect(ag);
+			if ((rc != 0) && (err == 0)) {
+				err = rc;
+			}
+		}
+	}
+
+	return err;
+}
+
 static int hfp_ag_accept(struct bt_conn *conn, struct bt_rfcomm_server *server,
 			 struct bt_rfcomm_dlc **dlc)
 {
@@ -4057,23 +4091,24 @@ static struct bt_sco_conn_cb ag_sco_conn_cb = {
 
 static void hfp_ag_init(void)
 {
-	static struct bt_rfcomm_server chan = {
-		.channel = BT_RFCOMM_CHAN_HFP_AG,
-		.accept = hfp_ag_accept,
-	};
+	bt_rfcomm_server_register(&hfp_ag_rfcomm_chan);
 
-	bt_rfcomm_server_register(&chan);
-
-	static struct bt_sco_server sco_server = {
-		.sec_level = BT_SECURITY_L0,
-		.accept = bt_hfp_ag_sco_accept,
-	};
-
-	bt_sco_server_register(&sco_server);
+	bt_sco_server_register(&hfp_ag_sco_server);
 
 	bt_sdp_register_service(&hfp_ag_rec);
 
 	bt_sco_conn_cb_register(&ag_sco_conn_cb);
+}
+
+static void hfp_ag_deinit(void)
+{
+	bt_rfcomm_server_unregister(&hfp_ag_rfcomm_chan);
+
+	bt_sco_server_unregister(&hfp_ag_sco_server);
+
+	bt_sdp_unregister_service(&hfp_ag_rec);
+
+	bt_sco_conn_cb_unregister(&ag_sco_conn_cb);
 }
 
 int Z_API(bt_hfp_ag_register)(struct bt_hfp_ag_cb *cb)
@@ -4089,6 +4124,21 @@ int Z_API(bt_hfp_ag_register)(struct bt_hfp_ag_cb *cb)
 	bt_ag = cb;
 
 	hfp_ag_init();
+
+	return 0;
+}
+
+int Z_API(bt_hfp_ag_unregister)(void)
+{
+	if (!bt_ag) {
+		return -EINVAL;
+	}
+
+	hfp_ag_disconnect_all();
+	
+	bt_ag = NULL;
+
+	hfp_ag_deinit();
 
 	return 0;
 }

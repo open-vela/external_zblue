@@ -911,6 +911,15 @@ int Z_API(bt_hfp_ag_ongoing_calls)(struct bt_hfp_ag *ag, struct bt_hfp_ag_ongoin
  */
 int Z_API(bt_hfp_ag_send_vendor)(struct bt_hfp_ag *ag, const char *rsp);
 
+/** @brief Unregister HFP AG profile
+ *
+ *  Unregister the Handsfree AudioGateway profile callbacks previously registered with
+ *  bt_hfp_ag_register(). 
+ *
+ *  @return 0 in case of success or negative value in case of error.
+ */
+int Z_API(bt_hfp_ag_unregister)(void);
+
 #ifdef __cplusplus
 }
 #endif
