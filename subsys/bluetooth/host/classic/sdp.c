@@ -1779,8 +1779,6 @@ static void sdp_client_params_iterator(struct bt_sdp_client *session)
 
 		/* Remove already checked UUID node */
 		sys_slist_remove(&session->reqs, NULL, &param->_node);
-		/* Invalidate cached param in context */
-		session->param = NULL;
 		/* Reset continuation state in current context */
 		(void)memset(&session->cstate, 0, sizeof(session->cstate));
 
@@ -2234,6 +2232,15 @@ static void sdp_client_disconnected(struct bt_l2cap_chan *chan)
 	struct bt_sdp_client *session = SDP_CLIENT_CHAN(chan);
 
 	LOG_DBG("session %p chan %p disconnected", session, chan);
+
+	if (session->param) {
+		if (session->param->disconnected) {
+			session->param->disconnected(chan->conn, session->param);
+		}
+
+		/* Invalidate cached param in context */
+		session->param = NULL;
+	}
 
 	if (session->rec_buf) {
 		net_buf_unref(session->rec_buf);

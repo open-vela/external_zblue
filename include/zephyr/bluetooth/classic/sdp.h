@@ -548,6 +548,18 @@ struct bt_sdp_discover_params;
 typedef uint8_t (*bt_sdp_discover_func_t)(struct bt_conn *conn, struct bt_sdp_client_result *result,
 					  const struct bt_sdp_discover_params *params);
 
+/** @typedef bt_sdp_disconnected_func_t
+ *
+ *  @brief Callback type reporting to user that there is a resolved result
+ *  on remote for given UUID and the result record buffer can be used by user
+ *  for further inspection.
+ *  @param conn Connection object identifying connection to queried remote.
+ *  @param params Discover parameters.
+ *
+ */
+typedef void (*bt_sdp_disconnected_func_t)(struct bt_conn *conn,
+					  const struct bt_sdp_discover_params *params);
+
 /** SDP Discover types */
 enum {
 	/** Discover Service Search. */
@@ -569,6 +581,8 @@ struct bt_sdp_discover_params {
 	};
 	/** Discover callback to be called on resolved SDP record */
 	bt_sdp_discover_func_t func;
+	/** Disconnetced callback to be called on SDP disconnected */
+	bt_sdp_disconnected_func_t disconnected;
 	/** Memory buffer enabled by user for SDP query results  */
 	struct net_buf_pool *pool;
 	/** Discover type */
