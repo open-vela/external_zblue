@@ -1087,9 +1087,6 @@ static void hci_disconn_complete(struct bt_dev *hdev, struct net_buf *buf)
 		    atomic_test_and_clear_bit(conn->flags, BT_CONN_BR_NOBOND)) {
 			bt_keys_link_key_clear(hdev, conn->br.link_key);
 		}
-
-		if (conn->type == BT_CONN_TYPE_BR && conn->br.link_key != NULL)
-			conn->br.link_key->key_size = 0;
 #endif
 		bt_conn_unref(conn);
 		return;
@@ -2332,10 +2329,6 @@ static void hci_encrypt_change(struct bt_dev *hdev, struct net_buf *buf)
 			    BT_FEAT_SC(hdev->features)) {
 				bt_smp_br_send_pairing_req(conn);
 			}
-		}
-
-		if (conn->encrypt && conn->br.link_key != NULL) {
-			conn->br.link_key->key_size = bt_conn_read_enc_key_size(conn);
 		}
 	}
 #endif /* CONFIG_BT_CLASSIC */
