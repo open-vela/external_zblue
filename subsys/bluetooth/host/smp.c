@@ -864,8 +864,6 @@ static void sc_derive_link_key(struct bt_smp *smp)
 	}
 
 	if (bond_flag) {
-		/* Store the link key */
-		bt_keys_link_key_store(conn->hdev, link_key);
 		SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&conn->hdev->bt_auth_info_cbs, listener,
 							next, node) {
 			if (listener->pairing_complete_ctkd) {
@@ -873,6 +871,9 @@ static void sc_derive_link_key(struct bt_smp *smp)
 				listener->pairing_complete_ctkd(conn, true);
 			}
 		}
+
+		/* Store the link key */
+		bt_keys_link_key_store(conn->hdev, link_key);
 	}
 }
 
@@ -961,16 +962,16 @@ static void smp_pairing_br_complete(struct bt_smp_br *smp, uint8_t status)
 			smp_br_id_add_replace(conn->hdev, keys);
 		}
 
-		if (bond_flag && keys) {
-			bt_keys_store(conn->hdev->dev_id, keys);
-		}
-
 		SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&conn->hdev->bt_auth_info_cbs, listener,
 						  next, node) {
 			if (listener->pairing_complete_ctkd && bond_flag) {
 				/* Derive LE LTK over BR conn */
 				listener->pairing_complete_ctkd(conn, false);
 			}
+		}
+
+		if (bond_flag && keys) {
+			bt_keys_store(conn->hdev->dev_id, keys);
 		}
 	}
 
@@ -1964,15 +1965,15 @@ static void smp_pairing_complete(struct bt_smp *smp, uint8_t status)
 			bt_keys_show_sniffer_info(conn->le.keys, NULL);
 		}
 
-		if (bond_flag && conn->le.keys) {
-			bt_keys_store(conn->hdev->dev_id, conn->le.keys);
-		}
-
 		SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&conn->hdev->bt_auth_info_cbs, listener,
 						  next, node) {
 			if (listener->pairing_complete) {
 				listener->pairing_complete(conn, bond_flag);
 			}
+		}
+
+		if (bond_flag && conn->le.keys) {
+			bt_keys_store(conn->hdev->dev_id, conn->le.keys);
 		}
 	} else {
 		enum bt_security_err security_err = security_err_get(status);
