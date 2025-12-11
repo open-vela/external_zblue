@@ -1606,6 +1606,17 @@ uint8_t bt_id_read_public_addr(struct bt_dev *hdev, bt_addr_le_t *addr)
 	return 1U;
 }
 
+static bool irk_is_empty(const uint8_t* irk)
+{
+	for (int i = 0; i < 16; i++) {
+		if (irk[i] != 0) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 int bt_setup_public_id_addr(struct bt_dev *hdev)
 {
 	bt_addr_le_t addr;
@@ -1615,6 +1626,10 @@ int bt_setup_public_id_addr(struct bt_dev *hdev)
 
 	if (!hdev->id_count) {
 		return 0;
+	}
+
+	if (!irk_is_empty(hdev->irk[BT_ID_DEFAULT])) {
+		irk = hdev->irk[BT_ID_DEFAULT];
 	}
 
 #if defined(CONFIG_BT_PRIVACY)
