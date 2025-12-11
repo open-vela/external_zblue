@@ -1768,16 +1768,16 @@ int bt_gatt_service_register_mc(uint8_t dev_id, struct bt_gatt_service *svc)
 	__ASSERT(svc->attrs, "invalid parameters\n");
 	__ASSERT(svc->attr_count, "invalid parameters\n");
 
+	svc->hdev = bt_dev_get(dev_id);
+	if (!svc->hdev) {
+		return -ENODEV;
+	}
+
 	if (IS_ENABLED(CONFIG_BT_SETTINGS) &&
 	    atomic_test_bit(svc->hdev->gatt_ctx->gatt_flags, GATT_INITIALIZED) &&
 	    !atomic_test_bit(svc->hdev->gatt_ctx->gatt_sc.flags, SC_LOAD)) {
 		LOG_ERR("Can't register service after init and before settings are loaded.");
 		return -EINVAL;
-	}
-
-	svc->hdev = bt_dev_get(dev_id);
-	if (!svc->hdev) {
-		return -ENODEV;
 	}
 
 	/* Init GATT core services */
