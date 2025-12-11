@@ -179,6 +179,10 @@ void bt_foreach_bond_mc(uint8_t dev_id, uint8_t id, void (*func)(const struct bt
 			func(&info, user_data);
 		}
 	}
+
+	if (IS_ENABLED(CONFIG_BT_CLASSIC)) {
+		bt_foreach_bond_br(func, user_data);
+	}
 }
 
 void bt_keys_foreach_type(struct bt_dev *hdev, enum bt_keys_type type,
