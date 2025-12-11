@@ -77,6 +77,14 @@ static ssize_t settings_zblue_read(void* back_end, void* data, size_t len)
                 res = listener->linkkey_load(&addr, data, len);
             }
         }
+    } else if (!strncmp(name, "bt/irk/", strlen("bt/irk/"))) {
+        SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&bt_settings_cbs, listener,
+            next, _node)
+        {
+            if (listener->irk_load) {
+                res = listener->irk_load(data, len);
+            }
+        }
     }
 
     return res;
@@ -85,7 +93,15 @@ static ssize_t settings_zblue_read(void* back_end, void* data, size_t len)
 static int settings_zblue_load(struct settings_store* cs,
     const struct settings_load_arg* arg)
 {
+    int len = 0;
+
     LOG_DBG("%s", __func__);
+
+    /* load irk */
+    settings_call_set_handler(
+        "bt/irk/0", len /* unused */,
+        settings_zblue_read /* read_cb */, "bt/irk/0" /* read_cb_arg */,
+        NULL);
     return 0;
 }
 
@@ -166,7 +182,20 @@ static int settings_zblue_save(struct settings_store* cs, const char* name,
             next, _node)
         {
             if (listener->linkkey_notify) {
-                listener->linkkey_notify(dev_id, &addr, value, val_len);
+                err = listener->linkkey_notify(dev_id, &addr, value, val_len);
+            }
+
+            if (err) {
+                return err;
+            }
+        }
+    } else if (!strncmp(name, "bt/irk/", strlen("bt/irk/"))) {
+        dev_id = strtoul(name + strlen("bt/irk/"), NULL, 10);
+        SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&bt_settings_cbs, listener,
+            next, _node)
+        {
+            if (listener->irk_notify) {
+                err = listener->irk_notify(dev_id, value, val_len);
             }
 
             if (err) {

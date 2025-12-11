@@ -39,6 +39,26 @@ struct settings_zblue_save_fn_arg {
 };
 
 struct bt_settings_zblue_cb {
+    /** @brief notify local irk.
+     *
+     *  The callback notifies local irk for RPA parsing and generating.
+     *
+     *  @param dev_id Device identifier number.
+     *  @param key_value Target memory address to which the private key needs to be copied.
+     *  @param value_len key_value length.
+     */
+    int (*irk_notify)(uint8_t dev_id, const char* key_value, uint8_t value_len);
+
+    /** @brief load local irk.
+     *
+     *  The callback is responsible for retrieving the irk from the application.
+     *
+     *  @param dev_id Device identifier number.
+     *  @param key_value Target memory address to which the private key needs to be copied.
+     *  @param value_len key_value length.
+     */
+    int (*irk_load)(uint8_t* key_value, uint8_t value_len);
+
 #if defined(CONFIG_BT_CLASSIC)
     /** @brief notify that bredr pairing link key generated.
      *
