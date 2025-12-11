@@ -18,7 +18,7 @@
 
 #include <zephyr/kernel.h>
 
-
+#include <nuttx/semaphore.h>
 
 #include <sys/time.h>
 
