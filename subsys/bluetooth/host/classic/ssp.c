@@ -483,6 +483,7 @@ void bt_hci_link_key_notify(struct bt_dev *hdev, struct net_buf *buf)
 
 	/* clear any old Link Key flags */
 	conn->br.link_key->flags = 0U;
+	conn->br.link_key->key_type = evt->key_type;
 
 	switch (evt->key_type) {
 	case BT_LK_COMBINATION:

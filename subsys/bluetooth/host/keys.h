@@ -231,6 +231,7 @@ struct bt_keys_link_key {
 	uint8_t                 enc_key_size;
 	uint8_t                 storage_start[0]  __aligned(sizeof(void *));
 	uint8_t                 flags;
+	uint8_t                 key_type;
 	uint8_t                 val[16];
 #if (defined(CONFIG_BT_KEYS_OVERWRITE_OLDEST))
 	uint32_t                aging_counter;
