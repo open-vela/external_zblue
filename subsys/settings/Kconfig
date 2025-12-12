@@ -35,6 +35,7 @@ choice SETTINGS_BACKEND
 	default SETTINGS_NVS if NVS
 	default SETTINGS_FCB if FCB
 	default SETTINGS_FILE if FILE_SYSTEM
+	default SETTINGS_ZBLUE if BLUETOOTH_STORAGE_PROPERTY_SUPPORT
 	default SETTINGS_NONE
 	help
 	  Storage back-end to be used by the settings subsystem.
@@ -44,6 +45,12 @@ config SETTINGS_FCB
 	depends on FCB
 	help
 	  Use FCB as a settings storage back-end.
+
+config SETTINGS_ZBLUE
+	bool "ZBLUE"
+	depends on BLUETOOTH_STORAGE_PROPERTY_SUPPORT
+	help
+	  Use ZBLUE as a settings storage back-end.
 
 config SETTINGS_FILE
 	bool "File"
