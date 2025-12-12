@@ -96,7 +96,7 @@ void bt_keys_link_key_clear(struct bt_dev *hdev, struct bt_keys_link_key *link_k
 		le_addr.type = BT_ADDR_LE_PUBLIC;
 		bt_addr_copy(&le_addr.a, &link_key->addr);
 
-		bt_settings_delete_link_key(&le_addr);
+		bt_settings_delete_link_key(hdev->dev_id, &le_addr);
 	}
 
 	LOG_DBG("%s", bt_addr_str(&link_key->addr));
@@ -131,7 +131,7 @@ void bt_keys_link_key_store(struct bt_dev *hdev, struct bt_keys_link_key *link_k
 		le_addr.type = BT_ADDR_LE_PUBLIC;
 		bt_addr_copy(&le_addr.a, &link_key->addr);
 
-		err = bt_settings_store_link_key(&le_addr, link_key->storage_start,
+		err = bt_settings_store_link_key(hdev->dev_id, &le_addr, link_key->storage_start,
 						 BT_KEYS_LINK_KEY_STORAGE_LEN);
 		if (err) {
 			LOG_ERR("Failed to save link key (err %d)", err);
@@ -164,7 +164,7 @@ void bt_foreach_bond_br_mc(uint8_t dev_id, void (*func)(const struct bt_bond_inf
 
 #if defined(CONFIG_BT_SETTINGS)
 
-static int link_key_set(struct bt_dev *hdev, const char *name, size_t len_rd,
+static int link_key_set(const char *name, size_t len_rd,
 			settings_read_cb read_cb, void *cb_arg)
 {
 	int err;
@@ -172,6 +172,8 @@ static int link_key_set(struct bt_dev *hdev, const char *name, size_t len_rd,
 	bt_addr_le_t le_addr;
 	struct bt_keys_link_key *link_key;
 	char val[BT_KEYS_LINK_KEY_STORAGE_LEN];
+	const char *dev_next;
+	struct bt_dev *hdev;
 
 	if (!name) {
 		LOG_ERR("Insufficient number of arguments");
@@ -190,6 +192,14 @@ static int link_key_set(struct bt_dev *hdev, const char *name, size_t len_rd,
 	if (err) {
 		LOG_ERR("Unable to decode address %s", name);
 		return -EINVAL;
+	}
+
+	settings_name_next(name, &dev_next);
+	unsigned long dev_id = strtoul(dev_next, NULL, 10);
+	hdev = bt_dev_get(dev_id);
+	if (!hdev) {
+		LOG_ERR("Failed to find corresponding bt_dev:%u", dev_id);
+		return -ENODEV;
 	}
 
 	link_key = bt_keys_get_link_key(hdev, &le_addr.a);

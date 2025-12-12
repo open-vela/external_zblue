@@ -520,7 +520,7 @@ void bt_hci_link_key_notify(struct bt_dev *hdev, struct net_buf *buf)
 
 	if (IS_ENABLED(CONFIG_BT_SETTINGS) &&
 	    !atomic_test_bit(conn->flags, BT_CONN_BR_NOBOND)) {
-		bt_keys_link_key_store(conn->br.link_key);
+		bt_keys_link_key_store(hdev, conn->br.link_key);
 	}
 
 	bt_conn_unref(conn);
