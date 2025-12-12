@@ -407,6 +407,24 @@ static inline int bt_br_write_ext_inq_response(uint8_t fec_required)
 }
 #endif
 
+struct bt_bond_info;
+
+/**
+ * @brief Callback for iterating over all BR/EDR bond information.
+ *
+ * @param info Bond information.
+ * @param user_data Data passed to the iterator.
+ */
+void bt_foreach_bond_br_mc(uint8_t dev_id, void (*func)(const struct bt_bond_info *info, void *user_data),
+			void *user_data);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline void bt_foreach_bond_br(void (*func)(const struct bt_bond_info *info, void *user_data),
+			void *user_data)
+{
+	bt_foreach_bond_br_mc(0, func, user_data);
+}
+#endif
+
 /**
  * @brief Request remote device name callback.
  *
