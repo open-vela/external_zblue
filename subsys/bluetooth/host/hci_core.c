@@ -4495,7 +4495,7 @@ int bt_enable_mc(uint8_t dev_id, bt_ready_cb_t cb)
 #endif
 
 	if (IS_ENABLED(CONFIG_BT_SETTINGS)) {
-		err = bt_settings_init();
+		err = bt_settings_init(hdev);
 		if (err) {
 			return err;
 		}
@@ -4717,7 +4717,7 @@ int bt_set_name_mc(uint8_t dev_id, const char *name)
 	hdev->name[len] = '\0';
 
 	if (IS_ENABLED(CONFIG_BT_SETTINGS)) {
-		err = bt_settings_store_name_mc(hdev->name, len);
+		err = bt_settings_store_name(hdev->dev_id, hdev->name, len);
 		if (err) {
 			LOG_WRN("Unable to store name");
 		}
