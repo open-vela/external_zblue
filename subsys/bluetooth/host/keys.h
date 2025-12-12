@@ -212,9 +212,9 @@ void bt_keys_clear(struct bt_dev *hdev, struct bt_keys *keys);
  * @param keys Key reference.
  * @return 0 on success, non-zero error code otherwise
  */
-int bt_keys_store(struct bt_keys *keys);
+int bt_keys_store(uint8_t dev_id, struct bt_keys *keys);
 #else
-static inline int bt_keys_store(struct bt_keys *keys)
+static inline int bt_keys_store(uint8_t dev_id, struct bt_keys *keys)
 {
 	return 0;
 }

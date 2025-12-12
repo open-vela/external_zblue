@@ -333,20 +333,20 @@ void bt_keys_clear(struct bt_dev *hdev, struct bt_keys *keys)
 
 	if (IS_ENABLED(CONFIG_BT_SETTINGS)) {
 		/* Delete stored keys from flash */
-		bt_settings_delete_keys(keys->id, &keys->addr);
+		bt_settings_delete_keys(hdev->dev_id, keys->id, &keys->addr);
 	}
 
 	(void)memset(keys, 0, sizeof(*keys));
 }
 
 #if defined(CONFIG_BT_SETTINGS)
-int bt_keys_store(struct bt_keys *keys)
+int bt_keys_store(uint8_t dev_id, struct bt_keys *keys)
 {
 	int err;
 
 	__ASSERT_NO_MSG(keys != NULL);
 
-	err = bt_settings_store_keys(keys->id, &keys->addr, keys->storage_start,
+	err = bt_settings_store_keys(dev_id, keys->id, &keys->addr, keys->storage_start,
 				     BT_KEYS_STORAGE_LEN);
 	if (err) {
 		LOG_ERR("Failed to save keys (err %d)", err);
@@ -367,7 +367,8 @@ static int keys_set(const char *name, size_t len_rd,
 	ssize_t len;
 	int err;
 	char val[BT_KEYS_STORAGE_LEN];
-	const char *next;
+	const char *next, *dev_next;
+	struct bt_dev* hdev;
 
 	if (!name) {
 		LOG_ERR("Insufficient number of arguments");
@@ -388,7 +389,15 @@ static int keys_set(const char *name, size_t len_rd,
 		return -EINVAL;
 	}
 
-	settings_name_next(name, &next);
+	settings_name_next(name, &dev_next);
+	unsigned long dev_id = strtoul(dev_next, NULL, 10);
+	hdev = bt_dev_get(dev_id);
+	if (!hdev) {
+		LOG_ERR("Failed to find corresponding bt_dev:%u", dev_id);
+		return -ENODEV;
+	}
+
+	settings_name_next(dev_next, &next);
 
 	if (!next) {
 		id = BT_ID_DEFAULT;
@@ -449,21 +458,33 @@ static int keys_set(const char *name, size_t len_rd,
 
 static void id_add(struct bt_keys *keys, void *user_data)
 {
+	struct bt_dev* hdev = user_data;
+
 	__ASSERT_NO_MSG(keys != NULL);
 
-	bt_id_add(keys);
+	bt_id_add(hdev, keys);
 }
 
 static int keys_commit(void)
 {
-	/* We do this in commit() rather than add() since add() may get
-	 * called multiple times for the same address, especially if
-	 * the keys were already removed.
-	 */
-	if (IS_ENABLED(CONFIG_BT_CENTRAL) && IS_ENABLED(CONFIG_BT_PRIVACY)) {
-		bt_keys_foreach_type(BT_KEYS_ALL, id_add, NULL);
-	} else {
-		bt_keys_foreach_type(BT_KEYS_IRK, id_add, NULL);
+	struct bt_dev* hdev;
+	uint8_t dev_id;
+
+	for (dev_id = 0; dev_id < CONFIG_BT_NUM_CTLRS; dev_id++) {
+		hdev = bt_dev_get(dev_id);
+
+		if (!hdev) {
+			continue;
+		}
+		/* We do this in commit() rather than add() since add() may get
+		* called multiple times for the same address, especially if
+		* the keys were already removed.
+		*/
+		if (IS_ENABLED(CONFIG_BT_CENTRAL) && IS_ENABLED(CONFIG_BT_PRIVACY)) {
+			bt_keys_foreach_type(hdev, BT_KEYS_ALL, id_add, hdev);
+		} else {
+			bt_keys_foreach_type(hdev, BT_KEYS_IRK, id_add, hdev);
+		}
 	}
 
 	return 0;
@@ -494,7 +515,7 @@ void bt_keys_update_usage(struct bt_dev *hdev, uint8_t id, const bt_addr_le_t *a
 	LOG_DBG("Aging counter for %s is set to %u", bt_addr_le_str(addr), keys->aging_counter);
 
 	if (IS_ENABLED(CONFIG_BT_KEYS_SAVE_AGING_COUNTER_ON_PAIRING)) {
-		bt_keys_store(keys);
+		bt_keys_store(hdev->dev_id, keys);
 	}
 }
 
