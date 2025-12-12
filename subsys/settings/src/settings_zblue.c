@@ -68,6 +68,15 @@ static ssize_t settings_zblue_read(void* back_end, void* data, size_t len)
                 res = listener->ltk_load(&addr, data, len);
             }
         }
+    } else if (!strncmp(name, "bt/link_key/", strlen("bt/link_key/"))) {
+        bt_settings_decode_key(name + strlen("bt/link_key/"), &addr);
+        SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&bt_settings_cbs, listener,
+            next, _node)
+        {
+            if (listener->linkkey_load) {
+                res = listener->linkkey_load(&addr, data, len);
+            }
+        }
     }
 
     return res;
@@ -145,6 +154,19 @@ static int settings_zblue_save(struct settings_store* cs, const char* name,
         {
             if (listener->ltk_notify) {
                 err = listener->ltk_notify(dev_id, id, &addr, value, val_len);
+            }
+
+            if (err) {
+                return err;
+            }
+        }
+    } else if (!strncmp(name, "bt/link_key/", strlen("bt/link_key/"))) {
+        parse_settings_key(name + strlen("bt/link_key/"), &dev_id, &id, &addr);
+        SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&bt_settings_cbs, listener,
+            next, _node)
+        {
+            if (listener->linkkey_notify) {
+                listener->linkkey_notify(dev_id, &addr, value, val_len);
             }
 
             if (err) {
