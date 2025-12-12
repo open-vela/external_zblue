@@ -962,7 +962,7 @@ static void smp_pairing_br_complete(struct bt_smp_br *smp, uint8_t status)
 		}
 
 		if (bond_flag && keys) {
-			bt_keys_store(keys);
+			bt_keys_store(conn->hdev->dev_id, keys);
 		}
 
 		SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&conn->hdev->bt_auth_info_cbs, listener,
@@ -1965,7 +1965,7 @@ static void smp_pairing_complete(struct bt_smp *smp, uint8_t status)
 		}
 
 		if (bond_flag && conn->le.keys) {
-			bt_keys_store(conn->le.keys);
+			bt_keys_store(conn->hdev->dev_id, conn->le.keys);
 		}
 
 		SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&conn->hdev->bt_auth_info_cbs, listener,
