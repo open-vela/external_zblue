@@ -522,6 +522,15 @@ struct bt_dev {
 	bt_dh_key_cb_t dh_key_cb;
 #endif
 
+#if defined(CONFIG_BT_SETTINGS)
+
+	/* Work used to process store id */
+	struct k_work       store_id_work;
+
+	/* Work used to process store irk */
+	struct k_work       store_irk_work;
+#endif
+
 	/* ATT context */
 	struct bt_dev_att_ctx *att_ctx;
 
