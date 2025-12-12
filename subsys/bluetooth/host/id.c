@@ -1346,8 +1346,8 @@ static int id_create(struct bt_dev *hdev, uint8_t id, bt_addr_le_t *addr, uint8_
 	 */
 	if (IS_ENABLED(CONFIG_BT_SETTINGS) &&
 	    atomic_test_bit(hdev->flags, BT_DEV_READY)) {
-		(void)bt_settings_store_id();
-		(void)bt_settings_store_irk();
+		(void)bt_settings_store_id(hdev);
+		(void)bt_settings_store_irk(hdev);
 	}
 
 	return 0;
@@ -1528,8 +1528,8 @@ int bt_id_delete_mc(uint8_t dev_id, uint8_t id)
 
 	if (IS_ENABLED(CONFIG_BT_SETTINGS) &&
 	    atomic_test_bit(hdev->flags, BT_DEV_READY)) {
-		(void)bt_settings_store_id();
-		(void)bt_settings_store_irk();
+		(void)bt_settings_store_id(hdev);
+		(void)bt_settings_store_irk(hdev);
 	}
 
 	return 0;
