@@ -224,7 +224,7 @@ void bt_hci_synchronous_conn_complete(struct bt_dev *hdev, struct net_buf *buf)
 
 static void br_report_connection_state(struct bt_conn *conn)
 {
-	bt_conn_connected(conn);
+	bt_conn_notify_connected(conn);
 
 	if (atomic_test_bit(conn->flags, BT_CONN_BR_PAIRING_CONN_PEND)) {
 		atomic_clear_bit(conn->flags, BT_CONN_BR_PAIRING_CONN_PEND);
@@ -276,6 +276,8 @@ void bt_hci_conn_complete(struct bt_dev *hdev, struct net_buf *buf)
 	bt_conn_set_state(conn, BT_CONN_CONNECTED);
 
 	atomic_set_bit_to(conn->flags, BT_CONN_BR_BONDABLE, bt_get_bondable_mc(hdev->dev_id));
+
+	bt_conn_connected(conn);
 
 	buf = bt_hci_cmd_create(BT_HCI_OP_READ_REMOTE_FEATURES, sizeof(*cp));
 	if (!buf) {
