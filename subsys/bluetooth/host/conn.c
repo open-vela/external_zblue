@@ -1863,11 +1863,26 @@ static void schedule_auto_initiated_procedures(struct bt_conn *conn)
 	k_work_submit(&hdev->conn_ctx->procedures_on_connect);
 }
 
+void bt_conn_notify_connected(struct bt_conn *conn)
+{
+	if (conn->type == BT_CONN_TYPE_BR) {
+		notify_connected(conn);
+	} else {
+		__ASSERT(false, "Only for BR/EDR, type %u", conn->type);
+	}
+}
+
 void bt_conn_connected(struct bt_conn *conn)
 {
 	schedule_auto_initiated_procedures(conn);
 	bt_l2cap_connected(conn);
-	notify_connected(conn);
+
+	/* BR/EDR notify is triggered via bt_conn_notify_connected(); notify LE here.
+	* TODO: Remove this split after BLE connected callback refactor unifies it.
+	*/
+	if (conn->type != BT_CONN_TYPE_BR) {
+		notify_connected(conn);
+	}
 }
 
 static int conn_disconnect(struct bt_conn *conn, uint8_t reason)
