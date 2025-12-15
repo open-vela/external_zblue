@@ -473,7 +473,9 @@ static void avrcp_disconnected(struct bt_avctp *session)
 	struct bt_avrcp *avrcp = AVRCP_AVCTP(session);
 
 	if ((avrcp_ct_cb != NULL) && (avrcp_ct_cb->disconnected != NULL)) {
-		avrcp_ct_cb->disconnected(get_avrcp_ct(avrcp));
+		struct bt_avrcp_ct *ct = get_avrcp_ct(avrcp);
+		avrcp_ct_cb->disconnected(ct);
+		memset(&ct->ct_notify, 0, sizeof(ct->ct_notify));
 	}
 
 	if ((avrcp_tg_cb != NULL) && (avrcp_tg_cb->disconnected != NULL)) {
