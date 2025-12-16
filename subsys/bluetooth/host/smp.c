@@ -863,15 +863,25 @@ static void sc_derive_link_key(struct bt_smp *smp)
 		link_key->flags &= ~BT_LINK_KEY_AUTHENTICATED;
 	}
 
-	if (bond_flag) {
-		SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&conn->hdev->bt_auth_info_cbs, listener,
-							next, node) {
-			if (listener->pairing_complete_ctkd) {
-				/* Derive BR Link Key over LE link */
-				listener->pairing_complete_ctkd(conn, true);
-			}
+	/*
+	* Notify pairing completion regardless of bond_flag.
+	*
+	* Rationale: even in "no-bonding" cases the stack/users (e.g. CTKD
+	* pairing_complete handler) and applications may rely on this callback
+	* to finish their bonding/bonded state machines. If we skip the callback
+	* when bond_flag is false, an app that entered a "bonding" state (e.g.
+	* after createbond) may never receive a terminal event and can get stuck
+	* until an explicit cancel/unpair.
+	*/
+	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&conn->hdev->bt_auth_info_cbs, listener,
+						next, node) {
+		if (listener->pairing_complete_ctkd) {
+			/* Derive BR Link Key over LE link */
+			listener->pairing_complete_ctkd(conn, bond_flag);
 		}
+	}
 
+	if (bond_flag) {
 		/* Store the link key */
 		bt_keys_link_key_store(conn->hdev, link_key);
 	}
@@ -964,9 +974,9 @@ static void smp_pairing_br_complete(struct bt_smp_br *smp, uint8_t status)
 
 		SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&conn->hdev->bt_auth_info_cbs, listener,
 						  next, node) {
-			if (listener->pairing_complete_ctkd && bond_flag) {
+			if (listener->pairing_complete_ctkd) {
 				/* Derive LE LTK over BR conn */
-				listener->pairing_complete_ctkd(conn, false);
+				listener->pairing_complete_ctkd(conn, bond_flag);
 			}
 		}
 
@@ -1965,6 +1975,16 @@ static void smp_pairing_complete(struct bt_smp *smp, uint8_t status)
 			bt_keys_show_sniffer_info(conn->le.keys, NULL);
 		}
 
+		/*
+		 * Notify pairing completion regardless of bond_flag.
+		 *
+		 * Rationale: even in "no-bonding" cases the stack/users (e.g. CTKD
+		 * pairing_complete handler) and applications may rely on this callback
+		 * to finish their bonding/bonded state machines. If we skip the callback
+		 * when bond_flag is false, an app that entered a "bonding" state (e.g.
+		 * after createbond) may never receive a terminal event and can get stuck
+		 * until an explicit cancel/unpair.
+		 */
 		SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&conn->hdev->bt_auth_info_cbs, listener,
 						  next, node) {
 			if (listener->pairing_complete) {
