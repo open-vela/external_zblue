@@ -392,10 +392,7 @@ static inline struct bt_avrcp_ct *get_avrcp_ct(struct bt_avrcp *avrcp)
 {
 	size_t index;
 
-	if (avrcp == NULL) {
-		LOG_ERR("Invalid parameter");
-		return NULL;
-	}
+	__ASSERT(avrcp != NULL, "avrcp is NULL");
 
 	index = (size_t)bt_conn_index(avrcp->acl_conn);
 	__ASSERT(index < ARRAY_SIZE(avrcp_connection), "Conn index is out of bounds");
@@ -407,10 +404,7 @@ static inline struct bt_avrcp_tg *get_avrcp_tg(struct bt_avrcp *avrcp)
 {
 	size_t index;
 
-	if (avrcp == NULL) {
-		LOG_ERR("Invalid parameter");
-		return NULL;
-	}
+	__ASSERT(avrcp != NULL, "avrcp is NULL");
 
 	index = (size_t)bt_conn_index(avrcp->acl_conn);
 	__ASSERT(index < ARRAY_SIZE(avrcp_connection), "Conn index is out of bounds");
