@@ -39,6 +39,8 @@
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/drivers/bluetooth.h>
 
+extern void btsnoop_log_capture(uint8_t is_receive, uint8_t *hci_pkt, uint32_t hci_pkt_size);
+
 #define LOG_LEVEL CONFIG_BT_HCI_DRIVER_LOG_LEVEL
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(bt_driver);
@@ -298,6 +300,8 @@ static void h4_rx_thread(void *p1, void *p2, void *p3)
 
 			buf = get_rx(frame_start);
 
+			btsnoop_log_capture(1, (uint8_t *)frame_start, decoded_len);
+
 			frame_size -= decoded_len;
 			frame_start += decoded_len;
 
@@ -354,6 +358,7 @@ static int h4_send(const struct device *dev, struct net_buf *buf)
 
 	pthread_mutex_lock(&h4->mutex);
 	len = buf->len;
+	btsnoop_log_capture(0, buf->data, buf->len);
 	ret = h4_send_data(h4, buf->data, buf->len);
 	if (ret != len) {
 		ret = -EINVAL;
