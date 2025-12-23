@@ -90,13 +90,15 @@ enum __packed bt_hfp_ag_call_status {
 	BT_HFP_AG_CALL_STATUS_ALERTING = 3,     /* Outgoing call is being alerted */
 	BT_HFP_AG_CALL_STATUS_INCOMING = 4,     /* Incoming call is came */
 	BT_HFP_AG_CALL_STATUS_WAITING = 5,      /* Incoming call is waiting */
-	BT_HFP_AG_CALL_STATUS_INCOMING_HELD = 6 /* Call held by Response and Hold */
+	BT_HFP_AG_CALL_STATUS_INCOMING_HELD = 6,/* Call held by Response and Hold */
+	BT_HFP_AG_CALL_STATUS_UNKNOWN = 0xFF    /* Unknown call status */
 };
 
 /* The direction of the call */
 enum __packed bt_hfp_ag_call_dir {
 	BT_HFP_AG_CALL_DIR_OUTGOING = 0, /* It is a outgoing call */
 	BT_HFP_AG_CALL_DIR_INCOMING = 1, /* It is a incoming call */
+	BT_HFP_AG_CALL_DIR_UNKNOWN = 0xFF/* Unknown call direction */
 };
 
 /** @brief The ongoing call
