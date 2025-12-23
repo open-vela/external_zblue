@@ -1112,6 +1112,9 @@ static int bt_hfp_ag_notify_cind_value(struct bt_hfp_ag *ag)
 		case BT_HFP_AG_CALL_STATUS_INCOMING_HELD:
 			call_value = 1;
 			break;
+		default:
+			/* Safeguard for unexpected values */
+			break;
 		}
 	}
 
@@ -1589,6 +1592,9 @@ static void bt_hfp_ag_notify_ongoing_calls(struct bt_hfp_ag *ag, void *user_data
 			break;
 		case BT_HFP_AG_CALL_STATUS_INCOMING_HELD:
 			bt_hfp_ag_add_incoming_held_call(ag, ongoing_call);
+			break;
+		default:
+			/* Ignore unexpected values to satisfy -Wswitch */
 			break;
 		}
 	}
