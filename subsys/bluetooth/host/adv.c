@@ -1573,6 +1573,21 @@ void bt_le_adv_resume(struct bt_dev *hdev)
 }
 #endif /* defined(CONFIG_BT_PERIPHERAL) */
 
+bool bt_le_ext_adv_is_supported_mc(uint8_t dev_id)
+{
+	struct bt_dev *hdev = bt_dev_get(dev_id);
+
+	if (!hdev) {
+		return false;
+	}
+
+	if (!IS_ENABLED(CONFIG_BT_EXT_ADV)) {
+		return false;
+	}
+
+	return BT_DEV_FEAT_LE_EXT_ADV(hdev->le.features);
+}
+
 #if defined(CONFIG_BT_EXT_ADV)
 int bt_le_ext_adv_get_info(const struct bt_le_ext_adv *adv,
 			   struct bt_le_ext_adv_info *info)
