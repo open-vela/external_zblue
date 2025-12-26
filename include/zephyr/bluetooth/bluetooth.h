@@ -1295,6 +1295,21 @@ struct bt_le_per_adv_param {
 						  BT_LE_PER_ADV_OPT_NONE)
 
 /**
+ * @brief Check whether LE extended advertising is supported.
+ *
+ * @param dev_id Bluetooth device/controller id.
+ *
+ * @return true if supported, false otherwise.
+ */
+bool bt_le_ext_adv_is_supported_mc(uint8_t dev_id);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline bool bt_le_ext_adv_is_supported(void)
+{
+	return bt_le_ext_adv_is_supported_mc(0);
+}
+#endif
+
+/**
  * @brief Start advertising
  *
  * Set advertisement data, scan response data, advertisement parameters
