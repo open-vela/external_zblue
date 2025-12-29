@@ -274,6 +274,8 @@ int k_poll(struct k_poll_event *events, int num_events,
 		return -EAGAIN;
 	}
 
+	k_spin_unlock(&lock, key);
+
 	int ret = k_sem_take(&poller.sem, timeout);
 
 	/*
