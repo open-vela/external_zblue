@@ -3244,6 +3244,7 @@ int bt_avrcp_ct_register_notification(struct bt_avrcp_ct *ct, uint8_t tid, uint8
 	if (err < 0) {
 		LOG_ERR("Failed to send AVRCP PDU (err: %d)", err);
 		net_buf_unref(buf);
+		/* Roll back state so the app can retry */
 		return err;
 	}
 
