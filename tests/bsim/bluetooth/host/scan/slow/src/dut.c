@@ -30,7 +30,7 @@ static void device_found(const bt_addr_le_t *addr, int8_t rssi, uint8_t type,
 }
 
 #define BT_LE_SCAN_ACTIVE_CONTINUOUS_WITH_DUPLICATES                                               \
-	BT_LE_SCAN_PARAM(BT_LE_SCAN_TYPE_ACTIVE, 0, BT_GAP_SCAN_FAST_INTERVAL_MIN,                 \
+	BT_LE_SCAN_PARAM(Z_BT_LE_SCAN_TYPE_ACTIVE, 0, BT_GAP_SCAN_FAST_INTERVAL_MIN,                 \
 			 BT_GAP_SCAN_FAST_WINDOW)
 
 void entrypoint_dut(void)

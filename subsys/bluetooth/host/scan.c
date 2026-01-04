@@ -353,7 +353,7 @@ static int start_le_scan_legacy(struct bt_dev *hdev, struct bt_le_scan_param *pa
 bool bt_le_scan_active_scanner_running(struct bt_dev *hdev)
 {
 	return atomic_test_bit(hdev->flags, BT_DEV_SCANNING) &&
-	       hdev->scan_ctx->scan_state.used_scan_param.type == BT_LE_SCAN_TYPE_ACTIVE;
+	       hdev->scan_ctx->scan_state.used_scan_param.type == Z_BT_LE_SCAN_TYPE_ACTIVE;
 }
 
 static void select_scan_params(struct bt_dev *hdev, struct bt_le_scan_param *scan_param)
@@ -368,7 +368,7 @@ static void select_scan_params(struct bt_dev *hdev, struct bt_le_scan_param *sca
 	/* 2. Priority: reuse parameters from initiator */
 	else if (atomic_test_bit(hdev->flags, BT_DEV_INITIATING)) {
 		*scan_param = (struct bt_le_scan_param){
-			.type = BT_LE_SCAN_TYPE_PASSIVE,
+			.type = Z_BT_LE_SCAN_TYPE_PASSIVE,
 			.options = BT_LE_SCAN_OPT_FILTER_DUPLICATE,
 			.interval = hdev->create_param.interval,
 			.window = hdev->create_param.window,
@@ -380,7 +380,7 @@ static void select_scan_params(struct bt_dev *hdev, struct bt_le_scan_param *sca
 	/* 3. Priority: choose custom parameters */
 	else {
 		*scan_param = (struct bt_le_scan_param){
-			.type = BT_LE_SCAN_TYPE_PASSIVE,
+			.type = Z_BT_LE_SCAN_TYPE_PASSIVE,
 			.options = BT_LE_SCAN_OPT_FILTER_DUPLICATE,
 			.interval = CONFIG_BT_BACKGROUND_SCAN_INTERVAL,
 			.window = CONFIG_BT_BACKGROUND_SCAN_WINDOW,
@@ -1736,7 +1736,7 @@ void bt_hci_le_adv_report(struct bt_dev *hdev, struct net_buf *buf)
 static bool valid_le_scan_param(const struct bt_le_scan_param *param)
 {
 	if (IS_ENABLED(CONFIG_BT_PRIVACY) &&
-	    param->type == BT_LE_SCAN_TYPE_ACTIVE &&
+	    param->type == Z_BT_LE_SCAN_TYPE_ACTIVE &&
 	    param->timeout != 0) {
 		/* This is marked as not supported as a stopgap until the (scan,
 		 * adv, init) roles are reworked into proper state machines.
@@ -1753,8 +1753,8 @@ static bool valid_le_scan_param(const struct bt_le_scan_param *param)
 		return false;
 	}
 
-	if (param->type != BT_LE_SCAN_TYPE_PASSIVE &&
-	    param->type != BT_LE_SCAN_TYPE_ACTIVE) {
+	if (param->type != Z_BT_LE_SCAN_TYPE_PASSIVE &&
+	    param->type != Z_BT_LE_SCAN_TYPE_ACTIVE) {
 		return false;
 	}
 

@@ -125,7 +125,7 @@ void run_dut(void)
 	 * running due to the periodic sync.
 	 */
 	struct bt_le_scan_param scan_params = {
-		.type = BT_LE_SCAN_TYPE_ACTIVE,
+		.type = Z_BT_LE_SCAN_TYPE_ACTIVE,
 		.options = 0x0,
 		.interval = 123,
 		.window = 12,

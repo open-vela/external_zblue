@@ -28,7 +28,7 @@ static void scan_cb(const bt_addr_le_t *addr, int8_t rssi, uint8_t adv_type,
 int main(void)
 {
 	struct bt_le_scan_param scan_param = {
-		.type       = BT_LE_SCAN_TYPE_PASSIVE,
+		.type       = Z_BT_LE_SCAN_TYPE_PASSIVE,
 		.options    = BT_LE_SCAN_OPT_NONE,
 		.interval   = 0x0010,
 		.window     = 0x0010,

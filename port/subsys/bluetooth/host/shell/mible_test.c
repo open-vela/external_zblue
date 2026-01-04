@@ -254,7 +254,7 @@ static void le_connected(struct bt_conn *conn, uint8_t err)
 	char buffer[BT_ADDR_LE_STR_LEN];
 	struct bt_conn_info info;
 	struct bt_le_scan_param param = {
-		.type = BT_LE_SCAN_TYPE_ACTIVE,
+		.type = Z_BT_LE_SCAN_TYPE_ACTIVE,
 		.interval = BT_ADV_SCAN_UNIT(MIBLE_SCAN_INT_DEF),
 		.window = BT_ADV_SCAN_UNIT(MIBLE_SCAN_WIN_DEF),
 	};
@@ -337,7 +337,7 @@ static void le_disconnected(struct bt_conn *conn, uint8_t reason)
 	int err;
 	struct bt_conn_info info;
 	struct bt_le_scan_param param = {
-		.type = BT_LE_SCAN_TYPE_ACTIVE,
+		.type = Z_BT_LE_SCAN_TYPE_ACTIVE,
 		.interval = BT_ADV_SCAN_UNIT(MIBLE_SCAN_INT_DEF),
 		.window = BT_ADV_SCAN_UNIT(MIBLE_SCAN_WIN_DEF),
 	};
@@ -848,7 +848,7 @@ static void central_device_found(const bt_addr_le_t *addr, int8_t rssi, uint8_t 
 	int err;
 	char buffer[BT_ADDR_LE_STR_LEN];
 	struct bt_le_scan_param param = {
-		.type = BT_LE_SCAN_TYPE_ACTIVE,
+		.type = Z_BT_LE_SCAN_TYPE_ACTIVE,
 		.interval = BT_ADV_SCAN_UNIT(MIBLE_SCAN_INT_DEF),
 		.window = BT_ADV_SCAN_UNIT(MIBLE_SCAN_WIN_DEF),
 	};
@@ -933,7 +933,7 @@ static int cmd_central(const struct shell *shell, size_t argc, char *argv[])
 	int err;
 	bool start;
 	struct bt_le_scan_param param = {
-		.type = BT_LE_SCAN_TYPE_ACTIVE,
+		.type = Z_BT_LE_SCAN_TYPE_ACTIVE,
 		.interval = BT_ADV_SCAN_UNIT(MIBLE_SCAN_INT_DEF),
 		.window = BT_ADV_SCAN_UNIT(MIBLE_SCAN_WIN_DEF),
 	};

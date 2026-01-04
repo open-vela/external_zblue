@@ -338,7 +338,7 @@ static int scan_init(void)
 static int scan_enable(void)
 {
 	struct bt_le_scan_param param = {
-			.type       = BT_LE_SCAN_TYPE_ACTIVE,
+			.type       = Z_BT_LE_SCAN_TYPE_ACTIVE,
 			.options    = BT_LE_SCAN_OPT_FILTER_DUPLICATE,
 			.interval   = BT_GAP_SCAN_FAST_INTERVAL,
 			.window     = BT_GAP_SCAN_FAST_WINDOW,
