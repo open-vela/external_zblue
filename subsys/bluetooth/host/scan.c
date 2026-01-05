@@ -1191,6 +1191,8 @@ static int per_adv_sync_terminate(struct bt_dev *hdev, uint16_t handle)
 static void per_adv_sync_terminated(struct bt_le_per_adv_sync *per_adv_sync,
 				    uint8_t reason)
 {
+	struct bt_dev *hdev = per_adv_sync->hdev;
+
 	/* Terminate the PA sync and notify app */
 	const struct bt_le_per_adv_sync_term_info term_info = {
 		.addr = &per_adv_sync->addr,
@@ -1204,7 +1206,7 @@ static void per_adv_sync_terminated(struct bt_le_per_adv_sync *per_adv_sync,
 	 */
 	per_adv_sync_delete(per_adv_sync);
 
-	SYS_SLIST_FOR_EACH_CONTAINER(&per_adv_sync->hdev->scan_ctx->pa_sync_cbs, listener, node) {
+	SYS_SLIST_FOR_EACH_CONTAINER(&hdev->scan_ctx->pa_sync_cbs, listener, node) {
 		if (listener->term) {
 			listener->term(per_adv_sync, &term_info);
 		}
