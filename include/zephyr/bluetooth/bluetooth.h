@@ -2285,9 +2285,11 @@ enum {
 
 #define BT_LE_SCAN_OPT_FILTER_WHITELIST __DEPRECATED_MACRO BT_LE_SCAN_OPT_FILTER_ACCEPT_LIST
 
+#define Z_(x) Z_##x
+
 enum {
 	/** Scan without requesting additional information from advertisers. */
-	BT_LE_SCAN_TYPE_PASSIVE = 0x00,
+	Z_(BT_LE_SCAN_TYPE_PASSIVE) = 0x00,
 
 	/**
 	 * @brief Scan and request additional information from advertisers.
@@ -2296,12 +2298,12 @@ enum {
 	 * devices. Scan responses are received in the same manner and using the
 	 * same callbacks as advertising reports.
 	 */
-	BT_LE_SCAN_TYPE_ACTIVE = 0x01,
+	Z_(BT_LE_SCAN_TYPE_ACTIVE) = 0x01,
 };
 
 /** LE scan parameters */
 struct bt_le_scan_param {
-	/** Scan type (BT_LE_SCAN_TYPE_ACTIVE or BT_LE_SCAN_TYPE_PASSIVE) */
+	/** Scan type (Z_(BT_LE_SCAN_TYPE_ACTIVE) or Z_(BT_LE_SCAN_TYPE_PASSIVE)) */
 	uint8_t  type;
 
 	/** Bit-field of scanning options. */
@@ -2427,8 +2429,8 @@ struct bt_le_scan_cb {
 /**
  * @brief Initialize scan parameters
  *
- * @param _type     Scan Type, BT_LE_SCAN_TYPE_ACTIVE or
- *                  BT_LE_SCAN_TYPE_PASSIVE.
+ * @param _type     Scan Type, Z_(BT_LE_SCAN_TYPE_ACTIVE) or
+ *                  Z_(BT_LE_SCAN_TYPE_PASSIVE).
  * @param _options  Scan options
  * @param _interval Scan Interval (N * 0.625 ms)
  * @param _window   Scan Window (N * 0.625 ms)
@@ -2447,8 +2449,8 @@ struct bt_le_scan_cb {
 /**
  * @brief Helper to declare scan parameters inline
  *
- * @param _type     Scan Type, BT_LE_SCAN_TYPE_ACTIVE or
- *                  BT_LE_SCAN_TYPE_PASSIVE.
+ * @param _type     Scan Type, Z_(BT_LE_SCAN_TYPE_ACTIVE) or
+ *                  Z_(BT_LE_SCAN_TYPE_PASSIVE).
  * @param _options  Scan options
  * @param _interval Scan Interval (N * 0.625 ms)
  * @param _window   Scan Window (N * 0.625 ms)
@@ -2461,7 +2463,7 @@ struct bt_le_scan_cb {
 /**
  * @brief Helper macro to enable active scanning to discover new devices.
  */
-#define BT_LE_SCAN_ACTIVE BT_LE_SCAN_PARAM(BT_LE_SCAN_TYPE_ACTIVE, \
+#define BT_LE_SCAN_ACTIVE BT_LE_SCAN_PARAM(Z_(BT_LE_SCAN_TYPE_ACTIVE), \
 					   BT_LE_SCAN_OPT_FILTER_DUPLICATE, \
 					   BT_GAP_SCAN_FAST_INTERVAL, \
 					   BT_GAP_SCAN_FAST_WINDOW)
@@ -2471,7 +2473,7 @@ struct bt_le_scan_cb {
  *
  * Continuous scanning should be used to maximize the chances of receiving advertising packets.
  */
-#define BT_LE_SCAN_ACTIVE_CONTINUOUS BT_LE_SCAN_PARAM(BT_LE_SCAN_TYPE_ACTIVE, \
+#define BT_LE_SCAN_ACTIVE_CONTINUOUS BT_LE_SCAN_PARAM(Z_(BT_LE_SCAN_TYPE_ACTIVE), \
 						      BT_LE_SCAN_OPT_FILTER_DUPLICATE, \
 						      BT_GAP_SCAN_FAST_INTERVAL_MIN, \
 						      BT_GAP_SCAN_FAST_WINDOW)
@@ -2484,7 +2486,7 @@ BUILD_ASSERT(BT_GAP_SCAN_FAST_WINDOW == BT_GAP_SCAN_FAST_INTERVAL_MIN,
  * This macro should be used if information required for device identification
  * (e.g., UUID) are known to be placed in Advertising Data.
  */
-#define BT_LE_SCAN_PASSIVE BT_LE_SCAN_PARAM(BT_LE_SCAN_TYPE_PASSIVE, \
+#define BT_LE_SCAN_PASSIVE BT_LE_SCAN_PARAM(Z_(BT_LE_SCAN_TYPE_PASSIVE), \
 					    BT_LE_SCAN_OPT_FILTER_DUPLICATE, \
 					    BT_GAP_SCAN_FAST_INTERVAL, \
 					    BT_GAP_SCAN_FAST_WINDOW)
@@ -2495,7 +2497,7 @@ BUILD_ASSERT(BT_GAP_SCAN_FAST_WINDOW == BT_GAP_SCAN_FAST_INTERVAL_MIN,
  * This macro should be used if information required for device identification
  * (e.g., UUID) are known to be placed in Advertising Data.
  */
-#define BT_LE_SCAN_PASSIVE_CONTINUOUS BT_LE_SCAN_PARAM(BT_LE_SCAN_TYPE_PASSIVE, \
+#define BT_LE_SCAN_PASSIVE_CONTINUOUS BT_LE_SCAN_PARAM(Z_(BT_LE_SCAN_TYPE_PASSIVE), \
 						       BT_LE_SCAN_OPT_FILTER_DUPLICATE, \
 						       BT_GAP_SCAN_FAST_INTERVAL_MIN, \
 						       BT_GAP_SCAN_FAST_WINDOW)
@@ -2507,7 +2509,7 @@ BUILD_ASSERT(BT_GAP_SCAN_FAST_WINDOW == BT_GAP_SCAN_FAST_INTERVAL_MIN,
  * Include scanning on Coded PHY in addition to 1M PHY.
  */
 #define BT_LE_SCAN_CODED_ACTIVE \
-		BT_LE_SCAN_PARAM(BT_LE_SCAN_TYPE_ACTIVE, \
+		BT_LE_SCAN_PARAM(Z_(BT_LE_SCAN_TYPE_ACTIVE), \
 				 BT_LE_SCAN_OPT_CODED | \
 				 BT_LE_SCAN_OPT_FILTER_DUPLICATE, \
 				 BT_GAP_SCAN_FAST_INTERVAL, \
@@ -2521,7 +2523,7 @@ BUILD_ASSERT(BT_GAP_SCAN_FAST_WINDOW == BT_GAP_SCAN_FAST_INTERVAL_MIN,
  * (e.g., UUID) are known to be placed in Advertising Data.
  */
 #define BT_LE_SCAN_CODED_PASSIVE \
-		BT_LE_SCAN_PARAM(BT_LE_SCAN_TYPE_PASSIVE, \
+		BT_LE_SCAN_PARAM(Z_(BT_LE_SCAN_TYPE_PASSIVE), \
 				 BT_LE_SCAN_OPT_CODED | \
 				 BT_LE_SCAN_OPT_FILTER_DUPLICATE, \
 				 BT_GAP_SCAN_FAST_INTERVAL, \
@@ -2542,7 +2544,7 @@ BUILD_ASSERT(BT_GAP_SCAN_FAST_WINDOW == BT_GAP_SCAN_FAST_INTERVAL_MIN,
  *
  * @note Setting the `param.timeout` parameter is not supported when
  *       @kconfig{CONFIG_BT_PRIVACY} is enabled, when the param.type is @ref
- *       BT_LE_SCAN_TYPE_ACTIVE. Supplying a non-zero timeout will result in an
+ *       Z_(BT_LE_SCAN_TYPE_ACTIVE). Supplying a non-zero timeout will result in an
  *       -EINVAL error code.
  *
  * @param param Scan parameters.

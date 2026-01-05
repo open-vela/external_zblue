@@ -89,7 +89,7 @@ static struct bt_le_scan_cb scan_callbacks = {
 int observer_start(void)
 {
 	struct bt_le_scan_param scan_param = {
-		.type       = BT_LE_SCAN_TYPE_PASSIVE,
+		.type       = Z_(BT_LE_SCAN_TYPE_PASSIVE),
 		.options    = BT_LE_SCAN_OPT_FILTER_DUPLICATE,
 		.interval   = BT_GAP_SCAN_FAST_INTERVAL,
 		.window     = BT_GAP_SCAN_FAST_WINDOW,

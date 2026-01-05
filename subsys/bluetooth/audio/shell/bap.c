@@ -3450,7 +3450,7 @@ static int cmd_create_broadcast_sink(const struct shell *sh, size_t argc, char *
 
 	if (per_adv_sync == NULL) {
 		const struct bt_le_scan_param param = {
-			.type = BT_LE_SCAN_TYPE_PASSIVE,
+			.type = Z_(BT_LE_SCAN_TYPE_PASSIVE),
 			.options = BT_LE_SCAN_OPT_NONE,
 			.interval = BT_GAP_SCAN_FAST_INTERVAL,
 			.window = BT_GAP_SCAN_FAST_WINDOW,
@@ -3489,7 +3489,7 @@ static int cmd_create_broadcast_sink(const struct shell *sh, size_t argc, char *
 static int cmd_create_sink_by_name(const struct shell *sh, size_t argc, char *argv[])
 {
 	const struct bt_le_scan_param param = {
-		.type = BT_LE_SCAN_TYPE_PASSIVE,
+		.type = Z_(BT_LE_SCAN_TYPE_PASSIVE),
 		.options = BT_LE_SCAN_OPT_NONE,
 		.interval = BT_GAP_SCAN_FAST_INTERVAL,
 		.window = BT_GAP_SCAN_FAST_WINDOW,
