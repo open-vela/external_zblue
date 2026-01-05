@@ -1656,7 +1656,7 @@ static int cmd_active_scan_on(const struct shell *sh, uint8_t dev_id, uint32_t o
 {
 	int err;
 	struct bt_le_scan_param param = {
-			.type       = BT_LE_SCAN_TYPE_ACTIVE,
+			.type       = Z_(BT_LE_SCAN_TYPE_ACTIVE),
 			.options    = BT_LE_SCAN_OPT_NONE,
 			.interval   = BT_GAP_SCAN_FAST_INTERVAL,
 			.window     = BT_GAP_SCAN_FAST_WINDOW,
@@ -1685,7 +1685,7 @@ static int cmd_passive_scan_on(const struct shell *sh, uint8_t dev_id, uint32_t 
 			       uint16_t timeout)
 {
 	struct bt_le_scan_param param = {
-			.type       = BT_LE_SCAN_TYPE_PASSIVE,
+			.type       = Z_(BT_LE_SCAN_TYPE_PASSIVE),
 			.options    = BT_LE_SCAN_OPT_NONE,
 			.interval   = 0x10,
 			.window     = 0x10,
@@ -3441,7 +3441,7 @@ static int cmd_auto_conn(const struct shell *sh, size_t argc, char *argv[])
 static int cmd_connect_le_name(const struct shell *sh, size_t argc, char *argv[])
 {
 	const struct bt_le_scan_param param = {
-		.type       = BT_LE_SCAN_TYPE_ACTIVE,
+		.type       = Z_(BT_LE_SCAN_TYPE_ACTIVE),
 		.options    = BT_LE_SCAN_OPT_NONE,
 		.interval   = BT_GAP_SCAN_FAST_INTERVAL,
 		.window     = BT_GAP_SCAN_FAST_WINDOW,
