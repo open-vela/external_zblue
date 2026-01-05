@@ -28,7 +28,7 @@ void start_scanning(void)
 	}
 
 	/* Start active scanning */
-	param.type = BT_LE_SCAN_TYPE_ACTIVE;
+	param.type = Z_(BT_LE_SCAN_TYPE_ACTIVE);
 	param.options = BT_LE_SCAN_OPT_FILTER_DUPLICATE;
 	param.interval = BT_GAP_SCAN_FAST_INTERVAL;
 	param.window = BT_GAP_SCAN_FAST_WINDOW;

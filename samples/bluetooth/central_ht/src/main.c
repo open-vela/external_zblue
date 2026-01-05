@@ -227,7 +227,7 @@ static int scan_start(void)
 	 * devices that might update their advertising data at runtime.
 	 */
 	struct bt_le_scan_param scan_param = {
-		.type       = BT_LE_SCAN_TYPE_ACTIVE,
+		.type       = Z_(BT_LE_SCAN_TYPE_ACTIVE),
 		.options    = BT_LE_SCAN_OPT_NONE,
 		.interval   = BT_GAP_SCAN_FAST_INTERVAL,
 		.window     = BT_GAP_SCAN_FAST_WINDOW,
