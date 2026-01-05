@@ -285,6 +285,7 @@ static void ssp_auth(struct bt_conn *conn, uint32_t passkey)
 		 * model is applied then notify user about such pairing request.
 		 * [BT Core 4.2 table 5.7, Vol 3, Part C, 5.2.2.6]
 		 */
+#ifdef CONFIG_HCI_AUTO_REPLY_IN_JUST_WORK
 		if (conn->hdev->bt_auth && conn->hdev->bt_auth->pairing_confirm &&
 		    !atomic_test_bit(conn->flags,
 				     BT_CONN_BR_PAIRING_INITIATOR)) {
@@ -292,6 +293,13 @@ static void ssp_auth(struct bt_conn *conn, uint32_t passkey)
 			conn->hdev->bt_auth->pairing_confirm(conn);
 			break;
 		}
+#else
+		if (conn->hdev->bt_auth && conn->hdev->bt_auth->passkey_confirm) {
+			atomic_set_bit(conn->flags, BT_CONN_USER);
+			conn->hdev->bt_auth->passkey_confirm(conn, 0xFFFFFFFF);
+			break;
+		}
+#endif
 		ssp_confirm_reply(conn);
 		break;
 	default:
