@@ -33,13 +33,8 @@ typedef int32_t atomic_ptr_val_t;
 #define atomic_set(target, value) atomic_xchg(target, value)
 #define atomic_get(target)        atomic_read(target)
 #define atomic_clear(target)      atomic_xchg(target, 0)
-#define atomic_inc(target)        atomic_fetch_add(target, 1)
-#define atomic_dec(target)        atomic_fetch_sub(target, 1)
-#define atomic_add(target, value) atomic_fetch_add(target, value)
-#define atomic_sub(target, value) atomic_fetch_sub(target, value)
-#define atomic_or(target, value)  atomic_fetch_or(target, value)
-#define atomic_xor(target, value) atomic_fetch_xor(target, value)
-#define atomic_and(target, value) atomic_fetch_and(target, value)
+#define atomic_inc(target)        atomic_add(target, 1)
+#define atomic_dec(target)        atomic_sub(target, 1)
 
 static inline bool atomic_cas(atomic_t *target, atomic_val_t old_value, atomic_val_t new_value)
 {
