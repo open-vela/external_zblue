@@ -246,7 +246,7 @@ config BT_HFP_AG_TX_BUF_COUNT
 
 config BT_HFP_AG_THREAD_STACK_SIZE
 	int "Size of the HFP AG thread stack [EXPERIMENTAL]"
-	default 1024
+	default 1536
 	help
 	  Stack size needed for executing thread for HFP AG.
 
