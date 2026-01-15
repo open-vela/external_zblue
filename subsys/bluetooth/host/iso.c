@@ -3372,6 +3372,7 @@ int bt_iso_big_sync(struct bt_le_per_adv_sync *sync, struct bt_iso_big_sync_para
 		return -ENOMEM;
 	}
 
+	big->hdev = sync->hdev;
 	err = big_init_bis(sync->hdev, big, param->bis_channels, param->num_bis, false);
 	if (err) {
 		LOG_DBG("Could not init BIG %d", err);
