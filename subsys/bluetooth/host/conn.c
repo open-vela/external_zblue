@@ -1584,8 +1584,8 @@ uint8_t bt_conn_index(const struct bt_conn *conn)
 	switch (conn->type) {
 #if defined(CONFIG_BT_ISO)
 	case BT_CONN_TYPE_ISO:
-		index = conn - hdev->iso_conns;
-		__ASSERT(index >= 0 && index < ARRAY_SIZE(hdev->iso_conns),
+		index = conn - conn->hdev->iso_conns;
+		__ASSERT(index >= 0 && index < ARRAY_SIZE(conn->hdev->iso_conns),
 			"Invalid bt_conn pointer");
 		break;
 #endif
