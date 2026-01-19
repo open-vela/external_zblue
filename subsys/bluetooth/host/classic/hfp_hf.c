@@ -393,7 +393,9 @@ static int vendor_finish(struct at_client *hf_at, enum bt_at_result result,
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 	LOG_DBG("Vendor specific response received");
 
-	bt_hf->vendor_specific(hf, NULL);
+	if (bt_hf && bt_hf->vendor_specific) {
+		bt_hf->vendor_specific(hf, NULL);
+	}
 
 	atomic_clear_bit(hf->flags, BT_HFP_HF_FLAG_VENDOR_PENDING);
 
@@ -584,7 +586,7 @@ static struct bt_hfp_hf_call *get_call_without_index(struct bt_hfp_hf *hf)
 
 static void hf_reject_call(struct bt_hfp_hf_call *call)
 {
-	if (bt_hf->reject) {
+	if (bt_hf && bt_hf->reject) {
 		bt_hf->reject(call);
 	}
 	free_call(call);
@@ -592,7 +594,7 @@ static void hf_reject_call(struct bt_hfp_hf_call *call)
 
 static void hf_terminate_call(struct bt_hfp_hf_call *call)
 {
-	if (bt_hf->terminate) {
+	if (bt_hf && bt_hf->terminate) {
 		bt_hf->terminate(call);
 	}
 	free_call(call);
@@ -645,7 +647,7 @@ static int clcc_finish(struct at_client *hf_at, enum bt_at_result result,
 	}
 
 	if (atomic_test_bit(hf->flags, BT_HFP_HF_FLAG_USR_CLCC_CMD) &&
-	    (bt_hf->query_call != NULL)) {
+	    (bt_hf && bt_hf->query_call != NULL)) {
 		bt_hf->query_call(hf, NULL);
 	}
 
@@ -794,11 +796,11 @@ static void call_state_update(struct bt_hfp_hf_call *call, uint32_t status)
 			state = atomic_get(call->state);
 			hf_call_state_update(call, BT_HFP_HF_CALL_STATE_ACTIVE);
 			if (state == BT_HFP_HF_CALL_STATE_HELD) {
-				if (bt_hf->retrieve) {
+				if (bt_hf && bt_hf->retrieve) {
 					bt_hf->retrieve(call);
 				}
 			} else {
-				if (bt_hf->accept) {
+				if (bt_hf && bt_hf->accept) {
 					bt_hf->accept(call);
 				}
 			}
@@ -808,7 +810,7 @@ static void call_state_update(struct bt_hfp_hf_call *call, uint32_t status)
 		if ((atomic_get(call->state) == BT_HFP_HF_CALL_STATE_ACTIVE) &&
 		    !atomic_test_and_clear_bit(call->flags, BT_HFP_HF_CALL_INCOMING_HELD)) {
 			hf_call_state_update(call, BT_HFP_HF_CALL_STATE_HELD);
-			if (bt_hf->held) {
+			if (bt_hf && bt_hf->held) {
 				bt_hf->held(call);
 			}
 		}
@@ -826,7 +828,7 @@ static void call_state_update(struct bt_hfp_hf_call *call, uint32_t status)
 		    (atomic_get(call->state) == BT_HFP_HF_CALL_STATE_WAITING)) {
 			atomic_set_bit(call->flags, BT_HFP_HF_CALL_INCOMING_HELD);
 			hf_call_state_update(call, BT_HFP_HF_CALL_STATE_ACTIVE);
-			if (bt_hf->incoming_held) {
+			if (bt_hf && bt_hf->incoming_held) {
 				bt_hf->incoming_held(call);
 			}
 		}
@@ -845,11 +847,11 @@ static void new_call_state_update(struct bt_hfp_hf_call *call, bool incoming, ui
 	case BT_HFP_CLCC_STATUS_WAITING:
 	case BT_HFP_CLCC_STATUS_CALL_HELD_HOLD:
 		if (incoming) {
-			if (bt_hf->incoming) {
+			if (bt_hf && bt_hf->incoming) {
 				bt_hf->incoming(call->hf, call);
 			}
 		} else {
-			if (bt_hf->outgoing) {
+			if (bt_hf && bt_hf->outgoing) {
 				bt_hf->outgoing(call->hf, call);
 			}
 		}
@@ -863,25 +865,25 @@ static void new_call_state_update(struct bt_hfp_hf_call *call, bool incoming, ui
 	switch (status) {
 	case BT_HFP_CLCC_STATUS_ACTIVE:
 		hf_call_state_update(call, BT_HFP_HF_CALL_STATE_ACTIVE);
-		if (bt_hf->accept) {
+		if (bt_hf && bt_hf->accept) {
 			bt_hf->accept(call);
 		}
 		break;
 	case BT_HFP_CLCC_STATUS_HELD:
 		hf_call_state_update(call, BT_HFP_HF_CALL_STATE_HELD);
-		if (bt_hf->held) {
+		if (bt_hf && bt_hf->held) {
 			bt_hf->held(call);
 		}
 		break;
 	case BT_HFP_CLCC_STATUS_DIALING:
 		hf_call_state_update(call, BT_HFP_HF_CALL_STATE_OUTGOING);
-		if (bt_hf->dialing) {
+		if (bt_hf && bt_hf->dialing) {
 			bt_hf->dialing(call->hf, 0);
 		}
 		break;
 	case BT_HFP_CLCC_STATUS_ALERTING:
 		hf_call_state_update(call, BT_HFP_HF_CALL_STATE_ALERTING);
-		if (bt_hf->remote_ringing) {
+		if (bt_hf && bt_hf->remote_ringing) {
 			bt_hf->remote_ringing(call);
 		}
 		break;
@@ -892,7 +894,7 @@ static void new_call_state_update(struct bt_hfp_hf_call *call, bool incoming, ui
 	case BT_HFP_CLCC_STATUS_CALL_HELD_HOLD:
 		atomic_set_bit(call->flags, BT_HFP_HF_CALL_INCOMING_HELD);
 		hf_call_state_update(call, BT_HFP_HF_CALL_STATE_ACTIVE);
-		if (bt_hf->incoming_held) {
+		if (bt_hf && bt_hf->incoming_held) {
 			bt_hf->incoming_held(call);
 		}
 		break;
@@ -986,7 +988,7 @@ static int clcc_handle(struct at_client *hf_at)
 	}
 
 	if (atomic_test_bit(hf->flags, BT_HFP_HF_FLAG_USR_CLCC_CMD) &&
-	    (bt_hf->query_call != NULL)) {
+	    (bt_hf && bt_hf->query_call != NULL)) {
 		struct bt_hfp_hf_current_call current_call;
 
 		current_call.index = (uint8_t)index;
@@ -1050,13 +1052,13 @@ static int bvra_handle(struct at_client *hf_at)
 
 	if (activate) {
 		if (!atomic_test_and_set_bit(hf->flags, BT_HFP_HF_FLAG_VRE_ACTIVATE)) {
-			if (bt_hf->voice_recognition) {
+			if (bt_hf && bt_hf->voice_recognition) {
 				bt_hf->voice_recognition(hf, true);
 			}
 		}
 	} else {
 		if (atomic_test_and_clear_bit(hf->flags, BT_HFP_HF_FLAG_VRE_ACTIVATE)) {
-			if (bt_hf->voice_recognition) {
+			if (bt_hf && bt_hf->voice_recognition) {
 				bt_hf->voice_recognition(hf, false);
 			}
 		}
@@ -1069,7 +1071,7 @@ static int bvra_handle(struct at_client *hf_at)
 		return 0;
 	}
 
-	if (bt_hf->vre_state) {
+	if (bt_hf && bt_hf->vre_state) {
 		bt_hf->vre_state(hf, (uint8_t)state);
 	}
 #endif /* CONFIG_BT_HFP_HF_ENH_VOICE_RECG */
@@ -1107,7 +1109,7 @@ static int bvra_handle(struct at_client *hf_at)
 		return 0;
 	}
 
-	if (bt_hf->textual_representation) {
+	if (bt_hf && bt_hf->textual_representation) {
 		bt_hf->textual_representation(hf, text_id, (uint8_t)type,
 			(uint8_t)operation, text);
 	}
@@ -1240,14 +1242,14 @@ static void set_all_calls_held_state(struct bt_hfp_hf *hf, bool held)
 
 		if (held && (atomic_get(call->state) == BT_HFP_HF_CALL_STATE_ACTIVE)) {
 			hf_call_state_update(call, BT_HFP_HF_CALL_STATE_HELD);
-			if (bt_hf->held) {
+			if (bt_hf && bt_hf->held) {
 				bt_hf->held(call);
 			}
 		}
 
 		if (!held && (atomic_get(call->state) == BT_HFP_HF_CALL_STATE_HELD)) {
 			hf_call_state_update(call, BT_HFP_HF_CALL_STATE_ACTIVE);
-			if (bt_hf->retrieve) {
+			if (bt_hf && bt_hf->retrieve) {
 				bt_hf->retrieve(call);
 			}
 		}
@@ -1273,11 +1275,11 @@ static void ag_indicator_handle_call(struct bt_hfp_hf *hf, uint32_t value)
 		hf_call_state_update(call, BT_HFP_HF_CALL_STATE_ACTIVE);
 
 		if (atomic_test_bit(call->flags, BT_HFP_HF_CALL_INCOMING_HELD)) {
-			if (bt_hf->incoming_held) {
+			if (bt_hf && bt_hf->incoming_held) {
 				bt_hf->incoming_held(call);
 			}
 		} else {
-			if (bt_hf->accept) {
+			if (bt_hf && bt_hf->accept) {
 				bt_hf->accept(call);
 			}
 		}
@@ -1377,7 +1379,7 @@ static void ag_indicator_handle_call_setup(struct bt_hfp_hf *hf, uint32_t value)
 		} else {
 			atomic_set_bit(call->flags, BT_HFP_HF_CALL_INCOMING_3WAY);
 		}
-		if (bt_hf->incoming) {
+		if (bt_hf && bt_hf->incoming) {
 			bt_hf->incoming(hf, call);
 		}
 		hf_call_state_update(call, BT_HFP_HF_CALL_STATE_WAITING);
@@ -1400,7 +1402,7 @@ static void ag_indicator_handle_call_setup(struct bt_hfp_hf *hf, uint32_t value)
 		if (call_count) {
 			atomic_set_bit(call->flags, BT_HFP_HF_CALL_OUTGOING_3WAY);
 		}
-		if (bt_hf->outgoing) {
+		if (bt_hf && bt_hf->outgoing) {
 			bt_hf->outgoing(hf, call);
 		}
 		break;
@@ -1411,7 +1413,7 @@ static void ag_indicator_handle_call_setup(struct bt_hfp_hf *hf, uint32_t value)
 		}
 
 		hf_call_state_update(call, BT_HFP_HF_CALL_STATE_ALERTING);
-		if (bt_hf->remote_ringing) {
+		if (bt_hf && bt_hf->remote_ringing) {
 			bt_hf->remote_ringing(call);
 		}
 		break;
@@ -1449,7 +1451,7 @@ static void ag_indicator_handle_call_held(struct bt_hfp_hf *hf, uint32_t value)
 		}
 
 		hf_call_state_update(call, BT_HFP_HF_CALL_STATE_ACTIVE);
-		if (bt_hf->accept) {
+		if (bt_hf && bt_hf->accept) {
 			bt_hf->accept(call);
 		}
 		break;
@@ -1481,7 +1483,7 @@ void ag_indicator_handle_values(struct at_client *hf_at, uint32_t index,
 
 	switch (hf->ind_table[index]) {
 	case HF_SERVICE_IND:
-		if (bt_hf->service) {
+		if (bt_hf && bt_hf->service) {
 			bt_hf->service(hf, value);
 		}
 		break;
@@ -1495,17 +1497,17 @@ void ag_indicator_handle_values(struct at_client *hf_at, uint32_t index,
 		ag_indicator_handle_call_held(hf, value);
 		break;
 	case HF_SIGNAL_IND:
-		if (bt_hf->signal) {
+		if (bt_hf && bt_hf->signal) {
 			bt_hf->signal(hf, value);
 		}
 		break;
 	case HF_ROAM_IND:
-		if (bt_hf->roam) {
+		if (bt_hf && bt_hf->roam) {
 			bt_hf->roam(hf, value);
 		}
 		break;
 	case HF_BATTERY_IND:
-		if (bt_hf->battery) {
+		if (bt_hf && bt_hf->battery) {
 			bt_hf->battery(hf, value);
 		}
 		break;
@@ -1592,7 +1594,7 @@ int ring_handle(struct at_client *hf_at)
 		LOG_WRN("Invalid call dir (outgoing)");
 	}
 
-	if (bt_hf->ring_indication) {
+	if (bt_hf && bt_hf->ring_indication) {
 		bt_hf->ring_indication(call);
 	}
 
@@ -1627,7 +1629,7 @@ int clip_handle(struct at_client *hf_at)
 		LOG_WRN("Invalid call dir (outgoing)");
 	}
 
-	if (bt_hf->clip) {
+	if (bt_hf && bt_hf->clip) {
 		bt_hf->clip(call, number, (uint8_t)type);
 	}
 
@@ -1653,7 +1655,7 @@ int vgm_handle(struct at_client *hf_at)
 		return -EINVAL;
 	}
 
-	if (bt_hf->vgm) {
+	if (bt_hf && bt_hf->vgm) {
 		bt_hf->vgm(hf, (uint8_t)gain);
 	}
 
@@ -1677,7 +1679,7 @@ int vgs_handle(struct at_client *hf_at)
 		return -EINVAL;
 	}
 
-	if (bt_hf->vgs) {
+	if (bt_hf && bt_hf->vgs) {
 		bt_hf->vgs(hf, (uint8_t)gain);
 	}
 
@@ -1702,7 +1704,7 @@ int bsir_handle(struct at_client *hf_at)
 		return -EINVAL;
 	}
 
-	if (bt_hf->inband_ring) {
+	if (bt_hf && bt_hf->inband_ring) {
 		bt_hf->inband_ring(hf, (bool)inband);
 	}
 
@@ -1730,7 +1732,7 @@ int bcs_handle(struct at_client *hf_at)
 
 	atomic_set_bit(hf->flags, BT_HFP_HF_FLAG_CODEC_CONN);
 
-	if (bt_hf->codec_negotiate) {
+	if (bt_hf && bt_hf->codec_negotiate) {
 		bt_hf->codec_negotiate(hf, codec_id);
 		return 0;
 	}
@@ -1810,7 +1812,7 @@ static int ccwa_handle(struct at_client *hf_at)
 	}
 
 	hf_call_state_update(call, BT_HFP_HF_CALL_STATE_INCOMING);
-	if (bt_hf->call_waiting) {
+	if (bt_hf && bt_hf->call_waiting) {
 		bt_hf->call_waiting(call, number, (uint8_t)type);
 	}
 
@@ -1927,7 +1929,7 @@ static int cnum_handle(struct at_client *hf_at)
 		LOG_INF("Cannot get service");
 	}
 
-	if (bt_hf->subscriber_number) {
+	if (bt_hf && bt_hf->subscriber_number) {
 		bt_hf->subscriber_number(hf, number, (uint8_t)type, (uint8_t)service);
 	}
 
@@ -2272,7 +2274,7 @@ static void slc_completed(struct at_client *hf_at)
 	struct bt_hfp_hf *hf = CONTAINER_OF(hf_at, struct bt_hfp_hf, at);
 	struct bt_conn *conn = hf->acl;
 
-	if (bt_hf->connected) {
+	if (bt_hf && bt_hf->connected) {
 		bt_hf->connected(conn, hf);
 	}
 
@@ -4170,7 +4172,7 @@ static int bvra_1_finish(struct at_client *hf_at,
 
 	if (result == BT_AT_RESULT_OK) {
 		if (!atomic_test_and_set_bit(hf->flags, BT_HFP_HF_FLAG_VRE_ACTIVATE)) {
-			if (bt_hf->voice_recognition) {
+			if (bt_hf && bt_hf->voice_recognition) {
 				bt_hf->voice_recognition(hf, true);
 			}
 		}
@@ -4187,7 +4189,7 @@ static int bvra_0_finish(struct at_client *hf_at,
 	LOG_DBG("AT+BVRA=0 (result %d) on %p", result, hf);
 
 	if (atomic_test_and_clear_bit(hf->flags, BT_HFP_HF_FLAG_VRE_ACTIVATE)) {
-		if (bt_hf->voice_recognition) {
+		if (bt_hf && bt_hf->voice_recognition) {
 			bt_hf->voice_recognition(hf, false);
 		}
 	}
@@ -4285,7 +4287,7 @@ static void hfp_hf_disconnected(struct bt_rfcomm_dlc *dlc)
 	struct bt_hfp_hf *hf = CONTAINER_OF(dlc, struct bt_hfp_hf, rfcomm_dlc);
 
 	LOG_DBG("hf disconnected!");
-	if (bt_hf->disconnected) {
+	if (bt_hf && bt_hf->disconnected) {
 		bt_hf->disconnected(hf);
 	}
 
