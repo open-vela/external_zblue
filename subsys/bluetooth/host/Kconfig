@@ -850,6 +850,7 @@ config BT_SCAN_AND_INITIATE_IN_PARALLEL
 	depends on (BT_CENTRAL && BT_OBSERVER)
 	select BT_EXT_ADV if BT_BROADCASTER
 	select BT_SCAN_WITH_IDENTITY if !BT_PRIVACY
+	default y
 	help
 	  Allow concurrent scanning and initiating.
 	  This will allow the application to initiate a connection
