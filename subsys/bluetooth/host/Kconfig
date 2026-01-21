@@ -281,6 +281,7 @@ endif # BT_SETTINGS
 
 config BT_FILTER_ACCEPT_LIST
 	bool "Filter accept list support"
+	default y
 	help
 	  This option enables the filter accept list API. This takes advantage of the
 	  filtering feature of a BLE controller.
