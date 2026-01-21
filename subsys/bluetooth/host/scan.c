@@ -503,7 +503,7 @@ static int scan_check_if_state_allowed(struct bt_dev *hdev, enum bt_le_scan_user
 		return -EALREADY;
 	}
 
-	if (flag == BT_LE_SCAN_USER_EXPLICIT_SCAN && !BT_LE_STATES_SCAN_INIT(hdev->scan_ctx->le.states) &&
+	if (flag == BT_LE_SCAN_USER_EXPLICIT_SCAN && !BT_LE_STATES_SCAN_INIT(hdev->le.states) &&
 	    atomic_test_bit(hdev->flags, BT_DEV_INITIATING)) {
 		return -EPERM;
 	}
@@ -559,7 +559,7 @@ static void check_pending_conn(struct bt_dev *hdev, const bt_addr_le_t *id_addr,
 	/* No connections are allowed during explicit scanning
 	 * when the controller does not support concurrent scanning and initiating.
 	 */
-	if (!BT_LE_STATES_SCAN_INIT(hdev->scan_ctx->le.states) &&
+	if (!BT_LE_STATES_SCAN_INIT(hdev->le.states) &&
 	    atomic_test_bit(hdev->scan_ctx->scan_state.scan_flags, BT_LE_SCAN_USER_EXPLICIT_SCAN)) {
 		return;
 	}
