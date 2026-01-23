@@ -2844,10 +2844,7 @@ struct bt_conn *bt_conn_pair_br_mc(uint8_t dev_id, bt_addr_t *bdaddr, bt_securit
 	}
 
 	/* Tell controller to delete the link key if it has one stored */
-	err = bt_br_delete_stored_link_key(hdev, bdaddr, 1);
-	if (err) {
-		return NULL;
-	}
+	bt_br_delete_stored_link_key(hdev, bdaddr, 0);
 
 	if (!BT_FEAT_SSP(hdev->features)) {
 		/* pin type */
