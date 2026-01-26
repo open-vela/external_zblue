@@ -1585,7 +1585,7 @@ int bt_br_unpair_mc(uint8_t dev_id, bt_addr_t *bdaddr)
 	bt_keys_link_key_clear_addr(hdev, bdaddr);
 
 	/* Delete stored link key from controller */
-	bt_br_delete_stored_link_key(hdev, bdaddr, true);
+	bt_br_delete_stored_link_key(hdev, bdaddr, false);
 
 	addr.type = BT_ADDR_LE_PUBLIC;
 	memcpy(&addr, bdaddr, sizeof(addr));
