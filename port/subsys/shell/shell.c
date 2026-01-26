@@ -301,13 +301,18 @@ int main(int argc, char *argv[])
 		printf("zblue> ");
 		fflush(stdout);
 
+		if (buffer) {
+			free(buffer);
+			buffer = NULL;
+			size = 0;
+		}
+
 		memset(_argv, 0, sizeof(_argv));
 		len = getline(&buffer, &size, stdin);
 		if (-1 == len)
 			goto end;
 
-		buffer[len] = '\0';
-		if (buffer[len - 1] == '\n')
+		if (len > 0 && buffer[len - 1] == '\n')
 			buffer[len - 1] = '\0';
 
 		if (buffer[0] == '!') {
@@ -335,18 +340,17 @@ int main(int argc, char *argv[])
 				cmds_show(&sh);
 			} else {
 				ret = execute_cmd(&sh, _argc, _argv);
+				if (ret)
+					cmds_show(&sh);
 			}
 
 			_argc = 0;
 		}
-	}
 
-return 0;
+	}
 
 end:
 	free(buffer);
-	if (ret)
-		cmds_show(&sh);
 
 	return 0;
 }
