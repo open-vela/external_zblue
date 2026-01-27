@@ -48,6 +48,15 @@ config BT_EATT
 	  enabled additional L2CAP channels can be connected as bearers enabling
 	  multiple outstanding request.
 
+config BT_ATT_OVER_BR
+	bool "ATT Bearers over BR/EDR"
+	default y
+	depends on BT_CLASSIC
+	help
+	  This option enables support for ATT bearers over BR/EDR. When
+	  enabled, BR/EDR L2CAP channels can be connected as bearers enabling
+	  ATT data transport over BR/EDR links.
+
 if BT_EATT
 
 config BT_EATT_MAX
