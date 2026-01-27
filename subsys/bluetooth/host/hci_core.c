@@ -3866,6 +3866,9 @@ static int set_event_mask(struct bt_dev *hdev)
 		mask |= BT_EVT_MASK_REMOTE_NAME_REQ_COMPLETE;
 		mask |= BT_EVT_MASK_REMOTE_FEATURES;
 		mask |= BT_EVT_MASK_ROLE_CHANGE;
+#ifdef CONFIG_BT_POWER_MODE_CONTROL
+		mask |= BT_EVT_MASK_MODE_CHANGE;
+#endif /* CONFIG_BT_POWER_MODE_CONTROL */
 		mask |= BT_EVT_MASK_PIN_CODE_REQ;
 		mask |= BT_EVT_MASK_LINK_KEY_REQ;
 		mask |= BT_EVT_MASK_LINK_KEY_NOTIFY;
