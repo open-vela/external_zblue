@@ -200,6 +200,9 @@ struct bt_dev_att_ctx {
 	struct bt_att_req cancel;
 	const struct bt_gatt_authorization_cb *authorization_cb;
 	k_tid_t att_handle_rsp_thread;
+#if defined(CONFIG_BT_ATT_OVER_BR)
+	sys_slist_t conn_cbs;
+#endif
 } att_ctx_pool[CONFIG_BT_NUM_CTLRS];
 
 #if defined(CONFIG_BT_ATT_ERR_TO_STR)
@@ -3293,9 +3296,16 @@ static void bt_att_connected(struct bt_l2cap_chan *chan)
 
 	if (IS_ENABLED(CONFIG_BT_ATT_OVER_BR) && bt_att_is_over_br(att_chan)) {
 		struct bt_l2cap_br_chan *br_chan = BT_L2CAP_BR_CHAN(chan);
+		struct bt_att_conn_cb *callback;
 
 		LOG_DBG("chan %p cid 0x%04x", br_chan, br_chan->tx.cid);
 		bt_gatt_connected(br_chan->chan.conn);
+
+		SYS_SLIST_FOR_EACH_CONTAINER(&chan->conn->hdev->att_ctx->conn_cbs, callback, _node) {
+			if (callback->connected) {
+				callback->connected(chan->conn);
+			}
+		}
 		return;
 	}
 
@@ -3327,9 +3337,15 @@ static void bt_att_disconnected(struct bt_l2cap_chan *chan)
 
 	if (IS_ENABLED(CONFIG_BT_ATT_OVER_BR) && bt_att_is_over_br(att_chan)) {
 		struct bt_l2cap_br_chan *br_chan = BT_L2CAP_BR_CHAN(chan);
+		struct bt_att_conn_cb *callback;
 
 		LOG_DBG("chan %p cid 0x%04x", br_chan, br_chan->tx.cid);
 		bt_gatt_disconnected(br_chan->chan.conn);
+		SYS_SLIST_FOR_EACH_CONTAINER(&chan->conn->hdev->att_ctx->conn_cbs, callback, _node) {
+			if (callback->disconnected) {
+				callback->disconnected(chan->conn);
+			}
+		}
 		return;
 	}
 
@@ -3961,6 +3977,42 @@ static void bt_eatt_init(struct bt_dev *hdev)
 }
 
 #if defined(CONFIG_BT_ATT_OVER_BR)
+int bt_att_conn_cb_register_mc(uint8_t dev_id, struct bt_att_conn_cb *cb)
+{
+	struct bt_dev *hdev = bt_dev_get(dev_id);
+
+	if (!hdev) {
+		return -ENODEV;
+	}
+
+	if (sys_slist_find(&hdev->att_ctx->conn_cbs, &cb->_node, NULL)) {
+		return -EEXIST;
+	}
+
+	sys_slist_append(&hdev->att_ctx->conn_cbs, &cb->_node);
+
+	return 0;
+}
+
+int bt_att_conn_cb_unregister_mc(uint8_t dev_id, struct bt_att_conn_cb *cb)
+{
+	struct bt_dev *hdev = bt_dev_get(dev_id);
+
+	if (!hdev) {
+		return -ENODEV;
+	}
+
+	if (cb == NULL) {
+		return -EINVAL;
+	}
+
+	if (!sys_slist_find_and_remove(&hdev->att_ctx->conn_cbs, &cb->_node)) {
+		return -ENOENT;
+	}
+
+	return 0;
+}
+
 int bt_att_br_connect(struct bt_conn *conn)
 {
 	struct bt_att *att;
@@ -4011,24 +4063,19 @@ int bt_att_br_connect(struct bt_conn *conn)
 
 int bt_att_br_disconnect(struct bt_conn *conn)
 {
-	struct bt_att_chan *chan;
-	struct bt_att *att;
-	int err = -ENOTCONN;
+	struct bt_l2cap_chan *chan;
 
 	if (!conn) {
 		return -EINVAL;
 	}
 
-	chan = att_get_fixed_chan(conn);
-	att = chan->att;
-
-	SYS_SLIST_FOR_EACH_CONTAINER(&att->chans, chan, node) {
-		if (bt_att_is_over_br(chan)) {
-			err = bt_l2cap_chan_disconnect(&chan->br_chan.chan);
-		}
+	chan = bt_l2cap_br_lookup_psm(conn, BT_L2CAP_PSM_ATT);
+	if (!chan) {
+		LOG_DBG("chan %p has disconnected", chan);
+		return -EALREADY;
 	}
 
-	return err;
+	return bt_l2cap_chan_disconnect(chan);
 }
 
 static int bt_att_br_accept(struct bt_conn *conn, struct bt_l2cap_server *server,
@@ -4089,6 +4136,7 @@ void bt_att_over_br_init(struct bt_dev *hdev)
 
 	/* register ATT BR l2cap server. */
 
+	sys_slist_init(&hdev->att_ctx->conn_cbs);
 	err = bt_l2cap_br_server_register(&att_br_l2cap);
 	if (err < 0) {
 		LOG_ERR("ATT BR Server registration failed %d", err);
