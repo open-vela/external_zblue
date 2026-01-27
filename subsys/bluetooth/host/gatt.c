@@ -31,6 +31,7 @@
 #include <zephyr/bluetooth/classic/sdp.h>
 #endif
 
+#include <zephyr/bluetooth/att.h>
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/bluetooth/uuid.h>
 #include <zephyr/bluetooth/gatt.h>
