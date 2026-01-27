@@ -292,6 +292,7 @@ struct bt_att_req {
 	void *user_data;
 };
 
+void bt_att_over_br_init(struct bt_dev *hdev);
 void bt_att_init(struct bt_dev *hdev);
 uint16_t bt_att_get_mtu(struct bt_conn *conn);
 uint16_t bt_att_get_uatt_mtu(struct bt_conn *conn);
