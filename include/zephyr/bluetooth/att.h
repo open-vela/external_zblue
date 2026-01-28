@@ -99,6 +99,9 @@ extern "C" {
 /* 0xffff is defined as the maximum, and thus last, valid attribute handle */
 #define BT_ATT_LAST_ATTRIBUTE_HANDLE            0xffff
 
+/* 0x001f is ATT fixed L2CAP_PSM number */
+#define BT_L2CAP_PSM_ATT		0x001f
+
 /** Converts a ATT error to string.
  *
  * The error codes are described in the Bluetooth Core specification,
