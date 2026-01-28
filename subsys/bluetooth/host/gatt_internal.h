@@ -30,6 +30,9 @@
 						BT_GATT_PERM_READ_LESC)
 
 void bt_gatt_init(struct bt_dev *hdev);
+#if defined(CONFIG_BT_ATT_OVER_BR)
+void bt_gatt_service_sdp_init(struct bt_dev *hdev);
+#endif /* CONFIG_BT_ATT_OVER_BR */
 void bt_gatt_connected(struct bt_conn *conn);
 void bt_gatt_att_max_mtu_changed(struct bt_conn *conn, uint16_t tx, uint16_t rx);
 void bt_gatt_encrypt_change(struct bt_conn *conn);

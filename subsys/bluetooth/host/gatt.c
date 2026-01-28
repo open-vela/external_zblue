@@ -26,6 +26,11 @@
 
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/bluetooth/bluetooth.h>
+
+#if defined(CONFIG_BT_ATT_OVER_BR)
+#include <zephyr/bluetooth/classic/sdp.h>
+#endif
+
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/bluetooth/uuid.h>
 #include <zephyr/bluetooth/gatt.h>
@@ -189,6 +194,62 @@ struct bt_dev_gatt_ctx {
 	struct bt_gatt_indicate_params sc_restore_params[CONFIG_BT_MAX_CONN];
 	uint16_t sc_range[CONFIG_BT_MAX_CONN][2];
 } gatt_ctx_pool[CONFIG_BT_NUM_CTLRS];
+
+#if defined(CONFIG_BT_ATT_OVER_BR)
+/* Generic ATT SDP record */
+static struct bt_sdp_attribute gatt_attrs[] = {
+	BT_SDP_NEW_SERVICE,
+	BT_SDP_LIST(
+		BT_SDP_ATTR_SVCLASS_ID_LIST,
+		BT_SDP_TYPE_SIZE_VAR(BT_SDP_SEQ8, 3), /* 35 03 */
+		BT_SDP_DATA_ELEM_LIST(
+		{
+			BT_SDP_TYPE_SIZE(BT_SDP_UUID16), /* 19 */
+			BT_SDP_ARRAY_16(BT_SDP_GENERIC_ATTRIB_SVCLASS) /* 18 01 */
+		},
+		)
+	),
+	BT_SDP_LIST(
+		BT_SDP_ATTR_PROTO_DESC_LIST,
+		BT_SDP_TYPE_SIZE_VAR(BT_SDP_SEQ8, 19), /* 35 13 */
+		BT_SDP_DATA_ELEM_LIST(
+		{
+			BT_SDP_TYPE_SIZE_VAR(BT_SDP_SEQ8, 6), /* 35 06 */
+			BT_SDP_DATA_ELEM_LIST(
+			{
+				BT_SDP_TYPE_SIZE(BT_SDP_UUID16), /* 19 */
+				BT_SDP_ARRAY_16(BT_SDP_PROTO_L2CAP) /* 01 00 */
+			},
+			{
+				BT_SDP_TYPE_SIZE(BT_SDP_UINT16), /* 09 */
+				BT_SDP_ARRAY_16(BT_L2CAP_PSM_ATT) /* 00 1F */
+			},
+			)
+		},
+		{
+			BT_SDP_TYPE_SIZE_VAR(BT_SDP_SEQ8, 9), /* 35 09 */
+			BT_SDP_DATA_ELEM_LIST(
+			{
+				BT_SDP_TYPE_SIZE(BT_SDP_UUID16), /* 19 */
+				BT_SDP_ARRAY_16(BT_SDP_PROTO_ATT) /* 00 07 */
+			},
+			{
+				BT_SDP_TYPE_SIZE(BT_SDP_UINT16), /* 09 */
+				BT_SDP_ARRAY_16(0) /* 00 00, assign on bt_gatt_service_init */
+			},
+			{
+				BT_SDP_TYPE_SIZE(BT_SDP_UINT16), /* 09 */
+				BT_SDP_ARRAY_16(0) /* 00 00, assign on bt_gatt_service_init */
+			},
+			)
+		},
+		)
+	),
+	BT_SDP_SERVICE_NAME("Generic ATT"),
+};
+
+static struct bt_sdp_record gatt_rec = BT_SDP_RECORD(gatt_attrs);
+#endif
 
 static ssize_t read_name(struct bt_conn *conn, const struct bt_gatt_attr *attr,
 			 void *buf, uint16_t len, uint16_t offset)
@@ -1499,6 +1560,30 @@ static void gatt_store_ccc_cf(struct bt_dev *hdev, uint8_t id, const bt_addr_le_
 		}
 	}
 }
+
+#if defined(CONFIG_BT_ATT_OVER_BR)
+void bt_gatt_service_sdp_init(struct bt_dev *hdev)
+{
+	uint16_t handle = 0;
+
+	STRUCT_SECTION_FOREACH(bt_gatt_service_static, svc) {
+	/* Register SDP service */
+
+	/* First attribute in service is `service declaration` */
+	const struct bt_gatt_attr *attr = svc->attrs;
+	if (!bt_uuid_cmp(attr->user_data, BT_UUID_GATT)) {
+		uint16_t *start_hdl = (uint16_t *)SDP_GATT_START_HDL_PTR_FROM_ATTR(gatt_attrs);
+		uint16_t *end_hdl = (uint16_t *)SDP_GATT_END_HDL_PTR_FROM_ATTR(gatt_attrs);
+
+		*start_hdl = handle + 1;
+		*end_hdl = handle + svc->attr_count;
+		bt_sdp_register_service(&gatt_rec);
+	}
+
+		handle += svc->attr_count;
+	}
+}
+#endif /* CONFIG_BT_ATT_OVER_BR */
 
 static void bt_gatt_service_init(struct bt_dev *hdev)
 {
