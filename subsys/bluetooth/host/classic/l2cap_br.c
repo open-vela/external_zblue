@@ -17,7 +17,7 @@
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/conn.h>
-#include <zephyr/drivers/bluetooth/hci_driver.h>
+#include <zephyr/bluetooth/l2cap.h>
 
 #include "host/buf_view.h"
 #include "host/hci_core.h"
@@ -46,9 +46,6 @@ LOG_MODULE_REGISTER(bt_l2cap_br, CONFIG_BT_L2CAP_LOG_LEVEL);
 #define L2CAP_BR_CID_DYN_END	0xffff
 #define L2CAP_BR_CID_IS_DYN(_cid) \
 	(_cid >= L2CAP_BR_CID_DYN_START && _cid <= L2CAP_BR_CID_DYN_END)
-
-#define L2CAP_BR_MIN_MTU	48
-#define L2CAP_BR_DEFAULT_MTU	672
 
 #define L2CAP_BR_PSM_SDP	0x0001
 
@@ -997,6 +994,9 @@ destroy:
 	/* Reset internal members of common channel */
 	bt_l2cap_br_chan_set_state(chan, BT_L2CAP_DISCONNECTED);
 	BR_CHAN(chan)->psm = 0U;
+	if (L2CAP_BR_CID_IS_DYN(BR_CHAN(chan)->rx.cid)) {
+		BR_CHAN(chan)->rx.cid = 0U;
+	}
 #endif
 	if (chan->destroy) {
 		chan->destroy(chan);
