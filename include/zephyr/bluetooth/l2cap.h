@@ -72,6 +72,13 @@ extern "C" {
  */
 #define BT_L2CAP_SDU_RX_MTU (BT_L2CAP_RX_MTU - BT_L2CAP_SDU_HDR_SIZE)
 
+/* Minimum MTU for BR/EDR L2CAP channels (Classic Bluetooth). */
+#define L2CAP_BR_MIN_MTU	48
+
+/* Default MTU for BR/EDR L2CAP channels (Classic Bluetooth). */
+#define L2CAP_BR_DEFAULT_MTU	672
+
+
 /**
  *
  *  @brief Helper to calculate needed buffer size for L2CAP SDUs.
