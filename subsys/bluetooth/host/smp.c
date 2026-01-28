@@ -876,8 +876,8 @@ static void sc_derive_link_key(struct bt_smp *smp)
 	SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&conn->hdev->bt_auth_info_cbs, listener,
 						next, node) {
 		if (listener->pairing_complete_ctkd) {
-			/* Derive BR Link Key over LE link */
-			listener->pairing_complete_ctkd(conn, bond_flag);
+			/* Derive BR Link Key over LE link , is_linkkey = true */
+			listener->pairing_complete_ctkd(conn, true);
 		}
 	}
 
@@ -975,8 +975,8 @@ static void smp_pairing_br_complete(struct bt_smp_br *smp, uint8_t status)
 		SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&conn->hdev->bt_auth_info_cbs, listener,
 						  next, node) {
 			if (listener->pairing_complete_ctkd) {
-				/* Derive LE LTK over BR conn */
-				listener->pairing_complete_ctkd(conn, bond_flag);
+				/* Derive LE LTK over BR conn , is_linkkey = false */
+				listener->pairing_complete_ctkd(conn, false);
 			}
 		}
 
