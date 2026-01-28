@@ -3860,6 +3860,7 @@ static int set_event_mask(struct bt_dev *hdev)
 		 * Bluetooth 4.0 feature set
 		 */
 		mask |= BT_EVT_MASK_INQUIRY_COMPLETE;
+		mask |= BT_EVT_MASK_INQUIRY_RESULT;
 		mask |= BT_EVT_MASK_CONN_COMPLETE;
 		mask |= BT_EVT_MASK_CONN_REQUEST;
 		mask |= BT_EVT_MASK_AUTH_COMPLETE;
