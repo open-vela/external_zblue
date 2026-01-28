@@ -4513,6 +4513,10 @@ int bt_conn_init(struct bt_dev *hdev)
 
 	bt_l2cap_init(hdev);
 
+#if defined(CONFIG_BT_ATT_OVER_BR)
+	bt_att_over_br_init(hdev);
+#endif /* CONFIG_BT_ATT_OVER_BR */
+
 	/* Initialize background scan */
 	if (IS_ENABLED(CONFIG_BT_CENTRAL)) {
 		for (i = 0; i < ARRAY_SIZE(hdev->conn_ctx->acl_conns); i++) {
