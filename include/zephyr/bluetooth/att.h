@@ -149,6 +149,64 @@ int bt_att_br_connect(struct bt_conn *conn);
  * @return 0 in case of success or negative value in case of error.
  */
 int bt_att_br_disconnect(struct bt_conn *conn);
+
+struct bt_att_conn_cb {
+	/** @brief The ATT channel was connected.
+	 *
+	 *  This callback notifies the application of ATT over BR connection.
+	 *
+	 *  @param conn New connection object.
+	 */
+	void (*connected)(struct bt_conn *conn);
+
+	/** @brief A connection has been disconnected.
+	 *
+	 *  This callback notifies the application that ATT_BR connection
+	 *  has been disconnected.
+	 *
+	 *  @param conn Connection object.
+	 */
+	void (*disconnected)(struct bt_conn *conn);
+
+	/** @internal Internally used field for list handling */
+	sys_snode_t _node;
+};
+
+/** @brief Register connection callbacks.
+ *
+ *  Register callbacks to monitor the state of connections.
+ *
+ *  @param cb Callback struct. Must point to memory that remains valid.
+ *
+ * @retval 0 Success.
+ * @retval -EEXIST if @p cb was already registered.
+ */
+int bt_att_conn_cb_register_mc(uint8_t dev_id, struct bt_att_conn_cb *cb);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_att_conn_cb_register(struct bt_att_conn_cb *cb)
+{
+	return bt_att_conn_cb_register_mc(0, cb);
+}
+#endif
+
+/**
+ * @brief Unregister connection callbacks.
+ *
+ * Unregister the state of connections callbacks.
+ *
+ * @param cb Callback struct point to memory that remains valid.
+ *
+ * @retval 0 Success
+ * @retval -EINVAL If @p cb is NULL
+ * @retval -ENOENT if @p cb was not registered
+ */
+int bt_att_conn_cb_unregister_mc(uint8_t dev_id, struct bt_att_conn_cb *cb);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline int bt_att_conn_cb_unregister(struct bt_att_conn_cb *cb)
+{
+	return bt_att_conn_cb_unregister_mc(0, cb);
+}
+#endif
 #endif
 
 #if defined(CONFIG_BT_EATT)
