@@ -19,6 +19,7 @@
 #include <zephyr/bluetooth/uuid.h>
 #include <zephyr/bluetooth/att.h>
 #include <zephyr/bluetooth/gatt.h>
+#include <zephyr/bluetooth/l2cap.h>
 
 #include "common/bt_str.h"
 
@@ -34,6 +35,9 @@
 LOG_MODULE_REGISTER(bt_att);
 
 #define ATT_CHAN(_ch) CONTAINER_OF(_ch, struct bt_att_chan, chan.chan)
+#if defined(CONFIG_BT_ATT_OVER_BR)
+#define ATT_BR_CHAN(_ch) CONTAINER_OF(_ch, struct bt_att_chan, br_chan.chan)
+#endif /* CONFIG_BT_ATT_OVER_BR */
 #define ATT_REQ(_node) CONTAINER_OF(_node, struct bt_att_req, node)
 
 #define ATT_CMD_MASK				0x40
@@ -75,6 +79,7 @@ enum {
 	ATT_ENHANCED,
 	ATT_PENDING_SENT,
 	ATT_OUT_OF_SYNC_SENT,
+	ATT_OVER_BREDR,
 
 	/* Total number of flags - must be at the end of the enum */
 	ATT_NUM_FLAGS,
@@ -103,7 +108,12 @@ struct bt_att_tx_meta {
 struct bt_att_chan {
 	/* Connection this channel is associated with */
 	struct bt_att		*att;
-	struct bt_l2cap_le_chan	chan;
+	union {
+		struct bt_l2cap_le_chan	chan;
+#if defined(CONFIG_BT_ATT_OVER_BR)
+		struct bt_l2cap_br_chan	br_chan;
+#endif
+	};
 	ATOMIC_DEFINE(flags, ATT_NUM_FLAGS);
 	struct bt_att_req	*req;
 	struct k_fifo		tx_queue;
@@ -119,6 +129,16 @@ static bool bt_att_is_enhanced(struct bt_att_chan *chan)
 	}
 
 	return atomic_test_bit(chan->flags, ATT_ENHANCED);
+}
+
+static bool bt_att_is_over_br(struct bt_att_chan *chan)
+{
+	/* Optimization. */
+	if (!IS_ENABLED(CONFIG_BT_ATT_OVER_BR)) {
+		return false;
+	}
+
+	return atomic_test_bit(chan->flags, ATT_OVER_BREDR);
 }
 
 static uint16_t bt_att_mtu(struct bt_att_chan *chan)
@@ -327,6 +347,7 @@ static int chan_send(struct bt_att_chan *chan, struct net_buf *buf)
 	int err;
 	struct bt_att_tx_meta_data *data = bt_att_get_tx_meta_data(buf);
 	struct bt_att_chan *prev_chan = data->att_chan;
+	struct bt_l2cap_chan *l2cap_chan;
 
 	hdr = (void *)buf->data;
 
@@ -405,8 +426,14 @@ static int chan_send(struct bt_att_chan *chan, struct net_buf *buf)
 	net_buf_simple_save(&buf->b, &state);
 
 	data->att_chan = chan;
+	if (IS_ENABLED(CONFIG_BT_ATT_OVER_BR) && bt_att_is_over_br(chan)) {
+		l2cap_chan = &chan->br_chan.chan;
+		err = bt_l2cap_chan_send(l2cap_chan, buf);
+	} else {
+		l2cap_chan = &chan->chan.chan;
+		err = bt_l2cap_send_pdu(&chan->chan, buf, NULL, NULL);
+	}
 
-	err = bt_l2cap_send_pdu(&chan->chan, buf, NULL, NULL);
 	if (err) {
 		if (err == -ENOBUFS) {
 			LOG_ERR("Ran out of TX buffers or contexts.");
@@ -3044,6 +3071,23 @@ static struct bt_att *att_get(struct bt_conn *conn)
 		return NULL;
 	}
 
+	if (IS_ENABLED(CONFIG_BT_CLASSIC) &&
+	    conn->type == BT_CONN_TYPE_BR) {
+		chan = bt_l2cap_br_lookup_psm(conn, BT_L2CAP_PSM_ATT);
+		if (!chan) {
+			LOG_ERR("Unable to find ATT channel");
+			return NULL;
+		}
+
+		att_chan = ATT_BR_CHAN(chan);
+		if (!atomic_test_bit(att_chan->flags, ATT_CONNECTED)) {
+			LOG_ERR("ATT channel not connected");
+			return NULL;
+		}
+
+		return att_chan->att;
+	}
+
 	chan = bt_l2cap_le_lookup_rx_cid(conn, BT_L2CAP_CID_ATT);
 	if (!chan) {
 		LOG_ERR("Unable to find ATT channel");
@@ -3238,9 +3282,9 @@ static void att_chan_attach(struct bt_att *att, struct bt_att_chan *chan)
 static void bt_att_connected(struct bt_l2cap_chan *chan)
 {
 	struct bt_att_chan *att_chan = ATT_CHAN(chan);
-	struct bt_l2cap_le_chan *le_chan = BT_L2CAP_LE_CHAN(chan);
+	struct bt_l2cap_le_chan *le_chan;
 
-	LOG_DBG("chan %p cid 0x%04x", le_chan, le_chan->tx.cid);
+	LOG_DBG("chan %p conn %p", chan, chan->conn);
 
 	atomic_set_bit(att_chan->flags, ATT_CONNECTED);
 
@@ -3248,6 +3292,17 @@ static void bt_att_connected(struct bt_l2cap_chan *chan)
 
 	k_work_init_delayable(&att_chan->timeout_work, att_timeout);
 
+	if (IS_ENABLED(CONFIG_BT_ATT_OVER_BR) && bt_att_is_over_br(att_chan)) {
+		struct bt_l2cap_br_chan *br_chan = BT_L2CAP_BR_CHAN(chan);
+
+		LOG_DBG("chan %p cid 0x%04x", br_chan, br_chan->tx.cid);
+		bt_gatt_connected(br_chan->chan.conn);
+		return;
+	}
+
+	le_chan = BT_L2CAP_LE_CHAN(chan);
+
+	LOG_DBG("chan %p cid 0x%04x", le_chan, le_chan->tx.cid);
 	bt_gatt_connected(le_chan->chan.conn);
 }
 
@@ -3255,9 +3310,7 @@ static void bt_att_disconnected(struct bt_l2cap_chan *chan)
 {
 	struct bt_att_chan *att_chan = ATT_CHAN(chan);
 	struct bt_att *att = att_chan->att;
-	struct bt_l2cap_le_chan *le_chan = BT_L2CAP_LE_CHAN(chan);
-
-	LOG_DBG("chan %p cid 0x%04x", le_chan, le_chan->tx.cid);
+	struct bt_l2cap_le_chan *le_chan;
 
 	if (!att_chan->att) {
 		LOG_DBG("Ignore disconnect on detached ATT chan");
@@ -3273,6 +3326,17 @@ static void bt_att_disconnected(struct bt_l2cap_chan *chan)
 
 	att_reset(att);
 
+	if (IS_ENABLED(CONFIG_BT_ATT_OVER_BR) && bt_att_is_over_br(att_chan)) {
+		struct bt_l2cap_br_chan *br_chan = BT_L2CAP_BR_CHAN(chan);
+
+		LOG_DBG("chan %p cid 0x%04x", br_chan, br_chan->tx.cid);
+		bt_gatt_disconnected(br_chan->chan.conn);
+		return;
+	}
+
+	le_chan = BT_L2CAP_LE_CHAN(chan);
+
+	LOG_DBG("chan %p cid 0x%04x", le_chan, le_chan->tx.cid);
 	bt_gatt_disconnected(le_chan->chan.conn);
 }
 
@@ -3447,9 +3511,17 @@ static struct bt_att_chan *att_chan_new(struct bt_att *att, atomic_val_t flags)
 	}
 
 	(void)memset(chan, 0, sizeof(*chan));
-	chan->chan.chan.ops = &ops;
 	k_fifo_init(&chan->tx_queue);
 	atomic_set(chan->flags, flags);
+	if (bt_att_is_over_br(chan)) {
+#if defined(CONFIG_BT_ATT_OVER_BR)
+		chan->br_chan.chan.ops = &ops;
+		chan->br_chan.required_sec_level = BT_SECURITY_L0;
+#endif
+	} else {
+		chan->chan.chan.ops = &ops;
+	}
+
 	chan->att = att;
 	att_chan_attach(att, chan);
 
@@ -3458,6 +3530,13 @@ static struct bt_att_chan *att_chan_new(struct bt_att *att, atomic_val_t flags)
 		 * TX MTU is received on L2CAP-level.
 		 */
 		chan->chan.rx.mtu = BT_LOCAL_ATT_MTU_EATT;
+#if defined(CONFIG_BT_ATT_OVER_BR)
+	} else if (bt_att_is_over_br(chan)) {
+		/* ATT over BR/EDR: The MTU will be negotiated via L2CAP configuration.
+		 * The TX MTU is received on L2CAP-level.
+		 */
+		chan->br_chan.rx.mtu = 672;
+#endif
 	} else {
 		/* UATT: L2CAP Basic is not able to communicate the L2CAP MTU
 		 * without help. ATT has to manage the MTU. The initial MTU is
@@ -3881,6 +3960,144 @@ static void bt_eatt_init(struct bt_dev *hdev)
 	bt_l2cap_register_ecred_cb(&cb);
 #endif /* CONFIG_BT_EATT */
 }
+
+#if defined(CONFIG_BT_ATT_OVER_BR)
+int bt_att_br_connect(struct bt_conn *conn)
+{
+	struct bt_att *att;
+	struct bt_att_chan *att_chan;
+	struct bt_l2cap_chan *chan;
+	struct bt_dev_att_ctx *ctx;
+
+	if (!conn) {
+		return -EINVAL;
+	}
+
+	LOG_DBG("conn %p handle %u", conn, conn->handle);
+
+	chan = bt_l2cap_br_lookup_psm(conn, BT_L2CAP_PSM_ATT);
+	if (chan) {
+		LOG_DBG("chan %p has connected", chan);
+		return -EALREADY;
+	}
+
+	if (k_mem_slab_alloc(&att_slab, (void **)&att, K_NO_WAIT)) {
+		LOG_ERR("No available ATT context for conn %p", conn);
+		return -ENOMEM;
+	}
+
+	ctx = conn->hdev->att_ctx;
+	ctx->att_handle_rsp_thread = k_current_get();
+
+	(void)memset(att, 0, sizeof(*att));
+	att->conn = conn;
+	sys_slist_init(&att->reqs);
+	sys_slist_init(&att->chans);
+
+#if defined(CONFIG_BT_EATT)
+	k_work_init_delayable(&att->eatt.connection_work,
+			      att_enhanced_connection_work_handler);
+#endif /* CONFIG_BT_EATT */
+
+	att_chan = att_chan_new(att, BIT(ATT_OVER_BREDR));
+	if (!att_chan) {
+		k_mem_slab_free(&att_slab, (void *)att);
+		return -ENOMEM;
+	}
+
+	LOG_DBG("conn %p att %p", conn, att);
+
+	return bt_l2cap_chan_connect(conn, &att_chan->br_chan.chan, BT_L2CAP_PSM_ATT);
+}
+
+int bt_att_br_disconnect(struct bt_conn *conn)
+{
+	struct bt_att_chan *chan;
+	struct bt_att *att;
+	int err = -ENOTCONN;
+
+	if (!conn) {
+		return -EINVAL;
+	}
+
+	chan = att_get_fixed_chan(conn);
+	att = chan->att;
+
+	SYS_SLIST_FOR_EACH_CONTAINER(&att->chans, chan, node) {
+		if (bt_att_is_over_br(chan)) {
+			err = bt_l2cap_chan_disconnect(&chan->br_chan.chan);
+		}
+	}
+
+	return err;
+}
+
+static int bt_att_br_accept(struct bt_conn *conn, struct bt_l2cap_server *server,
+	struct bt_l2cap_chan **chan)
+{
+	struct bt_att_chan *att_chan;
+	struct bt_l2cap_chan *l2cap_chan;
+	struct bt_att *att;
+	struct bt_dev_att_ctx *ctx = conn->hdev->att_ctx;
+
+	LOG_DBG("conn %p handle %u", conn, conn->handle);
+
+	l2cap_chan = bt_l2cap_br_lookup_psm(conn, BT_L2CAP_PSM_ATT);
+	if (l2cap_chan) {
+		att_chan = ATT_BR_CHAN(l2cap_chan);
+		*chan = &att_chan->br_chan.chan;
+		return 0;
+	}
+
+	if (k_mem_slab_alloc(&att_slab, (void **)&att, K_NO_WAIT)) {
+		LOG_ERR("No available ATT context for conn %p", conn);
+		return -ENOMEM;
+	}
+
+	ctx->att_handle_rsp_thread = k_current_get();
+
+	(void)memset(att, 0, sizeof(*att));
+	att->conn = conn;
+	sys_slist_init(&att->reqs);
+	sys_slist_init(&att->chans);
+
+#if defined(CONFIG_BT_EATT)
+	k_work_init_delayable(&att->eatt.connection_work,
+			      att_enhanced_connection_work_handler);
+#endif /* CONFIG_BT_EATT */
+
+	att_chan = att_chan_new(att, BIT(ATT_OVER_BREDR));
+	if (!att_chan) {
+		k_mem_slab_free(&att_slab, (void *)att);
+		return -ENOMEM;
+	}
+
+	*chan = &att_chan->br_chan.chan;
+
+	return 0;
+}
+
+void bt_att_over_br_init(struct bt_dev *hdev)
+{
+	int err;
+	static struct bt_l2cap_server att_br_l2cap = {
+		.psm = BT_L2CAP_PSM_ATT,
+		.sec_level = BT_SECURITY_L0,
+		.accept = bt_att_br_accept,
+	};
+
+	LOG_DBG("");
+
+	/* Initialize GATT Service SDP Registration. */
+	bt_gatt_service_sdp_init(hdev);
+
+	/* register ATT BR l2cap server. */
+	err = bt_l2cap_br_server_register(&att_br_l2cap);
+	if (err < 0) {
+		LOG_ERR("ATT BR Server registration failed %d", err);
+	}
+}
+#endif /* CONFIG_BT_ATT_OVER_BR */
 
 void bt_att_init(struct bt_dev *hdev)
 {
