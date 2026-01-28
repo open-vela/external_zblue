@@ -129,6 +129,28 @@ static inline const char *bt_att_err_to_str(uint8_t att_err)
 }
 #endif
 
+#if defined(CONFIG_BT_ATT_OVER_BR)
+/** @brief Connect ATT BR channels
+ *
+ * Sends a Connection Requests to connect ATT BR channel.
+ *
+ * @param conn The connection to send the request on
+ *
+ * @return 0 in case of success or negative value in case of error.
+ */
+int bt_att_br_connect(struct bt_conn *conn);
+
+/** @brief Disconnect ATT BR channels
+ *
+ * Sends a Disconnection Requests to disconnect ATT BR channel.
+ *
+ * @param conn The connection to send the request on
+ *
+ * @return 0 in case of success or negative value in case of error.
+ */
+int bt_att_br_disconnect(struct bt_conn *conn);
+#endif
+
 #if defined(CONFIG_BT_EATT)
 #if defined(CONFIG_BT_TESTING)
 
