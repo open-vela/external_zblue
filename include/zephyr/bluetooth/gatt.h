@@ -27,6 +27,9 @@
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/bluetooth/uuid.h>
 #include <zephyr/bluetooth/att.h>
+#if defined(CONFIG_BT_ATT_OVER_BR)
+#include <zephyr/bluetooth/classic/sdp.h>
+#endif /* CONFIG_BT_ATT_OVER_BR */
 #include <zephyr/sys/iterable_sections.h>
 
 #ifdef __cplusplus
@@ -1290,6 +1293,44 @@ ssize_t bt_gatt_attr_read_cpf(struct bt_conn *conn,
 	.handle = 0,							\
 	.perm = _perm,							\
 }
+
+#if defined(CONFIG_BT_ATT_OVER_BR)
+#define BT_SDP_NEW_SERVICE_ATTR_SIZE 4
+
+#define SDP_ATTR_PROT_GATT_POS (1 + BT_SDP_NEW_SERVICE_ATTR_SIZE)
+#define DATA_ELEM_GATT_PROT_DESC_POS 1
+#define DATA_ELEM_GATT_START_HANDLE_POS 1
+#define DATA_ELEM_GATT_END_HANDLE_POS 2
+
+#define SDP_ATTR_SVCLS_GATT_POS (0 + BT_SDP_NEW_SERVICE_ATTR_SIZE)
+
+/* Get Pointer to Protocol Descriptor Element list of gatt_attr_template */
+#define SDP_GATT_PROT_ELEM_LIST(_attr) \
+	((struct bt_sdp_data_elem *) \
+	((_attr)[SDP_ATTR_PROT_GATT_POS]).val.data)
+
+/* Get Pointer to Start/End handle Element list of gatt_attr_template */
+#define SDP_GATT_HANDLE_ELEM_LIST(_attr) \
+	((struct bt_sdp_data_elem *) \
+	(SDP_GATT_PROT_ELEM_LIST(_attr)[DATA_ELEM_GATT_PROT_DESC_POS].data))
+
+/* Get Pointer to Service Start handle value of gatt_attr_template */
+#define SDP_GATT_START_HDL_PTR_FROM_ATTR(_attr) \
+	(SDP_GATT_HANDLE_ELEM_LIST(_attr)[DATA_ELEM_GATT_START_HANDLE_POS].data)
+
+/* Get Pointer to Service End handle value of gatt_attr_template */
+#define SDP_GATT_END_HDL_PTR_FROM_ATTR(_attr) \
+	(SDP_GATT_HANDLE_ELEM_LIST(_attr)[DATA_ELEM_GATT_END_HANDLE_POS].data)
+
+
+/* Get Pointer to Service Class(Service UUID) Element list of gatt_attr_template */
+#define SDP_GATT_SVCLS_ELEM_LIST(_attr) \
+	((struct bt_sdp_data_elem *)(_attr)[SDP_ATTR_SVCLS_GATT_POS].val.data)
+
+/* Get Pointer to Service Class(Service UUID) value of gatt_attr_template */
+#define SDP_GATT_SVCLS_PTR_FROM_ATTR(_attr) \
+	(SDP_GATT_SVCLS_ELEM_LIST(_attr)->data)
+#endif
 
 /** @brief Notification complete result callback.
  *

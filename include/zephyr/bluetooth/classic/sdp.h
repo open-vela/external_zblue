@@ -363,6 +363,9 @@ struct bt_sdp_record {
  *  Language Base, Root Browse Group
  *
  */
+
+#define BT_SDP_NEW_SERVICE_ATTR_SIZE 4
+
 #define BT_SDP_NEW_SERVICE \
 { \
 	BT_SDP_ATTR_RECORD_HANDLE, \
@@ -642,6 +645,7 @@ int bt_sdp_discover_cancel(struct bt_conn *conn,
 enum bt_sdp_proto {
 	BT_SDP_PROTO_SDP = 0x0001,
 	BT_SDP_PROTO_RFCOMM = 0x0003,
+	BT_SDP_PROTO_ATT = 0x0007,
 	BT_SDP_PROTO_HID = 0x0011,
 	BT_SDP_PROTO_AVDTP  = 0x0019,
 	BT_SDP_PROTO_L2CAP  = 0x0100,
