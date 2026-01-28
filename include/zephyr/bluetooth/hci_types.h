@@ -3965,6 +3965,7 @@ struct bt_hci_evt_le_cs_procedure_enable_complete {
 #define BT_EVT_BIT(n) (1ULL << (n))
 
 #define BT_EVT_MASK_INQUIRY_COMPLETE             BT_EVT_BIT(0)
+#define BT_EVT_MASK_INQUIRY_RESULT               BT_EVT_BIT(1)
 #define BT_EVT_MASK_CONN_COMPLETE                BT_EVT_BIT(2)
 #define BT_EVT_MASK_CONN_REQUEST                 BT_EVT_BIT(3)
 #define BT_EVT_MASK_DISCONN_COMPLETE             BT_EVT_BIT(4)
