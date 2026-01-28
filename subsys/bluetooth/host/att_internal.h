@@ -292,6 +292,9 @@ struct bt_att_req {
 	void *user_data;
 };
 
+#if defined(CONFIG_BT_ATT_OVER_BR)
+void bt_att_over_br_init(struct bt_dev *hdev);
+#endif /* CONFIG_BT_ATT_OVER_BR */
 void bt_att_init(struct bt_dev *hdev);
 uint16_t bt_att_get_mtu(struct bt_conn *conn);
 uint16_t bt_att_get_uatt_mtu(struct bt_conn *conn);
