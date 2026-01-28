@@ -132,6 +132,20 @@ struct bt_l2cap_chan *bt_l2cap_br_lookup_tx_cid(struct bt_conn *conn,
 	return NULL;
 }
 
+struct bt_l2cap_chan *bt_l2cap_br_lookup_psm(struct bt_conn *conn,
+	uint16_t psm)
+{
+	struct bt_l2cap_chan *chan;
+
+	SYS_SLIST_FOR_EACH_CONTAINER(&conn->channels, chan, node) {
+		if (BR_CHAN(chan)->psm == psm) {
+			return chan;
+		}
+	}
+
+	return NULL;
+}
+
 uint8_t bt_l2cap_br_get_remote_fixed_chan(struct bt_conn *conn)
 {
 	struct bt_l2cap_chan *chan_sig;

@@ -234,6 +234,17 @@ struct bt_l2cap_le_chan {
  */
 #define BT_L2CAP_LE_CHAN(_ch) CONTAINER_OF(_ch, struct bt_l2cap_le_chan, chan)
 
+/**
+ *  @brief Helper macro getting container object of type bt_l2cap_br_chan
+ *  address having the same container chan member address as object in question.
+ *
+ *  @param _ch Address of object of bt_l2cap_chan type
+ *
+ *  @return Address of in memory bt_l2cap_br_chan object type containing
+ *          the address of in question object.
+ */
+#define BT_L2CAP_BR_CHAN(_ch) CONTAINER_OF(_ch, struct bt_l2cap_br_chan, chan)
+
 /** @brief BREDR L2CAP Endpoint structure. */
 struct bt_l2cap_br_endpoint {
 	/** Endpoint Channel Identifier (CID) */
@@ -689,6 +700,9 @@ int bt_l2cap_chan_give_credits(struct bt_l2cap_chan *chan, uint16_t additional_c
  */
 int bt_l2cap_chan_recv_complete(struct bt_l2cap_chan *chan,
 				struct net_buf *buf);
+
+struct bt_l2cap_chan *bt_l2cap_br_lookup_psm(struct bt_conn *conn,
+	uint16_t psm);
 
 #ifdef __cplusplus
 }
