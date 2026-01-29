@@ -269,15 +269,8 @@ void bt_avdtp_media_l2cap_connected(struct bt_l2cap_chan *chan)
 	LOG_DBG("chan %p session %p", chan, session);
 	bt_avdtp_set_state_lock(sep, AVDTP_OPEN);
 
-	if (session->req != NULL) {
-		struct bt_avdtp_req *req = session->req;
-
-		req->status = BT_AVDTP_SUCCESS;
-		bt_avdtp_clear_req(session);
-
-		if (req->func != NULL) {
-			req->func(req, NULL);
-		}
+	if (sep->endpoint_established != NULL) {
+		sep->endpoint_established(sep);
 	}
 }
 
@@ -1121,22 +1114,24 @@ static void avdtp_open_rsp(struct bt_avdtp *session, struct net_buf *buf, uint8_
 	k_work_cancel_delayable(&session->timeout_work);
 	avdtp_set_status(req, buf, msg_type);
 
-	if (req->status == BT_AVDTP_SUCCESS) {
-		bt_avdtp_set_state_lock(CTRL_REQ(req)->sep, AVDTP_OPENING);
-
-		/* wait the media l2cap is established */
-		if (!avdtp_media_connect(session, CTRL_REQ(req)->sep)) {
-			return;
-		}
+	if (req->func != NULL) {
+		req->func(req, NULL);
 	}
 
 	if (req->status != BT_AVDTP_SUCCESS) {
 		bt_avdtp_clear_req(session);
-
-		if (req->func != NULL) {
-			req->func(req, NULL);
-		}
+		return;
 	}
+
+	bt_avdtp_set_state_lock(CTRL_REQ(req)->sep, AVDTP_OPENING);
+
+	/* wait the media l2cap is established */
+	int err = avdtp_media_connect(session, CTRL_REQ(req)->sep);
+	if (err) {
+		LOG_ERR("Media channel establishment failed.");
+	}
+
+	bt_avdtp_clear_req(session);
 }
 
 static void avdtp_handle_reject_with_acp_seid(struct net_buf *buf, struct bt_avdtp_req *req)

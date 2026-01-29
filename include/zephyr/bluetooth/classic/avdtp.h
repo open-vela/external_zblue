@@ -146,6 +146,8 @@ struct bt_avdtp_sep {
 	struct bt_avdtp *session;
 	/** endpoint becomes idle */
 	int (*endpoint_released)(struct bt_avdtp_sep *sep);
+	/** endpoint becomes ready */
+	int (*endpoint_established)(struct bt_avdtp_sep *sep);
 	/** delay worker for disconnecting l2cap media channel */
 	struct k_work_delayable _delay_work;
 	/** delay_work_state */
