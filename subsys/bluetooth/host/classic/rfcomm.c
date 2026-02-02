@@ -470,6 +470,7 @@ static void rfcomm_connected(struct bt_l2cap_chan *chan)
 			   session->br_chan.tx.mtu) -
 			   BT_RFCOMM_HDR_SIZE - BT_RFCOMM_FCS_SIZE;
 
+	LOG_DBG("mtu %u", session->mtu);
 	if (session->state == BT_RFCOMM_STATE_CONNECTING) {
 		rfcomm_send_sabm(session, 0);
 	}
@@ -912,6 +913,8 @@ static void rfcomm_dlc_connected(struct bt_rfcomm_dlc *dlc)
 	k_fifo_init(&dlc->tx_queue);
 	k_work_init(&dlc->tx_work, rfcomm_dlc_tx_worker);
 
+	LOG_DBG("dlc %p dlci %u mtu %u initial credits %u", dlc, dlc->dlci,
+		dlc->mtu, dlc->rx_credit);
 	if (dlc->ops && dlc->ops->connected) {
 		dlc->ops->connected(dlc);
 	}
@@ -1312,6 +1315,8 @@ static void rfcomm_handle_pn(struct bt_rfcomm_session *session,
 	struct bt_rfcomm_pn *pn = (void *)buf->data;
 	struct bt_rfcomm_dlc *dlc;
 
+	LOG_DBG("dlci %d mtu %d flow ctrl %d credits %d",
+		pn->dlci, sys_le16_to_cpu(pn->mtu), pn->flow_ctrl, pn->credits);
 	dlc = rfcomm_dlcs_lookup_dlci(session->dlcs, pn->dlci);
 	if (!dlc) {
 		/*  Ignore if it is a response */
@@ -1753,6 +1758,9 @@ static struct bt_rfcomm_session *rfcomm_session_new(bt_rfcomm_role_t role)
 		k_work_init_delayable(&session->rtx_work,
 				      rfcomm_session_rtx_timeout);
 		k_sem_init(&session->fc, 0, 1);
+		LOG_DBG("session %p role %d chan %p rx mtu %d", session, role,
+			&session->br_chan.chan,
+			session->br_chan.rx.mtu);
 
 		return session;
 	}
