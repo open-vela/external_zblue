@@ -766,9 +766,18 @@ static uint32_t copy_attribute(struct bt_sdp_data_elem *elem,
 			net_buf_add_be16(buf, *((uint16_t *)elem->data));
 		} else if (seq_size == 4U) {
 			net_buf_add_be32(buf, *((uint32_t *)elem->data));
+		} else if (seq_size == 8U) {
+			uint64_t identifier;
+
+			identifier = sys_get_be64((const uint8_t *)elem->data);
+			net_buf_add_be64(buf, identifier);
 		} else {
-			/* TODO: Convert 32bit and 128bit values to big-endian*/
-			net_buf_add_mem(buf, elem->data, seq_size);
+			uint8_t val[seq_size];
+
+			__ASSERT(seq_size == 0x10, "Invalid sequence size");
+
+			sys_memcpy_swap(val, elem->data, sizeof(val));
+			net_buf_add_mem(buf, val, seq_size);
 		}
 	} else {
 		net_buf_add_mem(buf, elem->data, seq_size);
