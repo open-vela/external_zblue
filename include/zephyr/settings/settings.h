@@ -540,6 +540,17 @@ int settings_call_set_handler(const char *name,
 			      settings_read_cb read_cb,
 			      void *read_cb_arg,
 			      const struct settings_load_arg *load_arg);
+
+/**
+ * Calls settings commit handler.
+ *
+ * @param[in]     name        The name of the data found in the backend.
+ * @param[in,out] load_arg    Arguments for data loading.
+ *
+ * @return 0 or negative error code
+ */
+int settings_call_commit_handler(const char *name,
+				 const struct settings_load_arg *load_arg);
 /**
  * @}
  */

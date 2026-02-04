@@ -134,6 +134,34 @@ int bt_settings_load(uint8_t dev_id, uint8_t id, const char* key, bt_addr_le_t* 
     return 0;
 }
 
+int bt_settings_commit(uint8_t dev_id, uint8_t id, const char* key, bt_addr_le_t* addr)
+{
+    int err;
+    char id_str[4];
+    char dev_id_str[4];
+    char key_str[BT_SETTINGS_KEY_MAX];
+
+    if (addr) {
+        if (id) {
+            u8_to_dec(id_str, sizeof(id_str), id);
+        }
+
+        u8_to_dec(dev_id_str, sizeof(dev_id_str), dev_id);
+        bt_settings_encode_key(key_str, sizeof(key_str), key, addr, (id ? id_str : NULL), dev_id_str);
+    } else {
+        err = snprintk(key_str, sizeof(key_str), "bt/%s/%d", key, dev_id);
+        if (err < 0) {
+            return -EINVAL;
+        }
+    }
+
+    settings_call_commit_handler(
+        key_str,
+        NULL);
+
+    return 0;
+}
+
 static void parse_settings_key(const char* name, uint8_t* dev_id, uint8_t* id, bt_addr_le_t* addr)
 {
     const char *id_next, *dev_next;

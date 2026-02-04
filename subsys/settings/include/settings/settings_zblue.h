@@ -145,6 +145,20 @@ int settings_zblue_dst(struct settings_zblue* cf);
  */
 int bt_settings_load(uint8_t dev_id, uint8_t id, const char* key, bt_addr_le_t* addr);
 
+/** @brief Commit Bluetooth settings for a device.
+ *
+ * Commits Bluetooth settings for the specified device and key. This function
+ * calls the settings commit handler for the matched settings subtree.
+ *
+ * @param dev_id   Device identifier number.
+ * @param id       identifier number.
+ * @param key      Key string identifying the setting to commit.
+ * @param addr     Remote identity address.
+ *
+ * @return Zero on success, or a negative error code on failure.
+ */
+int bt_settings_commit(uint8_t dev_id, uint8_t id, const char* key, bt_addr_le_t* addr);
+
 /* Initialize a zblue backend. */
 int settings_zblue_backend_init(struct settings_zblue* cf);
 
