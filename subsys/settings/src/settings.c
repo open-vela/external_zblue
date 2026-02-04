@@ -218,7 +218,8 @@ int settings_call_set_handler(const char *name,
 		struct settings_handler_static *ch;
 
 		ch = settings_parse_and_lookup(name, &name_key);
-		if (!ch) {
+		if (!ch || !ch->h_set) {
+			LOG_ERR("No handler for key: %s", name);
 			return 0;
 		}
 
@@ -234,6 +235,37 @@ int settings_call_set_handler(const char *name,
 				name);
 		}
 	}
+	return rc;
+}
+
+int settings_call_commit_handler(const char *name,
+				 const struct settings_load_arg *load_arg)
+{
+	int rc = 0;
+	const char *name_key = name;
+
+	if (load_arg && load_arg->subtree &&
+	    !settings_name_steq(name, load_arg->subtree, &name_key)) {
+		return 0;
+	}
+
+	struct settings_handler_static *ch;
+
+	ch = settings_parse_and_lookup(name, &name_key);
+	if (!ch || !ch->h_commit) {
+		LOG_ERR("No commit handler for key: %s", name);
+		return 0;
+	}
+
+	rc = ch->h_commit();
+	if (rc != 0) {
+		LOG_ERR("commit failure. key: %s error(%d)", name, rc);
+		/* Ignoring the error */
+		rc = 0;
+	} else {
+		LOG_DBG("commit OK. key: %s", name);
+	}
+
 	return rc;
 }
 
