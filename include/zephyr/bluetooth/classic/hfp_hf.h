@@ -600,6 +600,16 @@ int Z_API(bt_hfp_hf_register)(struct bt_hfp_hf_cb *cb);
  */
 int Z_API(bt_hfp_hf_unregister)(void);
 
+/** @brief Obtain the ACL connection corresponding to HFP HF.
+ *
+ *  @param hf HFP HF object.
+ *
+ *  @return Connection object associated with the HFP HF context. The caller gets a new
+ *  reference to the connection object which must be released with bt_conn_unref() once
+ *  done using the object.
+ */
+struct bt_conn *Z_API(bt_hfp_hf_get_conn)(struct bt_hfp_hf *hf);
+
 /** @brief Initiate the service level connection establishment procedure
  *
  *  Initiate the service level connection establishment procedure on the

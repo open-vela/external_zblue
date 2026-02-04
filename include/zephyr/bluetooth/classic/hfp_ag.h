@@ -913,6 +913,16 @@ int Z_API(bt_hfp_ag_ongoing_calls)(struct bt_hfp_ag *ag, struct bt_hfp_ag_ongoin
  */
 int Z_API(bt_hfp_ag_send_vendor)(struct bt_hfp_ag *ag, const char *rsp);
 
+/** @brief Obtain the ACL connection corresponding to HFP AG.
+ *
+ *  @param ag HFP AG object.
+ *
+ *  @return Connection object associated with the HFP AG context. The caller gets a new
+ *  reference to the connection object which must be released with bt_conn_unref() once
+ *  done using the object.
+ */
+struct bt_conn *Z_API(bt_hfp_ag_get_conn)(struct bt_hfp_ag *ag);
+
 /** @brief Unregister HFP AG profile
  *
  *  Unregister the Handsfree AudioGateway profile callbacks previously registered with
