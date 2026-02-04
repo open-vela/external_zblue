@@ -5529,3 +5529,18 @@ failed:
 	bt_ag_send_ok_code(ag);
 	return err;
 }
+
+struct bt_conn *Z_API(bt_hfp_ag_get_conn)(struct bt_hfp_ag *ag)
+{
+	if (!ag) {
+		LOG_ERR("Invalid AG object");
+		return NULL;
+	}
+
+	if (!ag->acl_conn) {
+		LOG_ERR("Invalid ACL connection");
+		return NULL;
+	}
+
+	return bt_conn_ref(ag->acl_conn);
+}

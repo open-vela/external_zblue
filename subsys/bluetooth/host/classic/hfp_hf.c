@@ -4585,3 +4585,18 @@ int Z_API(bt_hfp_hf_query_list_of_current_calls)(struct bt_hfp_hf *hf)
 
 	return err;
 }
+
+struct bt_conn *Z_API(bt_hfp_hf_get_conn)(struct bt_hfp_hf *hf)
+{
+	if (!hf) {
+		LOG_ERR("Invalid HF object");
+		return NULL;
+	}
+
+	if (!hf->acl) {
+		LOG_ERR("Invalid ACL connection");
+		return NULL;
+	}
+
+	return bt_conn_ref(hf->acl);
+}
