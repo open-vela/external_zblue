@@ -1527,6 +1527,34 @@ static void rfcomm_dlc_update_credits(struct bt_rfcomm_dlc *dlc)
 	rfcomm_send_credit(dlc, credits);
 }
 
+int bt_rfcomm_dlc_update_credits(struct bt_rfcomm_dlc *dlc)
+{
+
+	if (!dlc || !dlc->session) {
+		return -EINVAL;
+	}
+
+	if (dlc->state != BT_RFCOMM_STATE_CONNECTED) {
+		LOG_WRN("dlc %p is not in connected state", dlc);
+		return -ENOTCONN;
+	}
+
+	if (dlc->session->cfc != BT_RFCOMM_CFC_SUPPORTED) {
+		LOG_WRN("dlc %p session does not support CFC", dlc);
+		return -ENOTSUP;
+	}
+
+	if (dlc->rx_credit == 0U) {
+		LOG_WRN("dlc %p rx credit already 0", dlc);
+		return -EAGAIN;
+	}
+
+	dlc->rx_credit--;
+	rfcomm_dlc_update_credits(dlc);
+
+	return 0;
+}
+
 static void rfcomm_handle_data(struct bt_rfcomm_session *session,
 			       struct net_buf *buf, uint8_t dlci, uint8_t pf)
 
@@ -1570,8 +1598,6 @@ static void rfcomm_handle_data(struct bt_rfcomm_session *session,
 			dlc->ops->recv(dlc, buf);
 		}
 
-		dlc->rx_credit--;
-		rfcomm_dlc_update_credits(dlc);
 	}
 }
 

@@ -278,6 +278,18 @@ int bt_rfcomm_dlc_send(struct bt_rfcomm_dlc *dlc, struct net_buf *buf);
  */
 int bt_rfcomm_dlc_disconnect(struct bt_rfcomm_dlc *dlc);
 
+/** @brief Update RFCOMM RX credits after data is processed
+ *
+ *  Call this after the application has finished handling the data received in
+ *  the `recv` callback. This will update the RX credit accounting and sends
+ *  credits to the peer when needed.
+ *
+ *  @param dlc Dlc object.
+ *
+ *  @return 0 in case of success or negative value in case of error.
+ */
+int bt_rfcomm_dlc_update_credits(struct bt_rfcomm_dlc *dlc);
+
 /** @brief Allocate the buffer from pool after reserving head room for RFCOMM,
  *  L2CAP and ACL headers.
  *
