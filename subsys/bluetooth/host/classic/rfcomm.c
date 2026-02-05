@@ -38,7 +38,7 @@ LOG_MODULE_REGISTER(bt_rfcomm);
 
 #define RFCOMM_MAX_CREDITS		(BT_BUF_ACL_RX_COUNT - 1)
 #define RFCOMM_CREDITS_THRESHOLD	(RFCOMM_MAX_CREDITS / 2)
-#define RFCOMM_DEFAULT_CREDIT		RFCOMM_MAX_CREDITS
+#define RFCOMM_DEFAULT_CREDIT		0
 
 #define RFCOMM_CONN_TIMEOUT     K_SECONDS(60)
 #define RFCOMM_DISC_TIMEOUT     K_SECONDS(20)
@@ -98,6 +98,8 @@ static const uint8_t rfcomm_crc_table[256] = {
 	0xb4, 0x25, 0x57, 0xc6, 0xb3, 0x22, 0x50, 0xc1,
 	0xba, 0x2b, 0x59, 0xc8, 0xbd, 0x2c, 0x5e, 0xcf
 };
+
+static int rfcomm_send_credit(struct bt_rfcomm_dlc *dlc, uint8_t credits);
 
 static uint8_t rfcomm_calc_fcs(uint16_t len, const uint8_t *data)
 {
@@ -908,6 +910,9 @@ static void rfcomm_dlc_connected(struct bt_rfcomm_dlc *dlc)
 		/* Use tx_credits as binary sem for MSC FC */
 		k_sem_init(&dlc->tx_credits, 0, 1);
 	}
+
+	dlc->rx_credit = RFCOMM_MAX_CREDITS;
+	rfcomm_send_credit(dlc, dlc->rx_credit);
 
 	/* Cancel conn timer */
 	k_work_cancel_delayable(&dlc->rtx_work);
