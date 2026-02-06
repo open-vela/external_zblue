@@ -48,7 +48,7 @@ config BT_BUF_ACL_TX_COUNT
 
 config BT_BUF_ACL_RX_SIZE
 	int "Maximum supported ACL size for incoming data"
-	default 200 if BT_CLASSIC
+	default 1025 if BT_CLASSIC
 	default 70 if BT_EATT
 	default 69 if BT_SMP
 	default 37 if BT_MESH_GATT
