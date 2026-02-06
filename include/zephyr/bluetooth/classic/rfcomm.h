@@ -52,6 +52,14 @@ enum {
 
 struct bt_rfcomm_dlc;
 
+/** @brief RFCOMM RX credit update mode. */
+enum bt_rfcomm_rx_credit_mode {
+	/** Auto update credits after recv callback returns. */
+	BT_RFCOMM_RX_CREDIT_AUTO,
+	/** Application updates credits explicitly. */
+	BT_RFCOMM_RX_CREDIT_MANUAL,
+};
+
 /** @brief RFCOMM DLC operations structure. */
 struct bt_rfcomm_dlc_ops {
 	/** DLC connected callback
@@ -120,6 +128,7 @@ struct bt_rfcomm_dlc {
 	uint8_t                    dlci;
 	uint8_t                    state;
 	uint8_t                    rx_credit;
+	uint8_t                    rx_credit_mode;
 };
 
 struct bt_rfcomm_server {
@@ -239,6 +248,15 @@ int bt_rfcomm_server_register(struct bt_rfcomm_server *server);
  *  @return 0 in case of success or negative value in case of error.
  */
 int bt_rfcomm_server_unregister(struct bt_rfcomm_server *server);
+
+/** @brief Set RFCOMM RX credit update mode for a DLC.
+ *
+ *  @param dlc  The dlc to configure.
+ *  @param mode Credit update mode.
+ *
+ *  @return 0 in case of success or negative value in case of error.
+ */
+int bt_rfcomm_dlc_set_rx_credit_mode(struct bt_rfcomm_dlc *dlc, enum bt_rfcomm_rx_credit_mode mode);
 
 /** @brief Connect RFCOMM channel
  *
