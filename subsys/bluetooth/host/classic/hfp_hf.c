@@ -3603,7 +3603,7 @@ int Z_API(bt_hfp_hf_audio_connect)(struct bt_hfp_hf *hf)
 
 	if (hf->chan.sco) {
 		LOG_ERR("Audio conenction has been connected");
-		return -ECONNREFUSED;
+		return -EALREADY;
 	}
 
 	err = hfp_hf_send_cmd(hf, NULL, bcc_finish, true, BT_HFP_HF_AT_CMD_BCC,
