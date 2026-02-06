@@ -8,7 +8,8 @@
  */
 
 #include <zephyr/devicetree.h>
-
+#include "conn_internal.h"
+#include "iso_internal.h"
 #include "ecc.h"
 
 /* LL connection parameters */
