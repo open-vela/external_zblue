@@ -522,6 +522,7 @@ static void rfcomm_dlc_init(struct bt_rfcomm_dlc *dlc,
 	dlc->dlci = dlci;
 	dlc->session = session;
 	dlc->rx_credit = RFCOMM_DEFAULT_CREDIT;
+	dlc->rx_credit_mode = BT_RFCOMM_RX_CREDIT_AUTO;
 	dlc->state = BT_RFCOMM_STATE_INIT;
 	dlc->role = role;
 	k_work_init_delayable(&dlc->rtx_work, rfcomm_dlc_rtx_timeout);
@@ -1527,10 +1528,28 @@ static void rfcomm_dlc_update_credits(struct bt_rfcomm_dlc *dlc)
 	rfcomm_send_credit(dlc, credits);
 }
 
+int bt_rfcomm_dlc_set_rx_credit_mode(struct bt_rfcomm_dlc *dlc, enum bt_rfcomm_rx_credit_mode mode)
+{
+	if (!dlc || !dlc->session) {
+		return -EINVAL;
+	}
+
+	if (mode != BT_RFCOMM_RX_CREDIT_AUTO && mode != BT_RFCOMM_RX_CREDIT_MANUAL) {
+		return -EINVAL;
+	}
+
+	dlc->rx_credit_mode = mode;
+	return 0;
+}
+
 int bt_rfcomm_dlc_update_credits(struct bt_rfcomm_dlc *dlc)
 {
-
 	if (!dlc || !dlc->session) {
+		return -EINVAL;
+	}
+
+	if (dlc->rx_credit_mode == BT_RFCOMM_RX_CREDIT_AUTO) {
+		LOG_WRN("dlc %p is in auto rx credit mode", dlc);
 		return -EINVAL;
 	}
 
@@ -1598,6 +1617,10 @@ static void rfcomm_handle_data(struct bt_rfcomm_session *session,
 			dlc->ops->recv(dlc, buf);
 		}
 
+		if (dlc->rx_credit_mode == BT_RFCOMM_RX_CREDIT_AUTO) {
+			dlc->rx_credit--;
+			rfcomm_dlc_update_credits(dlc);
+		}
 	}
 }
 
