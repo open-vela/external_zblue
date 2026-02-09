@@ -147,10 +147,11 @@ struct init_entry {
  * linker scripts to sort them according to the specified
  * level/priority/sub-priority.
  */
-#define Z_INIT_ENTRY_SECTION(level, prio, sub_prio)                           \
+#define Z_INIT_ENTRY_SECTION(level, prio, sub_prio)
+/*
 	__attribute__((__section__(                                           \
 		".z_init_" #level STRINGIFY(prio)"_" STRINGIFY(sub_prio)"_")))
-
+*/
 
 /* Designated initializers where added to C in C99. There were added to
  * C++ 20 years later in a much more restricted form. C99 allows many
