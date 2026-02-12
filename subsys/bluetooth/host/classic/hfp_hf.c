@@ -3626,7 +3626,7 @@ static int bcs_finish(struct at_client *hf_at, enum bt_at_result result,
 
 	LOG_DBG("BCS (result %d) on %p", result, hf);
 
-	if (result == AT_RESULT_OK) {
+	if (result == BT_AT_RESULT_OK) {
 		hf->active_codec_id = hf->neg_codec_id;
 	}
 
