@@ -3329,12 +3329,11 @@ static void bt_att_connected(struct bt_l2cap_chan *chan)
 {
 	struct bt_att_chan *att_chan = ATT_CHAN(chan);
 	struct bt_l2cap_le_chan *le_chan;
+	struct bt_conn *conn;
 
 	LOG_DBG("chan %p conn %p", chan, chan->conn);
 
 	atomic_set_bit(att_chan->flags, ATT_CONNECTED);
-
-	att_chan_mtu_updated(att_chan);
 
 	k_work_init_delayable(&att_chan->timeout_work, att_timeout);
 
@@ -3343,7 +3342,8 @@ static void bt_att_connected(struct bt_l2cap_chan *chan)
 		struct bt_att_conn_cb *callback;
 
 		LOG_DBG("chan %p cid 0x%04x", br_chan, br_chan->tx.cid);
-		bt_gatt_connected(br_chan->chan.conn);
+
+		conn = br_chan->chan.conn;
 		/* ATT over BR negotiates MTU via L2CAP configuration. */
 		atomic_set_bit(chan->conn->flags, BT_CONN_ATT_MTU_EXCHANGED);
 
@@ -3352,13 +3352,14 @@ static void bt_att_connected(struct bt_l2cap_chan *chan)
 				callback->connected(chan->conn);
 			}
 		}
-		return;
+	} else {
+		le_chan = BT_L2CAP_LE_CHAN(chan);
+		conn = le_chan->chan.conn;
+		LOG_DBG("chan %p cid 0x%04x", le_chan, le_chan->tx.cid);
 	}
 
-	le_chan = BT_L2CAP_LE_CHAN(chan);
-
-	LOG_DBG("chan %p cid 0x%04x", le_chan, le_chan->tx.cid);
-	bt_gatt_connected(le_chan->chan.conn);
+	att_chan_mtu_updated(att_chan);
+	bt_gatt_connected(conn);
 }
 
 static void bt_att_disconnected(struct bt_l2cap_chan *chan)
