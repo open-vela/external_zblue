@@ -1565,6 +1565,7 @@ static void gatt_store_ccc_cf(struct bt_dev *hdev, uint8_t id, const bt_addr_le_
 #if defined(CONFIG_BT_ATT_OVER_BR)
 void bt_gatt_service_sdp_init(struct bt_dev *hdev)
 {
+#if defined(CONFIG_BT_GATT_SDP_REGISTRATION)
 	uint16_t handle = 0;
 
 	STRUCT_SECTION_FOREACH(bt_gatt_service_static, svc) {
@@ -1583,6 +1584,9 @@ void bt_gatt_service_sdp_init(struct bt_dev *hdev)
 
 		handle += svc->attr_count;
 	}
+#else
+	LOG_DBG("Can enable CONFIG_BT_GATT_SDP_REGISTRATION for GATT service SDP registration");
+#endif
 }
 #endif /* CONFIG_BT_ATT_OVER_BR */
 
