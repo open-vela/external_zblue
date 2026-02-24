@@ -3261,9 +3261,20 @@ static void att_timeout(struct k_work *work)
 	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
 	struct bt_att_chan *chan = CONTAINER_OF(dwork, struct bt_att_chan,
 						timeout_work);
+	struct bt_conn *conn = chan->att->conn;
 	int err;
 
-	bt_addr_le_to_str(bt_conn_get_dst(chan->att->conn), addr, sizeof(addr));
+	if (!conn) {
+		LOG_ERR("conn is null");
+		return;
+	}
+
+	if (conn->type == BT_CONN_TYPE_LE) {
+		bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+	} else if (conn->type == BT_CONN_TYPE_BR) {
+		bt_addr_to_str(bt_conn_get_dst_br(conn), addr, sizeof(addr));
+	}
+
 	LOG_ERR("ATT Timeout for device %s. Disconnecting...", addr);
 
 	if (IS_ENABLED(CONFIG_BT_ATT_OVER_BR) && bt_att_is_over_br(chan)) {
