@@ -4065,6 +4065,7 @@ int bt_att_br_connect(struct bt_conn *conn)
 	struct bt_att_chan *att_chan;
 	struct bt_l2cap_chan *chan;
 	struct bt_dev_att_ctx *ctx;
+	int err;
 
 	if (!conn) {
 		return -EINVAL;
@@ -4098,13 +4099,21 @@ int bt_att_br_connect(struct bt_conn *conn)
 
 	att_chan = att_chan_new(att, BIT(ATT_OVER_BREDR));
 	if (!att_chan) {
-		k_mem_slab_free(&att_slab, (void *)att);
+		att_reset(att);
 		return -ENOMEM;
 	}
 
 	LOG_DBG("conn %p att %p", conn, att);
 
-	return bt_l2cap_chan_connect(conn, &att_chan->br_chan.chan, BT_L2CAP_PSM_ATT);
+	err = bt_l2cap_chan_connect(conn, &att_chan->br_chan.chan, BT_L2CAP_PSM_ATT);
+	if (err < 0) {
+		LOG_ERR("ATT_over_BR connect failed %d", err);
+		att_chan_detach(att_chan);
+		att_reset(att);
+		k_mem_slab_free(&chan_slab, (void *)att_chan);
+	}
+
+	return err;
 }
 
 int bt_att_br_disconnect(struct bt_conn *conn)
