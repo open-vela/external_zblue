@@ -57,6 +57,16 @@ config BT_ATT_OVER_BR
 	  enabled, BR/EDR L2CAP channels can be connected as bearers enabling
 	  ATT data transport over BR/EDR links.
 
+config BT_GATT_SDP_REGISTRATION
+	bool "Register GATT service SDP record for BR/EDR"
+	default n
+	depends on BT_ATT_OVER_BR
+	help
+	  This option enables registration of GATT service SDP (Service
+	  Discovery Protocol) records when using ATT over BR/EDR. When enabled,
+	  the GATT service will be discoverable by remote BR/EDR devices through
+	  SDP queries.
+
 if BT_EATT
 
 config BT_EATT_MAX
