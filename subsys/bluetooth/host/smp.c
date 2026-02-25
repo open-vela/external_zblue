@@ -4017,7 +4017,17 @@ static uint8_t smp_pairing_random(struct bt_smp *smp, struct net_buf *buf)
 			smp_auth_cb->passkey_confirm(smp->chan.chan.conn, passkey);
 			return 0;
 		case JUST_WORKS:
+#ifndef CONFIG_HCI_AUTO_REPLY_IN_JUST_WORK
+			if (!smp_auth_cb || !smp_auth_cb->passkey_confirm) {
+				return BT_SMP_ERR_UNSPECIFIED;
+			}
+			atomic_set_bit(smp->flags, SMP_FLAG_USER);
+			atomic_set_bit(smp->flags, SMP_FLAG_DHKEY_SEND);
+			smp_auth_cb->passkey_confirm(smp->chan.chan.conn, (uint32_t)0xFFFFFFFFu);
+			return 0;
+#else
 			break;
+#endif
 		case LE_SC_OOB:
 			break;
 		case PASSKEY_DISPLAY:
@@ -4060,7 +4070,16 @@ static uint8_t smp_pairing_random(struct bt_smp *smp, struct net_buf *buf)
 		smp_auth_cb->passkey_confirm(smp->chan.chan.conn, passkey);
 		break;
 	case JUST_WORKS:
+#ifndef CONFIG_HCI_AUTO_REPLY_IN_JUST_WORK
+		if (!smp_auth_cb || !smp_auth_cb->passkey_confirm) {
+			return BT_SMP_ERR_UNSPECIFIED;
+		}
+		atomic_set_bit(smp->flags, SMP_FLAG_USER);
+		smp_auth_cb->passkey_confirm(smp->chan.chan.conn, (uint32_t)0xFFFFFFFFu);
 		break;
+#else
+		break;
+#endif
 	case PASSKEY_DISPLAY:
 	case PASSKEY_INPUT:
 		err = sc_smp_check_confirm(smp);
