@@ -107,6 +107,7 @@ config BT_HFP_HF_VOLUME
 
 config BT_HFP_HF_CODEC_NEG
 	bool "Codec Negotiation for HFP HF [EXPERIMENTAL]"
+	default y
 	help
 	  This option enables Codec Negotiation for HFP HF
 
@@ -118,6 +119,7 @@ config BT_HFP_HF_ECNR
 if BT_HFP_HF_CODEC_NEG
 config BT_HFP_HF_CODEC_MSBC
 	bool "Support Codec mSBC for HFP HF [EXPERIMENTAL]"
+	default y
 	help
 	  This option enables Codec mSBC for HFP HF
 
