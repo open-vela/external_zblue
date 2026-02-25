@@ -192,12 +192,14 @@ config BT_HFP_AG_EXT_ERR
 
 config BT_HFP_AG_CODEC_NEG
 	bool "Codec Negotiation for HFP AG [EXPERIMENTAL]"
+	default y
 	help
 	  This option enables Codec Negotiation for HFP AG
 
 if BT_HFP_AG_CODEC_NEG
 config BT_HFP_AG_CODEC_MSBC
 	bool "Support Codec mSBC for HFP AG [EXPERIMENTAL]"
+	default y
 	help
 	  This option enables Codec mSBC for HFP AG
 
