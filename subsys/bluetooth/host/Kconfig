@@ -359,6 +359,7 @@ config BT_CONN_CHECK_NULL_BEFORE_CREATE
 config BT_USER_PHY_UPDATE
 	bool "User control of PHY Update Procedure"
 	depends on BT_PHY_UPDATE
+	default y
 	help
 	  Enable application access to initiate the PHY Update Procedure.
 	  The application can also register a callback to be notified about PHY
