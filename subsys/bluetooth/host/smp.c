@@ -286,6 +286,10 @@ struct bt_dev_smp_ctx {
 	bool sc_supported;
 	const uint8_t *sc_public_key;
 	struct k_sem sc_local_pkey_ready;
+#if defined(CONFIG_BT_CLASSIC)
+	bool ctkd_le_to_br_enabled;
+	bool ctkd_br_to_le_enabled;
+#endif
 } smp_ctx_pool[CONFIG_BT_NUM_CTLRS];
 
 #define DISPLAY_FIXED(smp) (IS_ENABLED(CONFIG_BT_FIXED_PASSKEY) && \
@@ -1283,6 +1287,11 @@ static bool smp_br_pairing_allowed(struct bt_smp_br *smp)
 	}
 
 	conn = smp->chan.chan.conn;
+
+	/* Check if CTKD is enabled for BR/EDR to LE */
+	if (!conn->hdev->smp_ctx->ctkd_br_to_le_enabled) {
+		return false;
+	}
 
 	addr.type = BT_ADDR_LE_PUBLIC;
 	bt_addr_copy(&addr.a, &conn->br.dst);
@@ -2944,6 +2953,32 @@ void bt_le_oob_set_legacy_flag_mc(uint8_t dev_id, bool enable)
 	hdev->smp_ctx->legacy_oobd_present = enable;
 }
 
+#if defined(CONFIG_BT_CLASSIC)
+bool bt_smp_ctkd_br_to_le_enabled(struct bt_dev *hdev)
+{
+	if (!hdev || !hdev->smp_ctx) {
+		return false;
+	}
+
+	return hdev->smp_ctx->ctkd_br_to_le_enabled;
+}
+
+void bt_smp_set_ctkd_mode_mc(uint8_t dev_id, uint8_t ctkd_mode)
+{
+	struct bt_dev *hdev = bt_dev_get(dev_id);
+	if (!hdev) {
+		return;
+	}
+
+	hdev->smp_ctx->ctkd_le_to_br_enabled = (ctkd_mode & BT_SMP_CTKD_LE_TO_BR) ? true : false;
+	hdev->smp_ctx->ctkd_br_to_le_enabled = (ctkd_mode & BT_SMP_CTKD_BR_TO_LE) ? true : false;
+
+	LOG_DBG("CTKD mode set: LE->BR %s, BR->LE %s",
+		hdev->smp_ctx->ctkd_le_to_br_enabled ? "enabled" : "disabled",
+		hdev->smp_ctx->ctkd_br_to_le_enabled ? "enabled" : "disabled");
+}
+#endif /* CONFIG_BT_CLASSIC */
+
 static uint8_t get_auth(struct bt_smp *smp, uint8_t auth)
 {
 	struct bt_conn *conn = smp->chan.chan.conn;
@@ -3260,6 +3295,13 @@ static uint8_t smp_pairing_req(struct bt_smp *smp, struct net_buf *buf)
 
 		rsp->init_key_dist &= RECV_KEYS_SC;
 		rsp->resp_key_dist &= SEND_KEYS_SC;
+#if defined(CONFIG_BT_CLASSIC)
+		/* LE SC: remove linkkey distribution if CTKD LE->BR is disabled */
+		if (!hdev->smp_ctx->ctkd_le_to_br_enabled) {
+			rsp->init_key_dist &= ~LINK_DIST;
+			rsp->resp_key_dist &= ~LINK_DIST;
+		}
+#endif
 	}
 
 	if (atomic_test_bit(smp->flags, SMP_FLAG_SC)) {
@@ -3578,6 +3620,13 @@ static uint8_t smp_pairing_rsp(struct bt_smp *smp, struct net_buf *buf)
 
 	smp->local_dist &= SEND_KEYS_SC;
 	smp->remote_dist &= RECV_KEYS_SC;
+#if defined(CONFIG_BT_CLASSIC)
+	/* LE SC: remove linkkey distribution if CTKD LE->BR is disabled */
+	if (!hdev->smp_ctx->ctkd_le_to_br_enabled) {
+		smp->local_dist &= ~LINK_DIST;
+		smp->remote_dist &= ~LINK_DIST;
+	}
+#endif
 
 	if (IS_ENABLED(CONFIG_BT_SMP_APP_PAIRING_ACCEPT)) {
 		err = smp_pairing_accept_query(smp, rsp);
