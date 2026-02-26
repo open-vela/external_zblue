@@ -596,12 +596,20 @@ done:
 	return err;
 }
 
-static uint8_t get_fixed_channels_mask(void)
+static uint8_t get_fixed_channels_mask(struct bt_dev *hdev)
 {
 	uint8_t mask = 0U;
 
 	/* this needs to be enhanced if AMP Test Manager support is added */
 	STRUCT_SECTION_FOREACH(bt_l2cap_br_fixed_chan, fchan) {
+#if defined(CONFIG_BT_CLASSIC)
+		/* Only advertise BR SMP channel if BR->LE CTKD is enabled */
+		if (fchan->cid == BT_L2CAP_CID_BR_SMP) {
+			if (!bt_smp_ctkd_br_to_le_enabled(hdev)) {
+				continue;
+			}
+		}
+#endif
 		mask |= BIT(fchan->cid);
 	}
 
@@ -646,7 +654,7 @@ static int l2cap_br_info_req(struct bt_l2cap_br *l2cap, uint8_t ident,
 		rsp->result = sys_cpu_to_le16(BT_L2CAP_INFO_SUCCESS);
 		/* fixed channel mask protocol data is 8 octets wide */
 		(void)memset(net_buf_add(rsp_buf, 8), 0, 8);
-		rsp->data[0] = get_fixed_channels_mask();
+		rsp->data[0] = get_fixed_channels_mask(conn->hdev);
 
 		hdr_info->len = sys_cpu_to_le16(sizeof(*rsp) + 8);
 		break;

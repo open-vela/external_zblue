@@ -202,3 +202,7 @@ static inline const char *bt_smp_err_to_str(uint8_t smp_err)
 	return "";
 }
 #endif
+
+#if defined(CONFIG_BT_CLASSIC)
+bool bt_smp_ctkd_br_to_le_enabled(struct bt_dev *hdev);
+#endif
