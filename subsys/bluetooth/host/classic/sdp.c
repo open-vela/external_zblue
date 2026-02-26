@@ -1788,6 +1788,8 @@ static void sdp_client_params_iterator(struct bt_sdp_client *session)
 
 		/* Remove already checked UUID node */
 		sys_slist_remove(&session->reqs, NULL, &param->_node);
+		/* Invalidate cached param in context */
+		session->param = NULL;
 		/* Reset continuation state in current context */
 		(void)memset(&session->cstate, 0, sizeof(session->cstate));
 
