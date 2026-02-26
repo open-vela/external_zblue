@@ -2231,6 +2231,38 @@ static inline void bt_le_oob_set_legacy_flag(bool enable)
 }
 #endif
 
+#if defined(CONFIG_BT_CLASSIC)
+/** @brief Cross-Transport Key Derivation (CTKD) mode flags
+ *
+ *  Flags to control dynamic CTKD behavior at runtime during
+ *  Secure Connections pairing.
+ */
+enum bt_smp_ctkd_mode {
+	/** Enable LE LTK to BR/EDR Link Key derivation */
+	BT_SMP_CTKD_LE_TO_BR = BIT(0),
+
+	/** Enable BR/EDR Link Key to LE LTK derivation */
+	BT_SMP_CTKD_BR_TO_LE = BIT(1),
+};
+
+/** @brief Set Cross-Transport Key Derivation (CTKD) mode.
+ *
+ *  Enable or disable CTKD feature dynamically at runtime.
+ *  When enabled, allows derivation of keys across BR/EDR and LE transports
+ *  during Secure Connections pairing.
+ *
+ *  @param dev_id Controller device ID.
+ *  @param ctkd_mode CTKD mode flags (BT_SMP_CTKD_LE_TO_BR | BT_SMP_CTKD_BR_TO_LE).
+ */
+void bt_smp_set_ctkd_mode_mc(uint8_t dev_id, uint8_t ctkd_mode);
+#ifdef CONFIG_BT_ORIGINAL_API
+static inline void bt_smp_set_ctkd_mode(uint8_t ctkd_mode)
+{
+	bt_smp_set_ctkd_mode_mc(0, ctkd_mode);
+}
+#endif
+#endif /* CONFIG_BT_CLASSIC */
+
 /** @brief Set OOB Temporary Key to be used for pairing
  *
  *  This function allows to set OOB data for the LE legacy pairing procedure.
