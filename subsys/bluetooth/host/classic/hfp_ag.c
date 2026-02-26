@@ -2651,7 +2651,7 @@ static int bt_hfp_ag_bcc_handler(struct bt_hfp_ag *ag, struct net_buf *buf)
 
 	if (ag->sco_conn != NULL) {
 		hfp_ag_unlock(ag);
-		return -ECONNREFUSED;
+		return -EALREADY;
 	}
 	hfp_ag_unlock(ag);
 
@@ -4113,7 +4113,7 @@ static int bt_hfp_ag_sco_accept(const struct bt_sco_accept_info *info,
 	}
 
 	if (ag->sco_chan.sco) {
-		return -ECONNREFUSED;
+		return -EALREADY;
 	}
 
 	ag->sco_chan.ops = &ops;
@@ -4977,7 +4977,7 @@ int Z_API(bt_hfp_ag_audio_connect)(struct bt_hfp_ag *ag, uint8_t id)
 	if (ag->sco_conn != NULL) {
 		LOG_ERR("Audio conenction has been connected");
 		hfp_ag_unlock(ag);
-		return -ECONNREFUSED;
+		return -EALREADY;
 	}
 	hfp_ag_unlock(ag);
 
