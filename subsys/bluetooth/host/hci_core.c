@@ -1228,7 +1228,7 @@ int bt_le_set_phy(struct bt_conn *conn, uint8_t all_phys,
 	return bt_hci_cmd_send_sync(conn->hdev, BT_HCI_OP_LE_SET_PHY, buf, NULL);
 }
 
-int bt_le_read_conn_rssi(struct bt_conn *conn, int8_t *rssi)
+int bt_read_conn_rssi(struct bt_conn *conn, int8_t *rssi)
 {
 	struct net_buf *buf, *rsp = NULL;
 	struct bt_hci_cp_read_rssi *cp;
