@@ -1303,7 +1303,7 @@ int bt_conn_disconnect(struct bt_conn *conn, uint8_t reason);
  *  @param conn Connection object.
  *  @param rssi RSSI value.
  */
-int bt_conn_le_read_rssi(struct bt_conn *conn, int8_t *rssi);
+int bt_conn_read_rssi(struct bt_conn *conn, int8_t *rssi);
 
 enum {
 	/** Convenience value when no options are specified. */
