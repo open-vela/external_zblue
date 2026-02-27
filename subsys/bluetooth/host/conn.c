@@ -3796,9 +3796,9 @@ int bt_conn_le_phy_update(struct bt_conn *conn,
 }
 #endif
 
-int bt_conn_le_read_rssi(struct bt_conn *conn, int8_t *rssi)
+int bt_conn_read_rssi(struct bt_conn *conn, int8_t *rssi)
 {
-	return bt_le_read_conn_rssi(conn, rssi);
+	return bt_read_conn_rssi(conn, rssi);
 }
 
 #if defined(CONFIG_BT_CENTRAL)
