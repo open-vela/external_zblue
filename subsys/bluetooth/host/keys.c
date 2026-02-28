@@ -83,6 +83,9 @@ void bt_keys_reset(struct bt_dev *hdev)
 	hdev->keys = &key_pool[hdev->dev_id];
 
 	memset(&hdev->keys->key_pool, 0, sizeof(hdev->keys->key_pool));
+#if defined(CONFIG_BT_CLASSIC)
+	memset(&hdev->keys->br_key_pool, 0, sizeof(hdev->keys->br_key_pool));
+#endif
 }
 
 struct bt_keys *bt_keys_get_addr(struct bt_dev *hdev, uint8_t id, const bt_addr_le_t *addr)
