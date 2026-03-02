@@ -2135,8 +2135,6 @@ void bt_l2cap_br_init(struct bt_dev *hdev)
 	hdev->l2cap_br_ctx->hdev = hdev;
 	hdev->l2cap_br_ctx->ident = 0;
 
-	sys_slist_init(&hdev->l2cap_br_ctx->br_servers);
-
 	if (IS_ENABLED(CONFIG_BT_RFCOMM)) {
 		bt_rfcomm_init();
 	}
