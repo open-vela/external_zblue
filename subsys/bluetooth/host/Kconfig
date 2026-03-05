@@ -505,6 +505,23 @@ config BT_PRIVACY_RANDOMIZE_IR
 	  identity for each entry in Read_Static_Addresses. Setting this config
 	  randomizes the IRs during this process.
 
+config BT_PRIVACY_ERIR
+	bool "Derive identity root from BD_ADDR using product-specific CMAC key"
+	depends on BT_PRIVACY
+	default n
+	help
+	  When enabled, the identity root (IR) is derived from the device's
+	  BD_ADDR using AES-CMAC with a product-specific private key, instead
+	  of reading it from the controller via bt_read_identity_root().
+
+config BT_PRIVACY_ERIR_CMAC_KEY
+	string "Product-specific CMAC private key for IR derivation"
+	depends on BT_PRIVACY_ERIR
+	help
+	  16-byte product-specific private key (Big-endian) used by AES-CMAC
+	  to derive the identity root from BD_ADDR. SHOULD be changed for
+	  different releases/products.
+
 config BT_RPA_TIMEOUT
 	int "Resolvable Private Address timeout"
 	depends on BT_PRIVACY
