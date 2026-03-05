@@ -1605,6 +1605,7 @@ void bt_gatt_init(struct bt_dev *hdev)
 {
 	struct bt_dev_gatt_ctx *gatt_ctx = &gatt_ctx_pool[hdev->dev_id];
 	hdev->gatt_ctx = gatt_ctx;
+	memset(hdev->gatt_ctx, 0, sizeof(*hdev->gatt_ctx));
 	gatt_ctx->hdev = hdev;
 
 	sys_slist_init(&gatt_ctx->callback_list);
