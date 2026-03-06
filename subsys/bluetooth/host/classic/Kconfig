@@ -355,7 +355,7 @@ config BT_HFP_AG_GET_ONGOING_CALL_TIMEOUT
 
 config BT_HFP_AG_INBAND_RINGTONE
 	bool "In-band ring tone capability"
-	default y
+	default n
 	help
 	  This option enables In-band ring tone capability
 
