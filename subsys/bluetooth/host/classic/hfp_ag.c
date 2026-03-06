@@ -1666,7 +1666,7 @@ static void bt_hfp_ag_set_in_band_ring(struct bt_hfp_ag *ag, void *user_data)
 {
 	bool is_inband_ringtone;
 
-	is_inband_ringtone = AG_SUPT_FEAT(ag, BT_HFP_AG_FEATURE_INBAND_RINGTONE) ? true : false;
+	is_inband_ringtone = AG_SUPT_FEAT(ag, BT_HFP_AG_FEATURE_INBAND_RINGTONE_ENABLE);
 
 	if (is_inband_ringtone && !atomic_test_bit(ag->flags, BT_HFP_AG_INBAND_RING)) {
 		int err = hfp_ag_send_data(ag, NULL, NULL, "\r\n+BSIR:1\r\n");
@@ -5072,6 +5072,11 @@ int Z_API(bt_hfp_ag_inband_ringtone)(struct bt_hfp_ag *ag, bool inband)
 	int err;
 
 	LOG_DBG("");
+
+	if (!IS_ENABLED(CONFIG_BT_HFP_AG_INBAND_RINGTONE)) {
+		LOG_ERR("In-band ring tone is unsupported!");
+		return -ENOTSUP;
+	}
 
 	if (ag == NULL) {
 		return -EINVAL;
