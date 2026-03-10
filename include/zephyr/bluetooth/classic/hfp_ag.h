@@ -306,8 +306,10 @@ struct bt_hfp_ag_cb {
 	 *
 	 *  @param ag HFP AG object.
 	 *  @param err Result of codec negotiation.
+	 *  @param codec_id Actual negotiated codec ID (e.g. BT_HFP_AG_CODEC_CVSD,
+	 *         BT_HFP_AG_CODEC_MSBC). Valid when err == 0.
 	 */
-	void (*codec_negotiate)(struct bt_hfp_ag *ag, int err);
+	void (*codec_negotiate)(struct bt_hfp_ag *ag, int err, uint8_t codec_id);
 
 	/** Audio connection request callback
 	 *

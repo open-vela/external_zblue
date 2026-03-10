@@ -1221,9 +1221,9 @@ void ag_vgs(struct bt_hfp_ag *ag, uint8_t gain)
 	bt_shell_print("AG received vgs %d", gain);
 }
 
-void ag_codec_negotiate(struct bt_hfp_ag *ag, int err)
+void ag_codec_negotiate(struct bt_hfp_ag *ag, int err, uint8_t codec_id)
 {
-	bt_shell_print("AG codec negotiation result %d", err);
+	bt_shell_print("AG codec negotiation result %d, codec_id %u", err, codec_id);
 }
 
 void ag_audio_connect_req(struct bt_hfp_ag *ag)
