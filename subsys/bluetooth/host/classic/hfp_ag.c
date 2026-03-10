@@ -1030,7 +1030,7 @@ static int bt_hfp_ag_bac_handler(struct bt_hfp_ag *ag, struct net_buf *buf)
 		/* Codec connection is ended. It needs to be restarted. */
 		LOG_DBG("Codec connection is ended. It needs to be restarted.");
 		if (bt_ag && bt_ag->codec_negotiate) {
-			bt_ag->codec_negotiate(ag, -EAGAIN);
+			bt_ag->codec_negotiate(ag, -EAGAIN, ag->selected_codec_id);
 		}
 	}
 
@@ -2738,12 +2738,12 @@ static int bt_hfp_ag_bcs_handler(struct bt_hfp_ag *ag, struct net_buf *buf)
 
 	if (err == 0) {
 		if (codec_conn && bt_ag && bt_ag->codec_negotiate) {
-			bt_ag->codec_negotiate(ag, err);
+			bt_ag->codec_negotiate(ag, err, ag->selected_codec_id);
 		}
 		err = hfp_ag_next_step(ag, bt_hfp_ag_unit_codec_conn_setup, call);
 	} else {
 		if (codec_conn && bt_ag && bt_ag->codec_negotiate) {
-			bt_ag->codec_negotiate(ag, err);
+			bt_ag->codec_negotiate(ag, err, ag->selected_codec_id);
 		}
 
 		if (call) {
