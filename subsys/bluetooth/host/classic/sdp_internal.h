@@ -37,7 +37,7 @@
 #define BT_SDP_INVALID_PDU_SIZE      0x0004
 #define BT_SDP_INVALID_CSTATE        0x0005
 
-#define BT_SDP_MAX_SERVICES   10
+#define BT_SDP_MAX_SERVICES   16
 
 struct bt_sdp_data_elem_seq {
 	uint8_t  type; /* Type: Will be data element sequence */
