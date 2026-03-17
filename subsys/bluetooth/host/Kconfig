@@ -538,6 +538,17 @@ config BT_RPA_TIMEOUT_DYNAMIC
 	  This option allows the user to override the default value of
 	  the Resolvable Private Address timeout using dedicated APIs.
 
+config BT_CENTRAL_FORCE_IDENTITY_ADDR
+	bool "Force identity address when initiating LE connections"
+	depends on BT_PRIVACY && BT_CENTRAL
+	default y
+	help
+	  When enabled, the initiator uses its identity address (public or
+	  random static) instead of a Resolvable Private Address (RPA) when
+	  creating LE connections, even if CONFIG_BT_PRIVACY is enabled.
+	  This is needed when the remote device does not support privacy or
+	  requires a fixed address from the initiator.
+
 config BT_RPA_SHARING
 	bool "Share the Resolvable Private Address between advertising sets"
 	depends on BT_PRIVACY && BT_EXT_ADV
