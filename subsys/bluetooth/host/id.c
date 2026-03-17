@@ -1835,7 +1835,8 @@ int bt_id_set_create_conn_own_addr(struct bt_dev *hdev, bool use_filter, uint8_t
 		return -EINVAL;
 	}
 
-	if (IS_ENABLED(CONFIG_BT_PRIVACY)) {
+	if (IS_ENABLED(CONFIG_BT_PRIVACY) &&
+	    !IS_ENABLED(CONFIG_BT_CENTRAL_FORCE_IDENTITY_ADDR)) {
 		if (use_filter || rpa_timeout_valid_check(hdev)) {
 			err = bt_id_set_private_addr(hdev, BT_ID_DEFAULT);
 			if (err) {
