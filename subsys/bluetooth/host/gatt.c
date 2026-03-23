@@ -250,6 +250,60 @@ static struct bt_sdp_attribute gatt_attrs[] = {
 };
 
 static struct bt_sdp_record gatt_rec = BT_SDP_RECORD(gatt_attrs);
+
+/* Generic Access SDP record */
+static struct bt_sdp_attribute gap_attrs[] = {
+	BT_SDP_NEW_SERVICE,
+	BT_SDP_LIST(
+		BT_SDP_ATTR_SVCLASS_ID_LIST,
+		BT_SDP_TYPE_SIZE_VAR(BT_SDP_SEQ8, 3), /* 35 03 */
+		BT_SDP_DATA_ELEM_LIST(
+		{
+			BT_SDP_TYPE_SIZE(BT_SDP_UUID16), /* 19 */
+			BT_SDP_ARRAY_16(BT_SDP_GENERIC_ACCESS_SVCLASS) /* 18 00 */
+		},
+		)
+	),
+	BT_SDP_LIST(
+		BT_SDP_ATTR_PROTO_DESC_LIST,
+		BT_SDP_TYPE_SIZE_VAR(BT_SDP_SEQ8, 19), /* 35 13 */
+		BT_SDP_DATA_ELEM_LIST(
+		{
+			BT_SDP_TYPE_SIZE_VAR(BT_SDP_SEQ8, 6), /* 35 06 */
+			BT_SDP_DATA_ELEM_LIST(
+			{
+				BT_SDP_TYPE_SIZE(BT_SDP_UUID16), /* 19 */
+				BT_SDP_ARRAY_16(BT_SDP_PROTO_L2CAP) /* 01 00 */
+			},
+			{
+				BT_SDP_TYPE_SIZE(BT_SDP_UINT16), /* 09 */
+				BT_SDP_ARRAY_16(BT_L2CAP_PSM_ATT) /* 00 1F */
+			},
+			)
+		},
+		{
+			BT_SDP_TYPE_SIZE_VAR(BT_SDP_SEQ8, 9), /* 35 09 */
+			BT_SDP_DATA_ELEM_LIST(
+			{
+				BT_SDP_TYPE_SIZE(BT_SDP_UUID16), /* 19 */
+				BT_SDP_ARRAY_16(BT_SDP_PROTO_ATT) /* 00 07 */
+			},
+			{
+				BT_SDP_TYPE_SIZE(BT_SDP_UINT16), /* 09 */
+				BT_SDP_ARRAY_16(0) /* 00 00, assign on bt_gatt_service_init */
+			},
+			{
+				BT_SDP_TYPE_SIZE(BT_SDP_UINT16), /* 09 */
+				BT_SDP_ARRAY_16(0) /* 00 00, assign on bt_gatt_service_init */
+			},
+			)
+		},
+		)
+	),
+	BT_SDP_SERVICE_NAME("Generic Access"),
+};
+
+static struct bt_sdp_record gap_rec = BT_SDP_RECORD(gap_attrs);
 #endif
 
 static ssize_t read_name(struct bt_conn *conn, const struct bt_gatt_attr *attr,
@@ -1580,6 +1634,13 @@ void bt_gatt_service_sdp_init(struct bt_dev *hdev)
 		*start_hdl = handle + 1;
 		*end_hdl = handle + svc->attr_count;
 		bt_sdp_register_service(&gatt_rec);
+	} else if (!bt_uuid_cmp(attr->user_data, BT_UUID_GAP)) {
+		uint16_t *start_hdl = (uint16_t *)SDP_GATT_START_HDL_PTR_FROM_ATTR(gap_attrs);
+		uint16_t *end_hdl = (uint16_t *)SDP_GATT_END_HDL_PTR_FROM_ATTR(gap_attrs);
+
+		*start_hdl = handle + 1;
+		*end_hdl = handle + svc->attr_count;
+		bt_sdp_register_service(&gap_rec);
 	}
 
 		handle += svc->attr_count;
