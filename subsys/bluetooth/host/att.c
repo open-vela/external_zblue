@@ -869,6 +869,12 @@ static uint8_t att_mtu_req(struct bt_att_chan *chan, struct net_buf *buf)
 		return BT_ATT_ERR_NOT_SUPPORTED;
 	}
 
+#if defined(CONFIG_BT_ATT_OVER_BR)
+	if (bt_att_is_over_br(chan)) {
+		return BT_ATT_ERR_NOT_SUPPORTED;
+	}
+#endif /* CONFIG_BT_ATT_OVER_BR */
+
 	req = (void *)buf->data;
 
 	mtu_client = sys_le16_to_cpu(req->mtu);
