@@ -2673,6 +2673,13 @@ static int bt_hfp_ag_bcc_handler(struct bt_hfp_ag *ag, struct net_buf *buf)
 	}
 	hfp_ag_unlock(ag);
 
+	/* Clear stale codec connection state from previous incomplete negotiation.
+	 * HF sending AT+BCC means it wants to (re)start audio connection,
+	 * so any pending codec negotiation should be reset. */
+	if (atomic_test_and_clear_bit(ag->flags, BT_HFP_AG_CODEC_CONN)) {
+		LOG_WRN("Cleared stale CODEC_CONN flag on AT+BCC");
+	}
+
 	if (bt_ag && bt_ag->audio_connect_req) {
 		bt_ag->audio_connect_req(ag);
 		return 0;
