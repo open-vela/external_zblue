@@ -1699,6 +1699,12 @@ static int avdtp_send_cmd(struct bt_avdtp *session, struct net_buf *buf, struct 
 	/* From all the calls, the session, buf and req can't be NULL. */
 	__ASSERT_NO_MSG((session != NULL && buf != NULL && req != NULL));
 
+	if (session->br_chan.chan.conn == NULL) {
+		LOG_WRN("Session disconnected, cannot send cmd");
+		net_buf_unref(buf);
+		return -ENOTCONN;
+	}
+
 	avdtp_lock(session);
 
 	if (session->req != NULL) {
