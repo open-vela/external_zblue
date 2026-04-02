@@ -183,10 +183,22 @@ static void bt_sdp_disconnected(struct bt_l2cap_chan *chan)
 						   chan);
 
 	struct bt_sdp *sdp = CONTAINER_OF(ch, struct bt_sdp, chan);
+	struct net_buf *buf;
 
 	LOG_DBG("chan %p cid 0x%04x", ch, ch->tx.cid);
 
-	(void)memset(sdp, 0, sizeof(*sdp));
+	/*
+	 * Only reset SDP specific members, preserve the L2CAP channel
+	 * structure so that bt_l2cap_chan_del() can properly invoke
+	 * chan->destroy (l2cap_br_chan_destroy) to cancel rtx_work
+	 * and remove the wdog from g_wdactivelist.
+	 */
+	while ((buf = net_buf_get(&sdp->partial_resp_queue, K_NO_WAIT))) {
+		net_buf_unref(buf);
+	}
+
+	(void)memset(&sdp->partial_resp_queue, 0,
+		     sizeof(sdp->partial_resp_queue));
 }
 
 /* @brief Creates an SDP PDU
