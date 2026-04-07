@@ -46,6 +46,8 @@
 #include "direction_internal.h"
 #include "classic/sco_internal.h"
 
+#include "bt_probe_hci.h"
+
 #define LOG_LEVEL CONFIG_BT_CONN_LOG_LEVEL
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(bt_conn);
@@ -563,6 +565,9 @@ static int send_acl(struct bt_conn *conn, struct net_buf *buf, uint8_t flags)
 	hdr->len = sys_cpu_to_le16(buf->len - sizeof(*hdr));
 
 	bt_buf_set_type(buf, BT_BUF_ACL_OUT);
+
+	bt_probe_hci_stack_tx_acl(buf->data, buf->len,
+		(uint8_t)k_sem_count_get(bt_conn_get_pkts(conn)));
 
 	return bt_send(conn->hdev, buf);
 }

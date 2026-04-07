@@ -27,6 +27,8 @@
 #include "l2cap_br_internal.h"
 #include "rfcomm_internal.h"
 
+#include "bt_probe_rfcomm.h"
+
 #define LOG_LEVEL CONFIG_BT_RFCOMM_LOG_LEVEL
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(bt_rfcomm);
@@ -601,6 +603,9 @@ static void rfcomm_dlc_tx_thread(void *p1, void *p2, void *p3)
 			net_buf_unref(buf);
 			break;
 		}
+
+		bt_probe_rfcomm_tx(buf->data, buf->len,
+			(uint8_t)k_sem_count_get(&dlc->tx_credits));
 
 		if (rfcomm_send_cb(dlc->session, buf, rfcomm_sent, dlc) < 0) {
 			/* This fails only if channel is disconnected */
@@ -1432,13 +1437,21 @@ static void rfcomm_handle_data(struct bt_rfcomm_session *session,
 		return;
 	}
 
+	uint8_t peer_credits_given = 0;
+
 	if (pf == BT_RFCOMM_PF_UIH_CREDIT) {
 		if (buf->len == 0) {
 			LOG_WRN("Data recvd is invalid");
 			return;
 		}
+		peer_credits_given = buf->data[0];
 		rfcomm_dlc_tx_give_credits(dlc, net_buf_pull_u8(buf));
 	}
+
+	/* buf->len now = payload + FCS (or just FCS for credit-only) */
+	bt_probe_rfcomm_rx(dlci,
+		(buf->len > BT_RFCOMM_FCS_SIZE) ? (buf->len - BT_RFCOMM_FCS_SIZE) : 0,
+		(uint8_t)dlc->rx_credit, peer_credits_given);
 
 	if (buf->len > BT_RFCOMM_FCS_SIZE) {
 		if (dlc->session->cfc == BT_RFCOMM_CFC_SUPPORTED &&
