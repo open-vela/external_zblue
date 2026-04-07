@@ -65,7 +65,7 @@ static inline bool is_condition_met(struct k_poll_event *event, uint32_t *state)
 }
 
 /* must be called with interrupts locked */
-static inline void register_event(struct k_poll_event *event,
+static __attribute__((noinline)) void register_event(struct k_poll_event *event,
 				 struct z_poller *poller)
 {
 	switch (event->type) {
