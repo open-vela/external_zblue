@@ -19,6 +19,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/init.h>
 #include <zephyr/sys/check.h>
+#include <ksched.h>
 
 static struct k_spinlock lock;
 

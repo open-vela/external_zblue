@@ -30,6 +30,7 @@
 #include "did_internal.h"
 #include "rfcomm_internal.h"
 #include "sdp_internal.h"
+#include "host/smp.h"
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(bt_l2cap_br, CONFIG_BT_L2CAP_LOG_LEVEL);
