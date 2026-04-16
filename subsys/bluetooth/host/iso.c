@@ -51,14 +51,14 @@ LOG_MODULE_REGISTER(bt_iso, CONFIG_BT_ISO_LOG_LEVEL);
 #define iso_chan(_iso) ((_iso)->iso.chan);
 
 #if defined(CONFIG_BT_ISO_RX)
-NET_BUF_POOL_FIXED_DEFINE(iso_rx_pool, CONFIG_BT_ISO_RX_BUF_COUNT,
+NET_BUF_POOL_DEFINE(iso_rx_pool, CONFIG_BT_ISO_RX_BUF_COUNT,
 			  BT_ISO_SDU_BUF_SIZE(CONFIG_BT_ISO_RX_MTU), sizeof(struct iso_data), NULL);
 
 #define iso_info(buf) ((struct bt_iso_recv_info *)&iso(buf)->iso_info_data)
 #endif /* CONFIG_BT_ISO_RX */
 
 #if defined(CONFIG_BT_ISO_UNICAST) || defined(CONFIG_BT_ISO_BROADCAST)
-NET_BUF_POOL_FIXED_DEFINE(iso_tx_pool, CONFIG_BT_ISO_TX_BUF_COUNT,
+NET_BUF_POOL_DEFINE(iso_tx_pool, CONFIG_BT_ISO_TX_BUF_COUNT,
 			  BT_ISO_SDU_BUF_SIZE(CONFIG_BT_ISO_TX_MTU),
 			  CONFIG_BT_CONN_TX_USER_DATA_SIZE, NULL);
 
@@ -562,7 +562,7 @@ int bt_iso_chan_get_info(const struct bt_iso_chan *chan, struct bt_iso_info *inf
 #if defined(CONFIG_BT_ISO_RX)
 struct net_buf *bt_iso_get_rx(k_timeout_t timeout)
 {
-	struct net_buf *buf = net_buf_alloc(&iso_rx_pool, timeout);
+	struct net_buf *buf = net_buf_alloc_len(&iso_rx_pool, BT_ISO_SDU_BUF_SIZE(CONFIG_BT_ISO_RX_MTU), timeout);
 
 	if (buf) {
 		net_buf_reserve(buf, BT_BUF_RESERVE);

@@ -75,7 +75,7 @@ static void usb_data_request_cb(const struct device *dev)
 		return;
 	}
 
-	pcm_buf = net_buf_alloc(&usb_out_buf_pool, K_NO_WAIT);
+	pcm_buf = net_buf_alloc_len(&usb_out_buf_pool, USB_STEREO_FRAME_SIZE, K_NO_WAIT);
 	if (pcm_buf == NULL) {
 		LOG_WRN("Could not allocate pcm_buf");
 		return;

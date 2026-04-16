@@ -27,7 +27,7 @@ static struct bt_iso_chan iso_chan;
 static uint16_t seq_num;
 static uint16_t latency_ms = 10U; /* 10ms */
 static uint32_t interval_us = 10U * USEC_PER_MSEC; /* 10 ms */
-NET_BUF_POOL_FIXED_DEFINE(tx_pool, 1, BT_ISO_SDU_BUF_SIZE(CONFIG_BT_ISO_TX_MTU),
+NET_BUF_POOL_DEFINE(tx_pool, 1, BT_ISO_SDU_BUF_SIZE(CONFIG_BT_ISO_TX_MTU),
 			  CONFIG_BT_CONN_TX_USER_DATA_SIZE, NULL);
 
 /**

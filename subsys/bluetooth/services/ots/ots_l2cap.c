@@ -33,12 +33,12 @@ LOG_MODULE_REGISTER(bt_ots, CONFIG_BT_OTS_CLIENT_LOG_LEVEL);
  */
 #define BT_GATT_OTS_L2CAP_PSM	0x0025
 
-NET_BUF_POOL_FIXED_DEFINE(ot_chan_tx_pool, 1,
+NET_BUF_POOL_DEFINE(ot_chan_tx_pool, 1,
 			  BT_L2CAP_SDU_BUF_SIZE(CONFIG_BT_OTS_L2CAP_CHAN_TX_MTU),
 			  CONFIG_BT_CONN_TX_USER_DATA_SIZE, NULL);
 
 #if (CONFIG_BT_OTS_L2CAP_CHAN_RX_MTU > BT_L2CAP_SDU_RX_MTU)
-NET_BUF_POOL_FIXED_DEFINE(ot_chan_rx_pool, 1, CONFIG_BT_OTS_L2CAP_CHAN_RX_MTU, 8,
+NET_BUF_POOL_DEFINE(ot_chan_rx_pool, 1, CONFIG_BT_OTS_L2CAP_CHAN_RX_MTU, 8,
 			  NULL);
 #endif
 
@@ -56,7 +56,7 @@ static int ots_l2cap_send(struct bt_gatt_ots_l2cap *l2cap_ctx)
 	len = MIN(len, l2cap_ctx->tx.len - l2cap_ctx->tx.len_sent);
 
 	/* Prepare buffer for sending. */
-	buf = net_buf_alloc(&ot_chan_tx_pool, K_FOREVER);
+	buf = net_buf_alloc_len(&ot_chan_tx_pool, BT_L2CAP_SDU_BUF_SIZE(CONFIG_BT_OTS_L2CAP_CHAN_TX_MTU), K_FOREVER);
 	net_buf_reserve(buf, BT_L2CAP_SDU_CHAN_SEND_RESERVE);
 	net_buf_add_mem(buf, &l2cap_ctx->tx.data[l2cap_ctx->tx.len_sent], len);
 
@@ -81,7 +81,7 @@ static struct net_buf *l2cap_alloc_buf(struct bt_l2cap_chan *chan)
 {
 	LOG_DBG("Channel %p allocating buffer", chan);
 
-	return net_buf_alloc(&ot_chan_rx_pool, K_FOREVER);
+	return net_buf_alloc_len(&ot_chan_rx_pool, CONFIG_BT_OTS_L2CAP_CHAN_RX_MTU, K_FOREVER);
 }
 #endif
 

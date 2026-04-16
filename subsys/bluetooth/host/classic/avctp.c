@@ -431,7 +431,7 @@ static int avctp_recv_fragmented(struct bt_avctp *avctp, struct net_buf *buf)
 			goto failed;
 		}
 
-		avctp->reassembly_buf = net_buf_alloc(avctp->rx_pool, K_FOREVER);
+		avctp->reassembly_buf = net_buf_alloc_len(avctp->rx_pool, 512, K_FOREVER);
 		if (avctp->reassembly_buf == NULL) {
 			LOG_ERR("Failed to allocate reassembly buffer");
 			return -ENOMEM;

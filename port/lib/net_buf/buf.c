@@ -42,6 +42,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define WARN_ALLOC_INTERVAL K_FOREVER
 #endif
 
+#define GET_ALIGN(pool) sizeof(void *)
 /* Linker-defined symbol bound to the static pool structs */
 
 #if 0
@@ -199,14 +200,25 @@ const struct net_buf_data_cb net_buf_fixed_cb = {
 	.unref = fixed_data_unref,
 };
 
-#if (K_HEAP_MEM_POOL_SIZE > 0)
+#if 1//(K_HEAP_MEM_POOL_SIZE > 0)
+
+static uint8_t *generic_data_ref(struct net_buf *buf, uint8_t *data)
+{
+	struct net_buf_pool *buf_pool = net_buf_pool_get(buf->pool_id);
+	uint8_t *ref_count;
+
+	ref_count = data - GET_ALIGN(buf_pool);
+	(*ref_count)++;
+
+	return data;
+}
 
 static uint8_t *heap_data_alloc(struct net_buf *buf, size_t *size,
 			     k_timeout_t timeout)
 {
 	uint8_t *ref_count;
 
-	ref_count = k_malloc(sizeof(void *) + *size);
+	ref_count = malloc(sizeof(void *) + *size);
 	if (!ref_count) {
 		return NULL;
 	}
@@ -225,10 +237,10 @@ static void heap_data_unref(struct net_buf *buf, uint8_t *data)
 		return;
 	}
 
-	k_free(ref_count);
+	free(ref_count);
 }
 
-static const struct net_buf_data_cb net_buf_heap_cb = {
+const struct net_buf_data_cb net_buf_heap_cb = {
 	.alloc = heap_data_alloc,
 	.ref   = generic_data_ref,
 	.unref = heap_data_unref,

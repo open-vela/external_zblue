@@ -71,7 +71,7 @@ struct friend_adv {
 	};
 };
 
-NET_BUF_POOL_FIXED_DEFINE(friend_buf_pool, FRIEND_BUF_COUNT, BT_MESH_ADV_DATA_SIZE,
+NET_BUF_POOL_DEFINE(friend_buf_pool, FRIEND_BUF_COUNT, BT_MESH_ADV_DATA_SIZE,
 			  sizeof(struct friend_adv), NULL);
 
 static struct friend_adv adv_pool[FRIEND_BUF_COUNT];
@@ -341,7 +341,7 @@ static struct net_buf *create_friend_pdu(struct bt_mesh_friend *frnd,
 	struct net_buf *buf;
 
 
-	buf = net_buf_alloc(&friend_buf_pool, K_NO_WAIT);
+	buf = net_buf_alloc_len(&friend_buf_pool, BT_MESH_ADV_DATA_SIZE, K_NO_WAIT);
 	if (!buf) {
 		return NULL;
 	}

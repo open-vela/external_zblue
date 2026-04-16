@@ -33,9 +33,9 @@ LOG_MODULE_REGISTER(bt_buf, CONFIG_BT_LOG_LEVEL);
  * the HCI transport to fill buffers in parallel with `bt_recv`
  * consuming them.
  */
-NET_BUF_POOL_FIXED_DEFINE(sync_evt_pool, 1, SYNC_EVT_SIZE, sizeof(struct bt_buf_data), NULL);
+NET_BUF_POOL_DEFINE(sync_evt_pool, 1, SYNC_EVT_SIZE, sizeof(struct bt_buf_data), NULL);
 
-NET_BUF_POOL_FIXED_DEFINE(discardable_pool, CONFIG_BT_BUF_EVT_DISCARDABLE_COUNT,
+NET_BUF_POOL_DEFINE(discardable_pool, CONFIG_BT_BUF_EVT_DISCARDABLE_COUNT,
 			  BT_BUF_EVT_SIZE(CONFIG_BT_BUF_EVT_DISCARDABLE_SIZE),
 			  sizeof(struct bt_buf_data), NULL);
 
@@ -44,11 +44,11 @@ NET_BUF_POOL_DEFINE(acl_in_pool, BT_BUF_ACL_RX_COUNT,
 		    BT_BUF_ACL_SIZE(CONFIG_BT_BUF_ACL_RX_SIZE),
 		    sizeof(struct acl_data), bt_hci_host_num_completed_packets);
 
-NET_BUF_POOL_FIXED_DEFINE(evt_pool, CONFIG_BT_BUF_EVT_RX_COUNT,
+NET_BUF_POOL_DEFINE(evt_pool, CONFIG_BT_BUF_EVT_RX_COUNT,
 			  BT_BUF_EVT_RX_SIZE, sizeof(struct bt_buf_data),
 			  NULL);
 #else
-NET_BUF_POOL_FIXED_DEFINE(hci_rx_pool, BT_BUF_RX_COUNT,
+NET_BUF_POOL_DEFINE(hci_rx_pool, BT_BUF_RX_COUNT,
 			  BT_BUF_RX_SIZE, sizeof(struct acl_data),
 			  NULL);
 #endif /* CONFIG_BT_HCI_ACL_FLOW_CONTROL */
@@ -66,12 +66,12 @@ struct net_buf *bt_buf_get_rx(enum bt_buf_type type, k_timeout_t timeout)
 
 #if defined(CONFIG_BT_HCI_ACL_FLOW_CONTROL)
 	if (type == BT_BUF_EVT) {
-		buf = net_buf_alloc(&evt_pool, timeout);
+		buf = net_buf_alloc_len(&evt_pool, BT_BUF_EVT_RX_SIZE, timeout);
 	} else {
-		buf = net_buf_alloc(&acl_in_pool, timeout);
+		buf = net_buf_alloc_len(&acl_in_pool, BT_BUF_ACL_SIZE(CONFIG_BT_BUF_ACL_RX_SIZE), timeout);
 	}
 #else
-	buf = net_buf_alloc(&hci_rx_pool, timeout);
+	buf = net_buf_alloc_len(&hci_rx_pool, BT_BUF_RX_SIZE, timeout);
 #endif
 
 	if (buf) {
@@ -93,11 +93,11 @@ struct net_buf *bt_buf_get_evt(uint8_t evt, bool discardable,
 #endif /* CONFIG_BT_CONN || CONFIG_BT_ISO */
 	case BT_HCI_EVT_CMD_STATUS:
 	case BT_HCI_EVT_CMD_COMPLETE:
-		buf = net_buf_alloc(&sync_evt_pool, timeout);
+		buf = net_buf_alloc_len(&sync_evt_pool, SYNC_EVT_SIZE, timeout);
 		break;
 	default:
 		if (discardable) {
-			buf = net_buf_alloc(&discardable_pool, timeout);
+			buf = net_buf_alloc_len(&discardable_pool, BT_BUF_EVT_SIZE(CONFIG_BT_BUF_EVT_DISCARDABLE_SIZE), timeout);
 		} else {
 			return bt_buf_get_rx(BT_BUF_EVT, timeout);
 		}

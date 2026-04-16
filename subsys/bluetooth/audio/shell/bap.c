@@ -281,7 +281,7 @@ uint16_t get_next_seq_num(struct bt_bap_stream *bap_stream)
  */
 #define PRIME_COUNT 2U
 #define SINE_TX_POOL_SIZE (BT_ISO_SDU_BUF_SIZE(CONFIG_BT_ISO_TX_MTU))
-NET_BUF_POOL_FIXED_DEFINE(sine_tx_pool, CONFIG_BT_ISO_TX_BUF_COUNT, SINE_TX_POOL_SIZE,
+NET_BUF_POOL_DEFINE(sine_tx_pool, CONFIG_BT_ISO_TX_BUF_COUNT, SINE_TX_POOL_SIZE,
 			  CONFIG_BT_CONN_TX_USER_DATA_SIZE, NULL);
 
 #include "math.h"
@@ -480,7 +480,7 @@ static void lc3_audio_send_data(struct shell_stream *sh_stream)
 		return;
 	}
 
-	buf = net_buf_alloc(&sine_tx_pool, K_FOREVER);
+	buf = net_buf_alloc_len(&sine_tx_pool, SINE_TX_POOL_SIZE, K_FOREVER);
 	net_buf_reserve(buf, BT_ISO_CHAN_SEND_RESERVE);
 
 	do_lc3_encode(sh_stream, buf);
@@ -3924,7 +3924,7 @@ static int cmd_init(const struct shell *sh, size_t argc, char *argv[])
 #if defined(CONFIG_BT_AUDIO_TX)
 
 #define DATA_MTU CONFIG_BT_ISO_TX_MTU
-NET_BUF_POOL_FIXED_DEFINE(tx_pool, 1, DATA_MTU, CONFIG_BT_CONN_TX_USER_DATA_SIZE, NULL);
+NET_BUF_POOL_DEFINE(tx_pool, 1, DATA_MTU, CONFIG_BT_CONN_TX_USER_DATA_SIZE, NULL);
 
 static int cmd_send(const struct shell *sh, size_t argc, char *argv[])
 {
@@ -3957,7 +3957,7 @@ static int cmd_send(const struct shell *sh, size_t argc, char *argv[])
 		memset(data, 0xff, len);
 	}
 
-	buf = net_buf_alloc(&tx_pool, K_FOREVER);
+	buf = net_buf_alloc_len(&tx_pool, SINE_TX_POOL_SIZE, K_FOREVER);
 	net_buf_reserve(buf, BT_ISO_CHAN_SEND_RESERVE);
 
 	net_buf_add_mem(buf, data, len);

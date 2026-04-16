@@ -68,7 +68,7 @@ struct bt_sdp {
 };
 
 /* Pool for outgoing SDP packets */
-NET_BUF_POOL_FIXED_DEFINE(sdp_pool, CONFIG_BT_MAX_CONN, BT_L2CAP_BUF_SIZE(SDP_MTU),
+NET_BUF_POOL_DEFINE(sdp_pool, CONFIG_BT_MAX_CONN, BT_L2CAP_BUF_SIZE(SDP_MTU),
 			  CONFIG_BT_CONN_TX_USER_DATA_SIZE, NULL);
 
 #define SDP_CLIENT_CHAN(_ch) CONTAINER_OF(_ch, struct bt_sdp_client, chan.chan)
@@ -2237,7 +2237,7 @@ static struct net_buf *sdp_client_alloc_buf(struct bt_l2cap_chan *chan)
 
 	session->param = GET_PARAM(sys_slist_peek_head(&session->reqs));
 
-	buf = net_buf_alloc(session->param->pool, K_FOREVER);
+	buf = net_buf_alloc_len(session->param->pool, BT_L2CAP_BUF_SIZE(SDP_MTU), K_FOREVER);
 	__ASSERT_NO_MSG(buf);
 
 	return buf;

@@ -195,7 +195,7 @@ static void heap_data_unref(struct net_buf *buf, uint8_t *data)
 	k_free(ref_count);
 }
 
-static const struct net_buf_data_cb net_buf_heap_cb = {
+const struct net_buf_data_cb net_buf_heap_cb = {
 	.alloc = heap_data_alloc,
 	.ref   = generic_data_ref,
 	.unref = heap_data_unref,

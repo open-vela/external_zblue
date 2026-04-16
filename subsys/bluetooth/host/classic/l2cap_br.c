@@ -76,7 +76,7 @@ enum {
 };
 
 /* Pool for outgoing BR/EDR signaling packets, min MTU is 48 */
-NET_BUF_POOL_FIXED_DEFINE(br_sig_pool, CONFIG_BT_MAX_CONN + BR_SIG_POOL_DEFAULT_COUNT,
+NET_BUF_POOL_DEFINE(br_sig_pool, CONFIG_BT_MAX_CONN + BR_SIG_POOL_DEFAULT_COUNT,
 			  BT_L2CAP_BUF_SIZE(L2CAP_BR_MIN_MTU), 8, NULL);
 
 /* BR/EDR L2CAP signalling channel specific context */

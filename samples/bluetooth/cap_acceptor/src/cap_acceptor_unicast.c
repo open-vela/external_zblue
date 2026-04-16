@@ -352,7 +352,7 @@ static void unicast_stream_sent_cb(struct bt_bap_stream *stream)
 
 static void tx_thread_func(void *arg1, void *arg2, void *arg3)
 {
-	NET_BUF_POOL_FIXED_DEFINE(tx_pool, CONFIG_BT_ISO_TX_BUF_COUNT,
+	NET_BUF_POOL_DEFINE(tx_pool, CONFIG_BT_ISO_TX_BUF_COUNT,
 				  BT_ISO_SDU_BUF_SIZE(CONFIG_BT_ISO_TX_MTU),
 				  CONFIG_BT_CONN_TX_USER_DATA_SIZE, NULL);
 	static uint8_t data[CONFIG_BT_ISO_TX_MTU];

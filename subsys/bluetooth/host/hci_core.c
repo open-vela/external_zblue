@@ -224,7 +224,7 @@ void bt_hci_cmd_state_set_init(struct net_buf *buf,
  * command complete or command status.
  */
 #define CMD_BUF_SIZE MAX(BT_BUF_EVT_RX_SIZE, BT_BUF_CMD_TX_SIZE)
-NET_BUF_POOL_FIXED_DEFINE(hci_cmd_pool, CONFIG_BT_BUF_CMD_TX_COUNT,
+NET_BUF_POOL_DEFINE(hci_cmd_pool, CONFIG_BT_BUF_CMD_TX_COUNT,
 			  CMD_BUF_SIZE, sizeof(struct cmd_data), NULL);
 
 struct event_handler {
@@ -382,8 +382,8 @@ struct net_buf *bt_hci_cmd_create(uint16_t opcode, uint8_t param_len)
 
 	LOG_DBG("opcode 0x%04x %s param_len %u", opcode, bt_hci_opcode_to_str(opcode), param_len);
 
-	/* net_buf_alloc(K_FOREVER) can fail when run from the syswq */
-	buf = net_buf_alloc(&hci_cmd_pool, K_FOREVER);
+	/* net_buf_alloc_len(K_FOREVER) can fail when run from the syswq */
+	buf = net_buf_alloc_len(&hci_cmd_pool, CMD_BUF_SIZE, K_FOREVER);
 	if (!buf) {
 		LOG_DBG("Unable to allocate a command buffer");
 		return NULL;

@@ -38,9 +38,9 @@
 #define L2CAP_POLICY_ALLOWLIST		0x01
 #define L2CAP_POLICY_16BYTE_KEY		0x02
 
-NET_BUF_POOL_FIXED_DEFINE(data_tx_pool, 1, BT_L2CAP_SDU_BUF_SIZE(DATA_MTU),
+NET_BUF_POOL_DEFINE(data_tx_pool, 1, BT_L2CAP_SDU_BUF_SIZE(DATA_MTU),
 			  CONFIG_BT_CONN_TX_USER_DATA_SIZE, NULL);
-NET_BUF_POOL_FIXED_DEFINE(data_rx_pool, 1, DATA_MTU, 8, NULL);
+NET_BUF_POOL_DEFINE(data_rx_pool, 1, DATA_MTU, 8, NULL);
 
 static uint8_t l2cap_policy;
 static struct bt_conn *l2cap_allowlist[CONFIG_BT_MAX_CONN];
@@ -156,7 +156,7 @@ static struct net_buf *l2cap_alloc_buf(struct bt_l2cap_chan *chan)
 		shell_print(ctx_shell, "Channel %p requires buffer", chan);
 	}
 
-	return net_buf_alloc(&data_rx_pool, K_FOREVER);
+	return net_buf_alloc_len(&data_rx_pool, DATA_MTU, K_FOREVER);
 }
 
 static const struct bt_l2cap_chan_ops l2cap_ops = {
@@ -440,7 +440,7 @@ static int cmd_send(const struct shell *sh, size_t argc, char *argv[])
 
 	while (count--) {
 		shell_print(sh, "Rem %d", count);
-		buf = net_buf_alloc(&data_tx_pool, K_SECONDS(2));
+		buf = net_buf_alloc_len(&data_tx_pool, BT_L2CAP_SDU_BUF_SIZE(DATA_MTU), K_SECONDS(2));
 		if (!buf) {
 			if (l2ch_chan.ch.state != BT_L2CAP_CONNECTED) {
 				shell_print(sh, "Channel disconnected, stopping TX");

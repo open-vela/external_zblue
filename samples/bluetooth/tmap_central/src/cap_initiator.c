@@ -34,7 +34,7 @@ static struct bt_cap_stream unicast_streams[CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK
 static struct bt_bap_ep *unicast_sink_eps[CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT];
 static struct bt_bap_ep *unicast_source_eps[CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SRC_COUNT];
 
-NET_BUF_POOL_FIXED_DEFINE(tx_pool, CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT,
+NET_BUF_POOL_DEFINE(tx_pool, CONFIG_BT_BAP_UNICAST_CLIENT_ASE_SNK_COUNT,
 			  CONFIG_BT_ISO_TX_MTU + BT_ISO_CHAN_SEND_RESERVE, 8, NULL);
 
 static K_SEM_DEFINE(sem_cas_discovery, 0, 1);

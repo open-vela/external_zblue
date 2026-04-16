@@ -176,7 +176,7 @@ static struct acc_msg acc = {.x = 1, .y = 10, .z = 100};
 NET_BUF_POOL_HEAP_DEFINE(isolated_pool, (CONFIG_ZBUS_MSG_SUBSCRIBER_SAMPLE_ISOLATED_BUF_POOL_SIZE),
 			 (sizeof(struct zbus_channel *)), NULL);
 #else
-NET_BUF_POOL_FIXED_DEFINE(isolated_pool, (CONFIG_ZBUS_MSG_SUBSCRIBER_SAMPLE_ISOLATED_BUF_POOL_SIZE),
+NET_BUF_POOL_DEFINE(isolated_pool, (CONFIG_ZBUS_MSG_SUBSCRIBER_SAMPLE_ISOLATED_BUF_POOL_SIZE),
 			  (CONFIG_ZBUS_MSG_SUBSCRIBER_NET_BUF_STATIC_DATA_SIZE),
 			  sizeof(struct zbus_channel *), NULL);
 #endif

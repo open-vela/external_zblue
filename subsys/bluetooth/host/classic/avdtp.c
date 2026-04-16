@@ -1926,7 +1926,7 @@ static int bt_avdtp_l2cap_frags_recv(struct bt_avdtp *session, struct net_buf *b
 			return avdtp_rel_and_return(session);
 		}
 
-		session->reasm_buf = net_buf_alloc(&avdtp_pool, K_FOREVER);
+		session->reasm_buf = net_buf_alloc_len(&avdtp_pool, BT_L2CAP_BUF_SIZE(CONFIG_BT_AVDTP_SIGNAL_SDU_MAX), K_FOREVER);
 		if (session->reasm_buf == NULL) {
 			LOG_ERR("fail to alloc reasm buf");
 			return 0;

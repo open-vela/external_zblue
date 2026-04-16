@@ -1242,7 +1242,7 @@ static uint8_t find_type_cb(const struct bt_gatt_attr *attr, uint16_t handle,
 	len = MIN(bt_att_mtu(chan) - net_buf_frags_len(data->buf),
 		  net_buf_tailroom(frag));
 	if (!len) {
-		frag = net_buf_alloc(net_buf_pool_get(data->buf->pool_id),
+		frag = net_buf_alloc_len(net_buf_pool_get(data->buf->pool_id), BT_ATT_BUF_SIZE,
 				     K_NO_WAIT);
 		/* If not buffer can be allocated immediately stop */
 		if (!frag) {
@@ -1453,7 +1453,7 @@ static ssize_t att_chan_read(struct bt_att_chan *chan,
 		len = MIN(bt_att_mtu(chan) - net_buf_frags_len(buf),
 			  net_buf_tailroom(frag));
 		if (!len) {
-			frag = net_buf_alloc(net_buf_pool_get(buf->pool_id),
+			frag = net_buf_alloc_len(net_buf_pool_get(buf->pool_id), BT_ATT_BUF_SIZE,
 					     K_NO_WAIT);
 			/* If not buffer can be allocated immediately return */
 			if (!frag) {
@@ -2299,7 +2299,7 @@ static uint8_t prep_write_cb(const struct bt_gatt_attr *attr, uint16_t handle,
 
 append:
 	/* Copy data into the outstanding queue */
-	data->buf = net_buf_alloc(&prep_pool, K_NO_WAIT);
+	data->buf = net_buf_alloc_len(&prep_pool, BT_ATT_BUF_SIZE, K_NO_WAIT);
 	if (!data->buf) {
 		data->err = BT_ATT_ERR_PREPARE_QUEUE_FULL;
 		return BT_GATT_ITER_STOP;
@@ -3167,7 +3167,7 @@ struct net_buf *bt_att_create_rsp_pdu(struct bt_att_chan *chan, uint8_t op)
 	struct bt_att_tx_meta_data *data;
 	struct net_buf *buf;
 
-	buf = net_buf_alloc(&att_pool, BT_ATT_TIMEOUT);
+	buf = net_buf_alloc_len(&att_pool, BT_L2CAP_SDU_BUF_SIZE(BT_ATT_BUF_SIZE), BT_ATT_TIMEOUT);
 	if (!buf) {
 		LOG_ERR("Unable to allocate buffer for op 0x%02x", op);
 		return NULL;

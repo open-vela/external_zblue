@@ -663,7 +663,7 @@ static int cmd_send_media(const struct shell *sh, int32_t argc, char *argv[])
 		return -ENOEXEC;
 	}
 
-	buf = net_buf_alloc(&a2dp_tx_pool, K_FOREVER);
+	buf = net_buf_alloc_len(&a2dp_tx_pool, BT_L2CAP_BUF_SIZE(CONFIG_BT_L2CAP_TX_MTU), K_FOREVER);
 	net_buf_reserve(buf, BT_A2DP_STREAM_BUF_RESERVE);
 
 	/* num of frames is 1 */

@@ -30,16 +30,16 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(bt_hci_raw);
 
-NET_BUF_POOL_FIXED_DEFINE(hci_rx_pool, BT_BUF_RX_COUNT,
+NET_BUF_POOL_DEFINE(hci_rx_pool, BT_BUF_RX_COUNT,
 			  BT_BUF_RX_SIZE, sizeof(struct bt_buf_data), NULL);
-NET_BUF_POOL_FIXED_DEFINE(hci_cmd_pool, CONFIG_BT_BUF_CMD_TX_COUNT,
+NET_BUF_POOL_DEFINE(hci_cmd_pool, CONFIG_BT_BUF_CMD_TX_COUNT,
 			  BT_BUF_CMD_SIZE(CONFIG_BT_BUF_CMD_TX_SIZE),
 			  sizeof(struct bt_buf_data), NULL);
-NET_BUF_POOL_FIXED_DEFINE(hci_acl_pool, CONFIG_BT_BUF_ACL_TX_COUNT,
+NET_BUF_POOL_DEFINE(hci_acl_pool, CONFIG_BT_BUF_ACL_TX_COUNT,
 			  BT_BUF_ACL_SIZE(CONFIG_BT_BUF_ACL_TX_SIZE),
 			  sizeof(struct bt_buf_data), NULL);
 #if defined(CONFIG_BT_ISO)
-NET_BUF_POOL_FIXED_DEFINE(hci_iso_pool, CONFIG_BT_ISO_TX_BUF_COUNT,
+NET_BUF_POOL_DEFINE(hci_iso_pool, CONFIG_BT_ISO_TX_BUF_COUNT,
 			  BT_ISO_SDU_BUF_SIZE(CONFIG_BT_ISO_TX_MTU),
 			  sizeof(struct bt_buf_data), NULL);
 #endif /* CONFIG_BT_ISO */
@@ -97,7 +97,7 @@ struct net_buf *bt_buf_get_rx(enum bt_buf_type type, k_timeout_t timeout)
 		return NULL;
 	}
 
-	buf = net_buf_alloc(&hci_rx_pool, timeout);
+	buf = net_buf_alloc_len(&hci_rx_pool, BT_BUF_RX_SIZE, timeout);
 	if (!buf) {
 		return buf;
 	}
@@ -163,7 +163,15 @@ struct net_buf *bt_buf_get_tx(enum bt_buf_type type, k_timeout_t timeout,
 		return NULL;
 	}
 
-	buf = net_buf_alloc(pool, timeout);
+	if (pool == &hci_cmd_pool) {
+		buf = net_buf_alloc_len(pool, BT_BUF_CMD_SIZE(CONFIG_BT_BUF_CMD_TX_SIZE), timeout);
+	} else if (pool == &hci_acl_pool) {
+		buf = net_buf_alloc_len(pool, BT_BUF_ACL_SIZE(CONFIG_BT_BUF_ACL_TX_SIZE), timeout);
+#if defined(CONFIG_BT_ISO)
+	} else if (pool == &hci_iso_pool) {
+		buf = net_buf_alloc_len(pool, BT_ISO_SDU_BUF_SIZE(CONFIG_BT_ISO_TX_MTU), timeout);
+#endif //defined(CONFIG_BT_ISO)
+	}
 	if (!buf) {
 		return buf;
 	}

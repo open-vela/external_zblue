@@ -141,7 +141,7 @@ void frag_destroy(struct net_buf *buf);
 
 /* Storage for fragments (views) into the upper layers' PDUs. */
 /* TODO: remove user-data requirements */
-NET_BUF_POOL_FIXED_DEFINE(fragments, CONFIG_BT_CONN_FRAG_COUNT, 0,
+NET_BUF_POOL_DEFINE(fragments, CONFIG_BT_CONN_FRAG_COUNT, 0,
 			  sizeof(struct frag_md), frag_destroy);
 
 struct frag_md *get_frag_md(struct net_buf *fragment)
@@ -1647,7 +1647,7 @@ struct net_buf *bt_conn_create_pdu_timeout(struct net_buf_pool *pool,
 #if defined(CONFIG_NET_BUF_LOG)
 		buf = net_buf_alloc_fixed_debug(pool, K_NO_WAIT, func, line);
 #else
-		buf = net_buf_alloc(pool, K_NO_WAIT);
+		buf = net_buf_alloc_len(pool, BT_L2CAP_BUF_SIZE(CONFIG_BT_L2CAP_TX_MTU), K_NO_WAIT);
 #endif
 		if (!buf) {
 			LOG_WRN("Unable to allocate buffer with K_NO_WAIT");
@@ -1655,7 +1655,7 @@ struct net_buf *bt_conn_create_pdu_timeout(struct net_buf_pool *pool,
 			buf = net_buf_alloc_fixed_debug(pool, timeout, func,
 							line);
 #else
-			buf = net_buf_alloc(pool, timeout);
+			buf = net_buf_alloc_len(pool, BT_L2CAP_BUF_SIZE(CONFIG_BT_L2CAP_TX_MTU), timeout);
 #endif
 		}
 	} else {
@@ -1663,7 +1663,7 @@ struct net_buf *bt_conn_create_pdu_timeout(struct net_buf_pool *pool,
 		buf = net_buf_alloc_fixed_debug(pool, timeout, func,
 							line);
 #else
-		buf = net_buf_alloc(pool, timeout);
+		buf = net_buf_alloc_len(pool, BT_L2CAP_BUF_SIZE(CONFIG_BT_L2CAP_TX_MTU), timeout);
 #endif
 	}
 

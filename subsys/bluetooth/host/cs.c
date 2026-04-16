@@ -29,7 +29,7 @@ struct reassembly_buf_meta_data {
 
 static void clear_on_disconnect(struct bt_conn *conn, uint8_t reason);
 
-NET_BUF_POOL_FIXED_DEFINE(reassembly_buf_pool, CONFIG_BT_CHANNEL_SOUNDING_REASSEMBLY_BUFFER_CNT,
+NET_BUF_POOL_DEFINE(reassembly_buf_pool, CONFIG_BT_CHANNEL_SOUNDING_REASSEMBLY_BUFFER_CNT,
 			  CONFIG_BT_CHANNEL_SOUNDING_REASSEMBLY_BUFFER_SIZE,
 			  sizeof(struct reassembly_buf_meta_data), NULL);
 
@@ -48,7 +48,7 @@ BT_CONN_CB_DEFINE(cs_conn_callbacks) = {
  */
 static struct net_buf *alloc_reassembly_buf(uint16_t conn_handle)
 {
-	struct net_buf *buf = net_buf_alloc(&reassembly_buf_pool, K_NO_WAIT);
+	struct net_buf *buf = net_buf_alloc_len(&reassembly_buf_pool, CONFIG_BT_CHANNEL_SOUNDING_REASSEMBLY_BUFFER_SIZE, K_NO_WAIT);
 
 	if (!buf) {
 		LOG_ERR("Failed to allocate new reassembly buffer");

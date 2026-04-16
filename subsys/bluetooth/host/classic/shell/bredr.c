@@ -39,10 +39,10 @@ static struct bt_conn *pairing_conn;
 
 #define DATA_BREDR_MTU		48
 
-NET_BUF_POOL_FIXED_DEFINE(data_pool, 1, DATA_BREDR_MTU, 8, NULL);
+NET_BUF_POOL_DEFINE(data_pool, 1, DATA_BREDR_MTU, 8, NULL);
 
 #define SDP_CLIENT_USER_BUF_LEN		512
-NET_BUF_POOL_FIXED_DEFINE(sdp_client_pool, CONFIG_BT_MAX_CONN,
+NET_BUF_POOL_DEFINE(sdp_client_pool, CONFIG_BT_MAX_CONN,
 			  SDP_CLIENT_USER_BUF_LEN, 8, NULL);
 
 static int cmd_auth_pincode(const struct shell *sh,
@@ -238,7 +238,7 @@ static struct net_buf *l2cap_alloc_buf(struct bt_l2cap_chan *chan)
 {
 	bt_shell_print("Channel %p requires buffer", chan);
 
-	return net_buf_alloc(&data_pool, K_FOREVER);
+	return net_buf_alloc_len(&data_pool, DATA_BREDR_MTU, K_FOREVER);
 }
 
 static const struct bt_l2cap_chan_ops l2cap_ops = {

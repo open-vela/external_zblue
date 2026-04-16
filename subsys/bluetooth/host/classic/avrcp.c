@@ -74,7 +74,7 @@ struct avrcp_pdu_vendor_handler  {
 	int (*func)(struct bt_avrcp *avrcp, uint8_t tid, uint8_t result, struct net_buf *buf);
 };
 
-NET_BUF_POOL_FIXED_DEFINE(avrcp_vd_rx_pool, CONFIG_BT_MAX_CONN,
+NET_BUF_POOL_DEFINE(avrcp_vd_rx_pool, CONFIG_BT_MAX_CONN,
 			  CONFIG_BT_AVRCP_VD_RX_SIZE,
 			  CONFIG_BT_CONN_TX_USER_DATA_SIZE, NULL);
 
@@ -87,10 +87,10 @@ struct avrcp_pdu_handler {
 #define AVRCP_AVCTP(_avctp) CONTAINER_OF(_avctp, struct bt_avrcp, session)
 #define AVRCP_BROW_AVCTP(_avctp) CONTAINER_OF(_avctp, struct bt_avrcp, browsing_session)
 
-NET_BUF_POOL_FIXED_DEFINE(avctp_ctrl_rx_pool, CONFIG_BT_MAX_CONN, BT_AVRCP_FRAGMENT_SIZE,
+NET_BUF_POOL_DEFINE(avctp_ctrl_rx_pool, CONFIG_BT_MAX_CONN, BT_AVRCP_FRAGMENT_SIZE,
 			  CONFIG_BT_CONN_TX_USER_DATA_SIZE, NULL);
 
-NET_BUF_POOL_FIXED_DEFINE(avctp_ctrl_tx_pool, CONFIG_BT_MAX_CONN,
+NET_BUF_POOL_DEFINE(avctp_ctrl_tx_pool, CONFIG_BT_MAX_CONN,
 			  BT_L2CAP_BUF_SIZE(CONFIG_BT_L2CAP_TX_MTU),
 			  CONFIG_BT_CONN_TX_USER_DATA_SIZE, NULL);
 
@@ -133,7 +133,7 @@ static void avrcp_tx_buf_destroy(struct net_buf *buf)
 	net_buf_destroy(buf);
 }
 
-NET_BUF_POOL_FIXED_DEFINE(avrcp_vd_tx_pool, CONFIG_BT_MAX_CONN,
+NET_BUF_POOL_DEFINE(avrcp_vd_tx_pool, CONFIG_BT_MAX_CONN,
 			  BT_L2CAP_BUF_SIZE(BT_AVRCP_FRAGMENT_SIZE) +
 			  sizeof(struct bt_avctp_header_start),
 			  CONFIG_BT_CONN_TX_USER_DATA_SIZE, avrcp_tx_buf_destroy);
@@ -688,7 +688,7 @@ static int init_fragmentation_context(struct bt_avrcp_ct *ct, uint8_t tid, uint8
 	}
 
 	/* Allocate reassembly buffer */
-	ct->reassembly_buf = net_buf_alloc(&avrcp_vd_rx_pool, K_NO_WAIT);
+	ct->reassembly_buf = net_buf_alloc_len(&avrcp_vd_rx_pool, CONFIG_BT_AVRCP_VD_RX_SIZE, K_NO_WAIT);
 	if (ct->reassembly_buf == NULL) {
 		LOG_ERR("Failed to allocate reassembly buffer");
 		return -ENOBUFS;
