@@ -1144,6 +1144,7 @@ struct net_buf_pool {
 	static struct _net_buf_##_name _net_buf_##_name[_count] __noinit
 
 extern const struct net_buf_data_alloc net_buf_heap_alloc;
+extern const struct net_buf_data_cb net_buf_heap_cb;
 /** @endcond */
 
 /**
@@ -1175,7 +1176,7 @@ extern const struct net_buf_data_alloc net_buf_heap_alloc;
  */
 #define NET_BUF_POOL_HEAP_DEFINE(_name, _count, _ud_size, _destroy)          \
 	_NET_BUF_ARRAY_DEFINE(_name, _count, _ud_size);                      \
-	static STRUCT_SECTION_ITERABLE(net_buf_pool, _name) =                \
+	STRUCT_SECTION_ITERABLE(net_buf_pool, _name) =                       \
 		NET_BUF_POOL_INITIALIZER(_name, &net_buf_heap_alloc,         \
 					 _net_buf_##_name, _count, _ud_size, \
 					 _destroy)
@@ -1218,6 +1219,10 @@ extern const struct net_buf_data_cb net_buf_fixed_cb;
  * @param _ud_size   User data space to reserve per buffer.
  * @param _destroy   Optional destroy callback when buffer is freed.
  */
+#ifdef CONFIG_NET_BUF_ALWAYS_USE_HEAP
+#define NET_BUF_POOL_FIXED_DEFINE(_name, _count, _data_size, _ud_size, _destroy) \
+	NET_BUF_POOL_DEFINE(_name, _count, _data_size, _ud_size, _destroy)
+#else
 #define NET_BUF_POOL_FIXED_DEFINE(_name, _count, _data_size, _ud_size, _destroy) \
 	_NET_BUF_ARRAY_DEFINE(_name, _count, _ud_size);                        \
 	static uint8_t __noinit net_buf_data_##_name[_count][_data_size] __net_buf_align; \
@@ -1229,10 +1234,11 @@ extern const struct net_buf_data_cb net_buf_fixed_cb;
 		.alloc_data = (void *)&net_buf_fixed_##_name,                  \
 		.max_alloc_size = _data_size,                                  \
 	};                                                                     \
-	STRUCT_SECTION_ITERABLE(net_buf_pool, _name) =                  \
+	STRUCT_SECTION_ITERABLE(net_buf_pool, _name) =                         \
 		NET_BUF_POOL_INITIALIZER(_name, &net_buf_fixed_alloc_##_name,  \
 					 _net_buf_##_name, _count, _ud_size,   \
 					 _destroy)
+#endif
 
 /** @cond INTERNAL_HIDDEN */
 extern const struct net_buf_data_cb net_buf_var_cb;
@@ -1296,8 +1302,21 @@ extern const struct net_buf_data_cb net_buf_var_cb;
  * @param _ud_size  Amount of user data space to reserve.
  * @param _destroy  Optional destroy callback when buffer is freed.
  */
+#ifdef CONFIG_NET_BUF_ALWAYS_USE_HEAP
+#define NET_BUF_POOL_DEFINE(_name, _count, _size, _ud_size, _destroy)        \
+	_NET_BUF_ARRAY_DEFINE(_name, _count, _ud_size);                      \
+	static const struct net_buf_data_alloc net_buf_heap_alloc_##_name = { \
+		.cb = &net_buf_heap_cb,                                       \
+		.max_alloc_size = _size,                                      \
+	};                                                                    \
+	STRUCT_SECTION_ITERABLE(net_buf_pool, _name) =                       \
+		NET_BUF_POOL_INITIALIZER(_name, &net_buf_heap_alloc_##_name, \
+					 _net_buf_##_name, _count, _ud_size, \
+					 _destroy)
+#else
 #define NET_BUF_POOL_DEFINE(_name, _count, _size, _ud_size, _destroy)        \
 	NET_BUF_POOL_FIXED_DEFINE(_name, _count, _size, _ud_size, _destroy)
+#endif
 
 /**
  * @brief Looks up a pool based on its ID.

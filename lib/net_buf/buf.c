@@ -166,7 +166,7 @@ const struct net_buf_data_cb net_buf_fixed_cb = {
 	.unref = fixed_data_unref,
 };
 
-#if (K_HEAP_MEM_POOL_SIZE > 0)
+#if (K_HEAP_MEM_POOL_SIZE > 0) || defined(CONFIG_NET_BUF_ALWAYS_USE_HEAP)
 
 static uint8_t *heap_data_alloc(struct net_buf *buf, size_t *size,
 			     k_timeout_t timeout)
@@ -195,7 +195,7 @@ static void heap_data_unref(struct net_buf *buf, uint8_t *data)
 	k_free(ref_count);
 }
 
-static const struct net_buf_data_cb net_buf_heap_cb = {
+const struct net_buf_data_cb net_buf_heap_cb = {
 	.alloc = heap_data_alloc,
 	.ref   = generic_data_ref,
 	.unref = heap_data_unref,
@@ -206,7 +206,7 @@ const struct net_buf_data_alloc net_buf_heap_alloc = {
 	.max_alloc_size = 0,
 };
 
-#endif /* K_HEAP_MEM_POOL_SIZE > 0 */
+#endif /* K_HEAP_MEM_POOL_SIZE > 0 || CONFIG_NET_BUF_ALWAYS_USE_HEAP */
 
 static uint8_t *data_alloc(struct net_buf *buf, size_t *size, k_timeout_t timeout)
 {
