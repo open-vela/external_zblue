@@ -3362,7 +3362,9 @@ static void bt_att_connected(struct bt_l2cap_chan *chan)
 
 		conn = br_chan->chan.conn;
 		/* ATT over BR negotiates MTU via L2CAP configuration. */
+#if defined(CONFIG_BT_GATT_CLIENT)
 		atomic_set_bit(chan->conn->flags, BT_CONN_ATT_MTU_EXCHANGED);
+#endif
 
 		SYS_SLIST_FOR_EACH_CONTAINER(&chan->conn->hdev->att_ctx->conn_cbs, callback, _node) {
 			if (callback->connected) {
