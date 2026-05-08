@@ -476,6 +476,9 @@ struct bt_a2dp_cb {
 	 *                          bt_a2dp_err_code or bt_avdtp_err_code
 	 */
 	void (*config_rsp)(struct bt_a2dp_stream *stream, uint8_t rsp_err_code);
+	int (*get_config_req)(struct bt_a2dp_stream *stream, uint8_t *rsp_err_code);
+	void (*get_config_rsp)(struct bt_a2dp_stream *stream,
+			       struct bt_a2dp_codec_cfg *config, uint8_t rsp_err_code);
 	/**
 	 * @brief Stream establishment request callback
 	 *

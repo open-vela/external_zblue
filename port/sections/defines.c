@@ -115,6 +115,12 @@ const struct bt_conn_cb *_bt_conn_cb_list[] = {
 };
 /* bt_conn_cb END */
 
+/* bt_sco_conn_cb START */
+struct bt_sco_conn_cb *_bt_sco_conn_cb_list[] = {
+	NULL,
+};
+/* bt_sco_conn_cb END */
+
 /* net_buf_pool START */
 extern struct net_buf_pool sine_tx_pool;
 extern struct net_buf_pool tx_pool;
@@ -149,7 +155,7 @@ extern struct net_buf_pool prep_pool;
 extern struct net_buf_pool att_pool;
 extern struct net_buf_pool acl_in_pool;
 extern struct net_buf_pool acl_tx_pool;
-extern struct net_buf_pool dummy_pool;
+struct net_buf_pool dummy_pool;
 // extern struct net_buf_pool a2dp_tx_pool; // for Zephyr shell
 extern struct net_buf_pool bt_a2dp_tx_pool; // for openvela sal
 

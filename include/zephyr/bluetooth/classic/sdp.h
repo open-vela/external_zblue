@@ -576,6 +576,8 @@ struct bt_sdp_discover_params {
 	struct net_buf_pool *pool;
 	/** Discover type */
 	uint8_t type;
+	void (*disconnected)(struct bt_conn *conn,
+			     const struct bt_sdp_discover_params *params);
 };
 
 /** @brief Allows user to start SDP discovery session.

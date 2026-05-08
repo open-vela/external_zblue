@@ -256,6 +256,9 @@ struct bt_avdtp_ops_cb {
 	int (*set_configuration_ind)(struct bt_avdtp *session, struct bt_avdtp_sep *sep,
 				     uint8_t int_seid, struct net_buf *buf, uint8_t *errcode);
 
+	int (*get_configuration_ind)(struct bt_avdtp *session, struct bt_avdtp_sep *sep,
+				     struct net_buf *rsp_buf, uint8_t *errcode);
+
 	int (*re_configuration_ind)(struct bt_avdtp *session, struct bt_avdtp_sep *sep,
 				    struct net_buf *buf, uint8_t *errcode);
 
