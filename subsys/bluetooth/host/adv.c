@@ -1084,10 +1084,14 @@ int bt_le_adv_start_legacy(struct bt_le_ext_adv *adv,
 		if (err) {
 			if (err == -ENOMEM && !dir_adv &&
 			    !(param->options & _BT_LE_ADV_OPT_ONE_TIME)) {
-				goto set_adv_state;
+				/* Undirected connectable adv works without a reserved
+				 * conn slot: keep advertising enabled even when the
+				 * conn pool is exhausted. */
+				err = 0;
+				conn = NULL;
+			} else {
+				return err;
 			}
-
-			return err;
 		}
 	}
 
