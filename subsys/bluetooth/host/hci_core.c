@@ -12,6 +12,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <zephyr/net_buf.h>
 #include <zephyr/sys/atomic.h>
 #include <zephyr/sys/check.h>
@@ -3378,10 +3380,23 @@ static void le_read_resolving_list_size_complete(struct bt_dev *hdev, struct net
 }
 #endif /* defined(CONFIG_BT_SMP) */
 
+/* TEMP-DIAG: probe inode tree health by opening /dev/urandom (the exact
+ * path that hardfaults when the inode list is corrupted). */
+static void probe_inode(const char *tag)
+{
+	int fd = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
+	syslog(LOG_INFO, "[probe] %s: open=%d", tag, fd);
+	if (fd >= 0) {
+		close(fd);
+	}
+}
+
 static int common_init(struct bt_dev *hdev)
 {
 	struct net_buf *rsp;
 	int err;
+
+	probe_inode("z-cmn-entry");
 
 	if (!drv_quirk_no_reset(hdev)) {
 		/* Send HCI_RESET */
@@ -3393,6 +3408,8 @@ static int common_init(struct bt_dev *hdev)
 		hci_reset_complete(hdev);
 	}
 
+	probe_inode("z-cmn-reset");
+
 	/* Read Local Supported Features */
 	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_READ_LOCAL_FEATURES, NULL, &rsp);
 	if (err) {
@@ -3400,6 +3417,8 @@ static int common_init(struct bt_dev *hdev)
 	}
 	read_local_features_complete(hdev, rsp);
 	net_buf_unref(rsp);
+	
+	probe_inode("z-cmn-features");
 
 	/* Read Local Version Information */
 	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_READ_LOCAL_VERSION_INFO, NULL,
@@ -3409,6 +3428,8 @@ static int common_init(struct bt_dev *hdev)
 	}
 	read_local_ver_complete(hdev, rsp);
 	net_buf_unref(rsp);
+	
+	probe_inode("z-cmn-version");
 
 	/* Read Local Supported Commands */
 	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_READ_SUPPORTED_COMMANDS, NULL,
@@ -3418,15 +3439,19 @@ static int common_init(struct bt_dev *hdev)
 	}
 	read_supported_commands_complete(hdev, rsp);
 	net_buf_unref(rsp);
+	
+	probe_inode("z-cmn-cmds");
 
 	if (IS_ENABLED(CONFIG_BT_HOST_CRYPTO_PRNG)) {
 		/* Initialize the PRNG so that it is safe to use it later
 		 * on in the initialization process.
 		 */
+		probe_inode("z-cmn-prng-before");
 		err = prng_init(hdev);
 		if (err) {
 			return err;
 		}
+		probe_inode("z-cmn-prng-after");
 	}
 
 #if defined(CONFIG_BT_HCI_ACL_FLOW_CONTROL)
@@ -3483,6 +3508,15 @@ static int le_set_event_mask(struct bt_dev *hdev)
 		} else {
 			mask |= BT_EVT_MASK_LE_CONN_COMPLETE;
 		}
+
+		/* SF32LB52 workaround: enable BOTH connection-complete events
+		 * regardless of the feature bits above. The emulated LE feature
+		 * set (all-zero) and the LCPU firmware disagree about which
+		 * subevent is produced; with only ENH_CONN_COMPLETE set
+		 * (observed mask 0x0f08) the controller's legacy 0x3E/0x01
+		 * event is masked and phone GATT connects never complete. */
+		mask |= BT_EVT_MASK_LE_CONN_COMPLETE;
+		mask |= BT_EVT_MASK_LE_ENH_CONN_COMPLETE;
 
 		mask |= BT_EVT_MASK_LE_CONN_UPDATE_COMPLETE;
 		mask |= BT_EVT_MASK_LE_REMOTE_FEAT_COMPLETE;
