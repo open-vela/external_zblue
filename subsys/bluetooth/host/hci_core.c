@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <syslog.h> /* contest diagnostics */
 #include <zephyr/net_buf.h>
 #include <zephyr/sys/atomic.h>
 #include <zephyr/sys/check.h>
@@ -448,6 +449,11 @@ int bt_hci_cmd_send_sync(struct bt_dev *hdev, uint16_t opcode, struct net_buf *b
 	uint8_t status;
 	int err;
 
+	syslog(6, "[zblue] send_sync 0x%04x cur=%p syswq=%p match=%d ncmd=%d\n",
+	       opcode, (void *)k_current_get(), (void *)&k_sys_work_q.thread,
+	       (int)(k_current_get() == &k_sys_work_q.thread),
+	       (int)k_sem_count_get(&hdev->ncmd_sem));
+
 	if (!buf) {
 		buf = bt_hci_cmd_create(opcode, 0);
 		if (!buf) {
@@ -498,15 +504,30 @@ int bt_hci_cmd_send_sync(struct bt_dev *hdev, uint16_t opcode, struct net_buf *b
 			 */
 			__maybe_unused bool success = process_pending_cmd(hdev, HCI_CMD_TIMEOUT);
 
-			BT_ASSERT_MSG(success, "command opcode 0x%04x %s timeout", opcode, bt_hci_opcode_to_str(opcode));
+			/* Port note (2026-08-17): a controller timeout must not kill
+			 * the whole system. The original BT_ASSERT_MSG here turned a
+			 * slow/overlapping LCPU inquiry into a kernel oops that took
+			 * bluetoothd (and the BT stack) down for good. Report the
+			 * failure to the caller instead. */
+			if (!success) {
+				LOG_ERR("cmd queue drain timeout, opcode 0x%04x", opcode);
+				net_buf_unref(buf);
+				return -ETIMEDOUT;
+			}
 		} while (buf != cmd);
 	}
 
 	/* Now that we have sent the command, suspend until the LL replies */
 	err = k_sem_take(&sync_sem, HCI_CMD_TIMEOUT);
-	BT_ASSERT_MSG(err == 0,
-		      "Controller unresponsive, command opcode 0x%04x %s timeout with err %d",
-		      opcode, bt_hci_opcode_to_str(opcode), err);
+	/* Port note (2026-08-17): same as above - a controller timeout is an
+	 * error, not a fatal fault. bluetoothd must survive (e.g. CREATE_CONN
+	 * to an absent remote, LCPU hiccups) so pairing/PAN can retry. */
+	if (err) {
+		LOG_ERR("Controller unresponsive, command opcode 0x%04x %s timeout with err %d",
+			opcode, bt_hci_opcode_to_str(opcode), err);
+		net_buf_unref(buf);
+		return -ETIMEDOUT;
+	}
 
 	status = cmd(buf)->status;
 	if (status) {
@@ -2277,12 +2298,16 @@ static void hci_encrypt_change(struct bt_dev *hdev, struct net_buf *buf)
 	uint8_t status = evt->status;
 	struct bt_conn *conn;
 
+	syslog(6, "[zblue] encrypt_change status=0x%02x handle=%u enc=0x%02x\n",
+	       status, handle, evt->encrypt);
+
 	LOG_DBG("status 0x%02x %s handle %u encrypt 0x%02x",
 		evt->status, bt_hci_err_to_str(evt->status), handle, evt->encrypt);
 
 	conn = bt_conn_lookup_handle(hdev, handle, BT_CONN_TYPE_ALL);
 	if (!conn) {
 		LOG_ERR("Unable to look up conn with handle %u", handle);
+		syslog(3, "[zblue] encrypt_change: NO CONN handle=%u\n", handle);
 		return;
 	}
 
@@ -3065,6 +3090,8 @@ static const struct event_handler normal_events[] = {
 		      sizeof(struct bt_hci_evt_user_passkey_req)),
 	EVENT_HANDLER(BT_HCI_EVT_INQUIRY_COMPLETE, bt_hci_inquiry_complete,
 		      sizeof(struct bt_hci_evt_inquiry_complete)),
+	/* R103: basic Inquiry Result (0x02) - LCPU sends this instead of 0x22 */
+	EVENT_HANDLER(0x02, bt_hci_inquiry_result, 0),
 	EVENT_HANDLER(BT_HCI_EVT_INQUIRY_RESULT_WITH_RSSI,
 		      bt_hci_inquiry_result_with_rssi,
 		      sizeof(struct bt_hci_evt_inquiry_result_with_rssi)),
@@ -3620,7 +3647,16 @@ static int le_set_event_mask(struct bt_dev *hdev)
 		mask |= BT_EVT_MASK_LE_CS_TEST_END_COMPLETE;
 	}
 
+	printf("[hci_core] LE event mask=0x%llx bit0=%llx bit9=%llx\n",
+	       (unsigned long long)mask,
+	       (unsigned long long)BT_EVT_MASK_LE_CONN_COMPLETE,
+	       (unsigned long long)BT_EVT_MASK_LE_ENH_CONN_COMPLETE);
 	sys_put_le64(mask, cp_mask->events);
+	printf("[hci_core] events after put: %02x %02x %02x %02x %02x %02x "
+	       "%02x %02x\n",
+	       cp_mask->events[0], cp_mask->events[1], cp_mask->events[2],
+	       cp_mask->events[3], cp_mask->events[4], cp_mask->events[5],
+	       cp_mask->events[6], cp_mask->events[7]);
 	return bt_hci_cmd_send_sync(hdev, BT_HCI_OP_LE_SET_EVENT_MASK, buf, NULL);
 }
 
@@ -4282,6 +4318,10 @@ static int bt_recv_unsafe(struct bt_dev *hdev, struct net_buf *buf)
 {
 	bt_monitor_send(bt_monitor_opcode(buf), buf->data, buf->len);
 
+	syslog(6, "[zblue] bt_recv type=%u evt=0x%02x len=%u\n",
+	       (unsigned)bt_buf_get_type(buf),
+	       (bt_buf_get_type(buf) == BT_BUF_EVT) ? *(uint8_t *)buf->data : 0,
+	       (unsigned)buf->len);
 	LOG_DBG("buf %p len %u", buf, buf->len);
 
 	switch (bt_buf_get_type(buf)) {
@@ -4429,15 +4469,18 @@ static void rx_work_handler(struct k_work *work)
 	struct net_buf *buf;
 	struct bt_dev *hdev = CONTAINER_OF(work, struct bt_dev, rx_work);
 
+	syslog(6, "[zblue] rx_work enter\n");
 	LOG_DBG("dev:%d, Getting net_buf from queue", hdev->dev_id);
-	buf = net_buf_slist_get(&hdev->rx_queue);
-	if (!buf) {
-		return;
-	}
 
-	LOG_DBG("buf %p type %u len %u", buf, bt_buf_get_type(buf), buf->len);
+	/* R57: drain the whole queue in one go. The upstream single-item + */
+	/* self-resubmit pattern loses events on this port: k_work_submit from */
+	/* inside the running handler is not reliably re-scheduled, so events */
+	/* arriving while rx_work runs (e.g. 0x23 IO_CAPA behind a Command   */
+	/* Status) sit in rx_queue forever (observed: no "Unhandled 0x23").   */
+	while ((buf = net_buf_slist_get(&hdev->rx_queue)) != NULL) {
+		LOG_DBG("buf %p type %u len %u", buf, bt_buf_get_type(buf), buf->len);
 
-	switch (bt_buf_get_type(buf)) {
+		switch (bt_buf_get_type(buf)) {
 #if defined(CONFIG_BT_CONN)
 	case BT_BUF_ACL_IN:
 		hci_acl(hdev, buf);
@@ -4451,17 +4494,14 @@ static void rx_work_handler(struct k_work *work)
 	case BT_BUF_EVT:
 		hci_event(hdev, buf);
 		break;
-	default:
-		LOG_ERR("Unknown buf type %u", bt_buf_get_type(buf));
-		net_buf_unref(buf);
-		break;
+		default:
+			LOG_ERR("Unknown buf type %u", bt_buf_get_type(buf));
+			net_buf_unref(buf);
+			break;
+		}
 	}
 
-	/* Schedule the work handler to be executed again if there are
-	 * additional items in the queue. This allows for other users of the
-	 * work queue to get a chance at running, which wouldn't be possible if
-	 * we used a while() loop with a k_yield() statement.
-	 */
+	/* Re-schedule if new items arrived while we were draining. */
 	if (!sys_slist_is_empty(&hdev->rx_queue)) {
 
 #if defined(CONFIG_BT_RECV_WORKQ_SYS)

@@ -6,6 +6,7 @@
  */
 
 #include <zephyr/sys/byteorder.h>
+#include <syslog.h> /* unconditional diagnostics for contest debugging */
 
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/hci.h>
@@ -85,8 +86,11 @@ void bt_hci_conn_req(struct bt_dev *hdev, struct net_buf *buf)
 		return;
 	}
 
+	syslog(6, "[zblue] conn_req from %s type 0x%02x\n",
+	       bt_addr_str(&evt->bdaddr), evt->link_type);
 	conn = bt_conn_add_br(hdev, &evt->bdaddr);
 	if (!conn) {
+		syslog(3, "[zblue] conn_req: add_br failed - reject\n");
 		bt_reject_conn(hdev, &evt->bdaddr, BT_HCI_ERR_INSUFFICIENT_RESOURCES);
 		return;
 	}
@@ -95,9 +99,11 @@ void bt_hci_conn_req(struct bt_dev *hdev, struct net_buf *buf)
 	if (bt_accept_conn(hdev, &evt->bdaddr)) {
 		LOG_ERR("Error accepting connection from %s",
 		       bt_addr_str(&evt->bdaddr));
+		syslog(3, "[zblue] conn_req: accept failed\n");
 		bt_conn_unref(conn);
 		return;
 	}
+	syslog(6, "[zblue] conn_req: accepted\n");
 
 	conn->role = BT_HCI_ROLE_PERIPHERAL;
 	bt_conn_set_state(conn, BT_CONN_INITIATING);
@@ -473,6 +479,57 @@ static struct bt_br_discovery_result *find_discovery_result(struct bt_dev *hdev,
 	}
 
 	return NULL;
+}
+
+/* R103: Handle basic Inquiry Result (HCI event 0x02).
+ * The SF32LB52 LCPU sends event 0x02 but with the 14-byte RSSI format
+ * (same as 0x22), NOT the standard 15-byte basic format. We parse the
+ * 14-byte format directly since the struct layout matches. */
+void bt_hci_inquiry_result(struct bt_dev *hdev, struct net_buf *buf)
+{
+	uint8_t num_reports = net_buf_pull_u8(buf);
+
+	if (!atomic_test_bit(hdev->flags, BT_DEV_INQUIRY)) {
+		return;
+	}
+
+	LOG_DBG("number of results (0x02): %u", num_reports);
+
+	while (num_reports--) {
+		struct bt_hci_evt_inquiry_result_with_rssi *evt;
+		struct bt_br_discovery_result *result;
+		struct bt_br_discovery_priv *priv;
+		struct bt_br_discovery_cb *listener, *next;
+
+		/* LCPU sends 14-byte entries (RSSI format) even with event 0x02 */
+		if (buf->len < 14) {
+			LOG_ERR("Unexpected end to buffer (inquiry 0x02)");
+			return;
+		}
+
+		evt = net_buf_pull_mem(buf, sizeof(*evt));
+		LOG_DBG("%s rssi %d dBm (via 0x02)", bt_addr_str(&evt->addr), evt->rssi);
+
+		result = get_result_slot(hdev, &evt->addr, evt->rssi);
+		if (!result) {
+			return;
+		}
+
+		priv = &result->_priv;
+		priv->pscan_rep_mode = evt->pscan_rep_mode;
+		priv->clock_offset = evt->clock_offset;
+
+		memcpy(result->cod, evt->cod, 3);
+		result->rssi = evt->rssi;
+
+		(void)memset(result->eir, 0, sizeof(result->eir));
+
+		SYS_SLIST_FOR_EACH_CONTAINER_SAFE(&hdev->discovery_cbs, listener, next, node) {
+			if (listener->recv) {
+				listener->recv(result);
+			}
+		}
+	}
 }
 
 void bt_hci_inquiry_result_with_rssi(struct bt_dev *hdev, struct net_buf *buf)
@@ -895,6 +952,7 @@ int bt_br_init(struct bt_dev *hdev)
 	read_buffer_size_complete(hdev, buf);
 	net_buf_unref(buf);
 
+	syslog(6, "[zblue] br_init enter\n");
 	/* Set SSP mode */
 	buf = bt_hci_cmd_create(BT_HCI_OP_WRITE_SSP_MODE, sizeof(*ssp_cp));
 	if (!buf) {
@@ -904,6 +962,7 @@ int bt_br_init(struct bt_dev *hdev)
 	ssp_cp = net_buf_add(buf, sizeof(*ssp_cp));
 	ssp_cp->mode = 0x01;
 	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_WRITE_SSP_MODE, buf, NULL);
+	syslog(6, "[zblue] br_init: WRITE_SSP_MODE ret=%d\n", err);
 	if (err) {
 		return err;
 	}
@@ -920,6 +979,15 @@ int bt_br_init(struct bt_dev *hdev)
 	if (err) {
 		return err;
 	}
+
+	/* Set page/inquiry scan activity. The SF32LB52 LCPU default activity
+	 * is invalid (0), so with scan enable alone the controller answers
+	 * inquiry (discoverable) but never pages -> phones report
+	 * "couldn't communicate" right after discovery. Errors are ignored:
+	 * best-effort configuration, not required for enable. */
+	syslog(6, "[zblue] br_init: set scan activity\n");
+	(void)bt_br_write_page_scan_activity_mc(hdev->dev_id, 0x0800, 0x0012);
+	(void)bt_br_write_inquiry_scan_activity_mc(hdev->dev_id, 0x0800, 0x0012);
 
 	/* Set local name */
 	buf = bt_hci_cmd_create(BT_HCI_OP_WRITE_LOCAL_NAME, sizeof(*name_cp));

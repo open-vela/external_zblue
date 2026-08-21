@@ -262,6 +262,8 @@ struct bt_keys_pool {
 
 struct bt_keys_link_key *bt_keys_get_link_key(struct bt_dev *hdev, const bt_addr_t *addr);
 struct bt_keys_link_key *bt_keys_find_link_key(struct bt_dev *hdev, const bt_addr_t *addr);
+/* Port addition (2026-08-17): file-backed load, see keys_br.c */
+struct bt_keys_link_key *bt_keys_link_key_load_file(struct bt_dev *hdev, const bt_addr_t *addr);
 void bt_keys_link_key_clear(struct bt_dev *hdev, struct bt_keys_link_key *link_key);
 void bt_keys_link_key_clear_addr(struct bt_dev *hdev, const bt_addr_t *addr);
 void bt_keys_link_key_store(struct bt_dev *hdev, struct bt_keys_link_key *link_key);
