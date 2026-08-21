@@ -11,6 +11,10 @@
 #include <zephyr/sys/atomic.h>
 #include <zephyr/sys/util.h>
 
+#include <fcntl.h>
+#include <unistd.h>
+#include <syslog.h>
+
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/bluetooth/hci.h>
@@ -25,6 +29,53 @@
 #define LOG_LEVEL CONFIG_BT_KEYS_LOG_LEVEL
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(bt_keys_br);
+
+/* Port note (2026-08-17): load BR link keys from the file written by
+ * bt_keys_link_key_store() into the RAM pool, so a reboot no longer
+ * forces re-pairing. Returns the key for addr, or NULL. See the store
+ * function for the record layout. */
+struct bt_keys_link_key *bt_keys_link_key_load_file(struct bt_dev *hdev,
+						    const bt_addr_t *addr)
+{
+	char path[] = "/data/misc/bt/br_key.bin";
+	uint8_t rec[32];
+	ssize_t got;
+	int fd;
+
+	fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		return NULL;
+	}
+
+	while ((got = read(fd, rec, sizeof(rec))) == sizeof(rec)) {
+		struct bt_keys_link_key *slot;
+
+		if (rec[0] != 0xA5) {
+			continue;
+		}
+
+		if (!bt_addr_eq((const bt_addr_t *)&rec[4], addr)) {
+			continue;
+		}
+
+		slot = bt_keys_get_link_key(hdev, addr);
+		if (!slot) {
+			break;
+		}
+
+		bt_addr_copy(&slot->addr, addr);
+		slot->key_type = rec[1];
+		slot->flags = rec[2];
+		memcpy(slot->val, &rec[10], 16);
+		close(fd);
+		syslog(6, "[zblue] br_key load: restored key for %s\n",
+		       bt_addr_str(addr));
+		return slot;
+	}
+
+	close(fd);
+	return NULL;
+}
 
 struct bt_keys_link_key *bt_keys_find_link_key(struct bt_dev *hdev, const bt_addr_t *addr)
 {
@@ -124,6 +175,45 @@ void bt_keys_link_key_clear_addr(struct bt_dev *hdev, const bt_addr_t *addr)
 
 void bt_keys_link_key_store(struct bt_dev *hdev, struct bt_keys_link_key *link_key)
 {
+	/* Port note (2026-08-17): file-backed BR link key persistence for the
+	 * openvela port, which has no settings subsystem. Record layout in
+	 * /data/misc/bt/br_key.bin (little endian, fixed 32 bytes/record):
+	 *   u8 valid (0xA5) | u8 key_type | u8 flags | u8 rsvd |
+	 *   u8 addr[6] | u8 key[16]
+	 * The whole file is rewritten on each store (few records, rare event)
+	 * so no fsync/seek consistency is needed. */
+	{
+		char path[] = "/data/misc/bt/br_key.bin";
+		struct bt_keys_link_key *k;
+		uint8_t rec[32];
+		uint8_t buf[CONFIG_BT_MAX_PAIRED * 32];
+		int fd, n = 0;
+
+		for (int i = 0; i < CONFIG_BT_MAX_PAIRED; i++) {
+			k = &hdev->keys->br_key_pool[i];
+			if (!bt_addr_eq(&k->addr, BT_ADDR_ANY) || k->val[0] || k->val[15]) {
+				rec[0] = 0xA5;
+				rec[1] = k->key_type;
+				rec[2] = (uint8_t)k->flags;
+				rec[3] = 0;
+				memcpy(&rec[4], k->addr.val, 6);
+				memcpy(&rec[10], k->val, 16);
+				memcpy(&buf[n * 32], rec, 32);
+				n++;
+			}
+		}
+
+		fd = open(path, O_WRONLY | O_CREAT | O_TRUNC);
+		if (fd >= 0) {
+			(void)write(fd, buf, n * 32);
+			(void)close(fd);
+			syslog(6, "[zblue] br_key store: %d key(s)\n", n);
+		} else {
+			syslog(3, "[zblue] br_key store: open %s failed (%d)\n",
+			       path, fd);
+		}
+	}
+
 	if (IS_ENABLED(CONFIG_BT_SETTINGS)) {
 		int err;
 		bt_addr_le_t le_addr;
