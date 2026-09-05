@@ -19,6 +19,11 @@ extern "C" {
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/bluetooth/l2cap.h>
 
+#define BT_HID_DEVICE_API_PREFIXED 1
+#define BT_HID_DEVICE_API_HAS_ACCEPT 1
+#define BT_HID_DEVICE_API_CONST_REPORT 1
+#define BT_HID_DEVICE_API_HAS_VIRTUAL_UNPLUG 1
+
 #define BT_HID_MAX_MTU         64
 #define BT_HID_REPORT_DATA_LEN 64
 
