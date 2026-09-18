@@ -12,6 +12,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
+#include <syslog.h>
 #include <zephyr/net_buf.h>
 #include <zephyr/sys/atomic.h>
 #include <zephyr/sys/check.h>
@@ -22,10 +23,12 @@
 #include <zephyr/debug/stack.h>
 #include <zephyr/sys/__assert.h>
 #include <soc.h>
+#include <nuttx/wireless/bluetooth/bt_hci_rx_snapshot.h>
 
 #include <zephyr/settings/settings.h>
 
 #include <zephyr/bluetooth/bluetooth.h>
+#include "../../../../../frameworks/connectivity/bluetooth/service/common/service_trace.h"
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/bluetooth/l2cap.h>
 #include <zephyr/bluetooth/hci.h>
@@ -179,6 +182,11 @@ struct bt_dev *bt_dev_alloc(uint8_t dev_id)
 #endif
 
 	return hdev;
+}
+
+bool bt_is_initialized_mc(uint8_t dev_id)
+{
+	return dev_id < CONFIG_BT_NUM_CTLRS && bt_dev_pool[dev_id].hci != NULL;
 }
 
 void bt_dev_free(struct bt_dev *hdev)
@@ -439,12 +447,121 @@ int bt_hci_cmd_send(struct bt_dev *hdev, uint16_t opcode, struct net_buf *buf)
 }
 
 static bool process_pending_cmd(struct bt_dev *hdev, k_timeout_t timeout);
+
+/* Set to 0 to compile out all Extended Advertising HCI diagnostics. */
+
+#define OV_BLE_HCI_ADV_DIAG 1
+
+#ifndef OV_BLE_HCI_INIT_CMD_DIAG
+#define OV_BLE_HCI_INIT_CMD_DIAG 1
+#endif
+
+#ifndef OV_BLE_HCI_ADV_LIFECYCLE_HOST_DIAG
+#define OV_BLE_HCI_ADV_LIFECYCLE_HOST_DIAG 0
+#endif
+
+#ifndef OV_BLE_HCI_RX_RING_SNAPSHOT_DIAG
+#define OV_BLE_HCI_RX_RING_SNAPSHOT_DIAG 0
+#endif
+
+#ifndef OV_BLE_CONTROLLER_IDENTITY_DIAG
+#define OV_BLE_CONTROLLER_IDENTITY_DIAG 0
+#endif
+
+#if OV_BLE_HCI_RX_RING_SNAPSHOT_DIAG
+__attribute__((weak)) int bt_hci_rx_ring_snapshot(
+	struct bt_hci_rx_ring_snapshot_s *snapshot)
+{
+	ARG_UNUSED(snapshot);
+	return -ENOSYS;
+}
+
+static struct bt_hci_rx_ring_snapshot_s ov_ble_hci_rx_baseline;
+static uint16_t ov_ble_hci_rx_baseline_opcode;
+static bool ov_ble_hci_rx_baseline_valid;
+
+static bool ov_ble_hci_rx_snapshot_opcode(uint16_t opcode)
+{
+	return opcode == BT_HCI_OP_READ_LOCAL_VERSION_INFO ||
+	       opcode == BT_HCI_OP_LE_SET_EXT_ADV_PARAM ||
+	       opcode == BT_HCI_OP_LE_SET_EXT_ADV_DATA ||
+	       opcode == BT_HCI_OP_LE_SET_EXT_SCAN_RSP_DATA ||
+	       opcode == BT_HCI_OP_LE_REMOVE_ADV_SET;
+}
+
+static void ov_ble_hci_rx_snapshot_log(uint16_t opcode, const char *phase)
+{
+	struct bt_hci_rx_ring_snapshot_s end;
+	int err;
+
+	err = bt_hci_rx_ring_snapshot(&end);
+	if (err < 0 || !ov_ble_hci_rx_baseline_valid ||
+	    ov_ble_hci_rx_baseline_opcode != opcode) {
+		syslog(LOG_INFO,
+		       "ov_ble_hci_rx_ring_snapshot_diag opcode=0x%04x phase=%s snapshot unavailable err=%d\n",
+		       opcode, phase, err);
+		return;
+	}
+
+	syslog(LOG_INFO,
+	       "ov_ble_hci_rx_ring_snapshot_diag opcode=0x%04x phase=%s base_seq=%lu end_seq=%lu base_rd=%08lx end_rd=%08lx base_wr=%08lx end_wr=%08lx base_local=%08lx end_local=%08lx base_mb=%lu end_mb=%lu base_worker=%lu end_worker=%lu base_drain=%lu end_drain=%lu base_bytes=%lu end_bytes=%lu base_cb=%lu end_cb=%lu base_h4=%lu end_h4=%lu base_fwd=%lu end_fwd=%lu last_type=0x%02x last_event=0x%02x last_opcode=0x%04x\n",
+	       opcode, phase,
+	       (unsigned long)ov_ble_hci_rx_baseline.sequence,
+	       (unsigned long)end.sequence,
+	       (unsigned long)ov_ble_hci_rx_baseline.ring_read_mirror,
+	       (unsigned long)end.ring_read_mirror,
+	       (unsigned long)ov_ble_hci_rx_baseline.ring_write_mirror,
+	       (unsigned long)end.ring_write_mirror,
+	       (unsigned long)ov_ble_hci_rx_baseline.local_read_mirror,
+	       (unsigned long)end.local_read_mirror,
+	       (unsigned long)ov_ble_hci_rx_baseline.mailbox_count,
+	       (unsigned long)end.mailbox_count,
+	       (unsigned long)ov_ble_hci_rx_baseline.worker_count,
+	       (unsigned long)end.worker_count,
+	       (unsigned long)ov_ble_hci_rx_baseline.drain_count,
+	       (unsigned long)end.drain_count,
+	       (unsigned long)ov_ble_hci_rx_baseline.copied_bytes,
+	       (unsigned long)end.copied_bytes,
+	       (unsigned long)ov_ble_hci_rx_baseline.callback_count,
+	       (unsigned long)end.callback_count,
+	       (unsigned long)ov_ble_hci_rx_baseline.complete_h4_count,
+	       (unsigned long)end.complete_h4_count,
+	       (unsigned long)ov_ble_hci_rx_baseline.forwarded_h4_count,
+	       (unsigned long)end.forwarded_h4_count,
+	       end.last_h4_type, end.last_event, end.last_opcode);
+}
+#endif
+
+#if OV_BLE_HCI_INIT_CMD_DIAG
+static bool ov_ble_hci_init_cmd_diag_opcode(uint16_t opcode)
+{
+	return opcode == BT_HCI_OP_RESET ||
+	       opcode == BT_HCI_OP_READ_LOCAL_FEATURES ||
+	       opcode == BT_HCI_OP_READ_LOCAL_VERSION_INFO;
+}
+#endif
+
+#if OV_BLE_HCI_ADV_LIFECYCLE_HOST_DIAG
+static bool ov_ble_hci_adv_lifecycle_diag_opcode(uint16_t opcode)
+{
+	return opcode == BT_HCI_OP_LE_SET_EXT_ADV_PARAM ||
+	       opcode == BT_HCI_OP_LE_REMOVE_ADV_SET;
+}
+#endif
+
+static bool ov_ble_hci_adv_diag_opcode(uint16_t opcode)
+{
+	return opcode == BT_HCI_OP_LE_SET_EXT_ADV_DATA ||
+	       opcode == BT_HCI_OP_LE_SET_EXT_SCAN_RSP_DATA;
+}
+
 int bt_hci_cmd_send_sync(struct bt_dev *hdev, uint16_t opcode, struct net_buf *buf,
 			 struct net_buf **rsp)
 {
 	struct k_sem sync_sem;
 	uint8_t status;
 	int err;
+	uint32_t wait_start_ms;
 
 	if (!buf) {
 		buf = bt_hci_cmd_create(opcode, 0);
@@ -469,6 +586,25 @@ int bt_hci_cmd_send_sync(struct bt_dev *hdev, uint16_t opcode, struct net_buf *b
 	cmd(buf)->sync = &sync_sem;
 
 	k_fifo_put(&hdev->cmd_tx_queue, net_buf_ref(buf));
+#if OV_BLE_HCI_ADV_LIFECYCLE_HOST_DIAG
+	if (ov_ble_hci_adv_lifecycle_diag_opcode(opcode)) {
+		syslog(LOG_INFO,
+		       "ov_ble_hci_adv_lifecycle_diag host opcode=0x%04x phase=queued buf=%p\n",
+		       opcode, buf);
+	}
+#endif
+#if OV_BLE_HCI_INIT_CMD_DIAG
+	if (ov_ble_hci_init_cmd_diag_opcode(opcode)) {
+		syslog(LOG_INFO,
+		       "ov_ble_hci_init_cmd_diag opcode=0x%04x phase=queued buf=%p\n",
+		       opcode, buf);
+	}
+#endif
+#if OV_BLE_HCI_ADV_DIAG
+	if (ov_ble_hci_adv_diag_opcode(opcode)) {
+		syslog(LOG_INFO, "ov_ble_hci_adv_diag host opcode=0x%04x phase=queued buf=%p\n", opcode, buf);
+	}
+#endif
 	bt_tx_irq_raise(hdev);
 
 	/* TODO: disallow sending sync commands from syswq altogether */
@@ -480,7 +616,7 @@ int bt_hci_cmd_send_sync(struct bt_dev *hdev, uint16_t opcode, struct net_buf *b
 		/* drain the command queue until we get to send the command of interest. */
 		struct net_buf *cmd = NULL;
 
-		do {
+			do {
 			cmd = k_fifo_peek_head(&hdev->cmd_tx_queue);
 			LOG_DBG("process cmd %p want %p", cmd, buf);
 
@@ -494,14 +630,103 @@ int bt_hci_cmd_send_sync(struct bt_dev *hdev, uint16_t opcode, struct net_buf *b
 			 * to map the opcode to the HCI command documentation.
 			 * Example: 0x0c03 represents HCI_Reset command.
 			 */
-			__maybe_unused bool success = process_pending_cmd(hdev, HCI_CMD_TIMEOUT);
+					uint32_t process_wait_start_ms = k_uptime_get_32();
+					__maybe_unused bool success = process_pending_cmd(hdev, HCI_CMD_TIMEOUT);
 
-			BT_ASSERT_MSG(success, "command opcode 0x%04x %s timeout", opcode, bt_hci_opcode_to_str(opcode));
+#if OV_BLE_HCI_ADV_LIFECYCLE_HOST_DIAG
+					if (!success && ov_ble_hci_adv_lifecycle_diag_opcode(opcode)) {
+						struct net_buf *sent = hdev->sent_cmd;
+						uint16_t expected = sent ? cmd(sent)->opcode : 0;
+
+						syslog(LOG_INFO,
+						       "ov_ble_hci_adv_lifecycle_diag host opcode=0x%04x phase=timeout expected=0x%04x sent=%p wait=process_pending\n",
+						       opcode, expected, sent);
+					}
+#endif
+
+#if OV_BLE_HCI_INIT_CMD_DIAG
+				if (!success && ov_ble_hci_init_cmd_diag_opcode(opcode)) {
+					struct net_buf *sent = hdev->sent_cmd;
+					uint16_t expected = sent ? cmd(sent)->opcode : 0;
+
+					syslog(LOG_INFO,
+					       "ov_ble_hci_init_cmd_diag opcode=0x%04x phase=timeout expected=0x%04x sent=%p wait=process_pending\n",
+					       opcode, expected, sent);
+				}
+#endif
+				if (!success) {
+					void *sent = atomic_ptr_get((atomic_ptr_t *)&hdev->sent_cmd);
+					syslog(LOG_INFO,
+					       "A3_HCI_SYNC_FAIL opcode=0x%04x phase=process_pending wait_start_ms=%lu wait_elapsed_ms=%lu err=-ETIMEDOUT process_success=0 observed_status=unknown sent_present=%u submit_buf=%p\n",
+					       opcode, (unsigned long)process_wait_start_ms,
+					       (unsigned long)(k_uptime_get_32() - process_wait_start_ms),
+					       sent != NULL, buf);
+				}
+				BT_ASSERT_MSG(success, "command opcode 0x%04x %s timeout", opcode, bt_hci_opcode_to_str(opcode));
 		} while (buf != cmd);
 	}
 
 	/* Now that we have sent the command, suspend until the LL replies */
+#if OV_BLE_HCI_ADV_LIFECYCLE_HOST_DIAG
+	if (ov_ble_hci_adv_lifecycle_diag_opcode(opcode)) {
+		syslog(LOG_INFO,
+		       "ov_ble_hci_adv_lifecycle_diag host opcode=0x%04x phase=wait_begin buf=%p\n",
+		       opcode, buf);
+	}
+#endif
+#if OV_BLE_HCI_ADV_DIAG
+	if (ov_ble_hci_adv_diag_opcode(opcode)) {
+		syslog(LOG_INFO, "ov_ble_hci_adv_diag host opcode=0x%04x phase=wait_begin buf=%p\n", opcode, buf);
+	}
+#endif
+	wait_start_ms = k_uptime_get_32();
 	err = k_sem_take(&sync_sem, HCI_CMD_TIMEOUT);
+#if OV_BLE_HCI_RX_RING_SNAPSHOT_DIAG
+	if (err != 0 && ov_ble_hci_rx_snapshot_opcode(opcode)) {
+		ov_ble_hci_rx_snapshot_log(opcode, "timeout");
+	}
+#endif
+#if OV_BLE_HCI_ADV_LIFECYCLE_HOST_DIAG
+	if (ov_ble_hci_adv_lifecycle_diag_opcode(opcode)) {
+		struct net_buf *sent = hdev->sent_cmd;
+		uint16_t expected = sent ? cmd(sent)->opcode : 0;
+
+		if (err == 0) {
+			syslog(LOG_INFO,
+			       "ov_ble_hci_adv_lifecycle_diag host opcode=0x%04x phase=wait_returned err=%d buf=%p\n",
+			       opcode, err, buf);
+		} else {
+			syslog(LOG_INFO,
+			       "ov_ble_hci_adv_lifecycle_diag host opcode=0x%04x phase=timeout expected=0x%04x sent=%p wait=sync_sem err=%d\n",
+			       opcode, expected, sent, err);
+		}
+	}
+#endif
+#if OV_BLE_HCI_INIT_CMD_DIAG
+	if (err != 0 && ov_ble_hci_init_cmd_diag_opcode(opcode)) {
+		struct net_buf *sent = hdev->sent_cmd;
+		uint16_t expected = sent ? cmd(sent)->opcode : 0;
+
+		syslog(LOG_INFO,
+		       "ov_ble_hci_init_cmd_diag opcode=0x%04x phase=timeout expected=0x%04x sent=%p wait=sync_sem err=%d\n",
+		       opcode, expected, sent, err);
+	}
+#endif
+#if OV_BLE_HCI_ADV_DIAG
+	if (ov_ble_hci_adv_diag_opcode(opcode)) {
+		syslog(LOG_INFO, "ov_ble_hci_adv_diag host opcode=0x%04x phase=%s err=%d buf=%p\n",
+			opcode, err == 0 ? "wait_returned" : "timeout", err, buf);
+	}
+#endif
+	if (err != 0) {
+		void *sent = atomic_ptr_get((atomic_ptr_t *)&hdev->sent_cmd);
+		uint8_t observed_status = cmd(buf)->status;
+		syslog(LOG_INFO,
+		       "A3_HCI_SYNC_FAIL opcode=0x%04x wait_start_ms=%lu wait_elapsed_ms=%lu err=%d observed_status=0x%02x sent_present=%u submit_buf=%p\n",
+		       opcode, (unsigned long)wait_start_ms,
+		       (unsigned long)(k_uptime_get_32() - wait_start_ms), err,
+		       observed_status, sent != NULL, buf);
+	}
 	BT_ASSERT_MSG(err == 0,
 		      "Controller unresponsive, command opcode 0x%04x %s timeout with err %d",
 		      opcode, bt_hci_opcode_to_str(opcode), err);
@@ -2553,6 +2778,15 @@ static void hci_cmd_done(struct bt_dev *hdev, uint16_t opcode,
 	/* Take the original command buffer reference. */
 	buf = (struct net_buf *)atomic_ptr_clear((atomic_ptr_t *)&hdev->sent_cmd);
 
+#if OV_BLE_HCI_ADV_DIAG
+	if (ov_ble_hci_adv_diag_opcode(opcode)) {
+		uint16_t expected = buf ? cmd(buf)->opcode : 0;
+
+		syslog(LOG_INFO, "ov_ble_hci_adv_diag zblue opcode=0x%04x phase=event_match sent=%p expected=0x%04x match=%u\n",
+			opcode, buf, expected, buf && expected == opcode);
+	}
+#endif
+
 	if (!buf) {
 		LOG_ERR("No command sent for cmd complete 0x%04x", opcode);
 		goto exit;
@@ -2584,6 +2818,12 @@ static void hci_cmd_done(struct bt_dev *hdev, uint16_t opcode,
 
 	/* If the command was synchronous wake up bt_hci_cmd_send_sync() */
 	if (cmd(buf)->sync) {
+#if OV_BLE_HCI_ADV_DIAG
+		if (ov_ble_hci_adv_diag_opcode(opcode)) {
+			syslog(LOG_INFO, "ov_ble_hci_adv_diag zblue opcode=0x%04x phase=release_sync ready=1 status=0x%02x\n",
+				opcode, status);
+		}
+#endif
 		LOG_DBG("sync cmd released");
 		cmd(buf)->status = status;
 		k_sem_give(cmd(buf)->sync);
@@ -2605,12 +2845,42 @@ static void hci_cmd_complete(struct bt_dev *hdev, struct net_buf *buf)
 	ncmd = evt->ncmd;
 	opcode = sys_le16_to_cpu(evt->opcode);
 
+#if OV_BLE_HCI_RX_RING_SNAPSHOT_DIAG
+	if (ov_ble_hci_rx_snapshot_opcode(opcode)) {
+		ov_ble_hci_rx_snapshot_log(opcode, "complete");
+	}
+#endif
+
 	LOG_DBG("opcode 0x%04x %s", opcode, bt_hci_opcode_to_str(opcode));
 
 	/* All command return parameters have a 1-byte status in the
 	 * beginning, so we can safely make this generalization.
 	 */
 	status = buf->data[0];
+
+#if OV_BLE_HCI_ADV_LIFECYCLE_HOST_DIAG
+	if (ov_ble_hci_adv_lifecycle_diag_opcode(opcode)) {
+		struct net_buf *sent = hdev->sent_cmd;
+		uint16_t expected = sent ? cmd(sent)->opcode : 0;
+
+		syslog(LOG_INFO,
+		       "ov_ble_hci_adv_lifecycle_diag host event=0x%02x opcode=0x%04x ncmd=%u status=0x%02x sent=%p expected=0x%04x match=%u\n",
+		       BT_HCI_EVT_CMD_COMPLETE, opcode, ncmd, status, sent, expected,
+		       sent != NULL && expected == opcode);
+	}
+#endif
+
+#if OV_BLE_HCI_INIT_CMD_DIAG
+	if (ov_ble_hci_init_cmd_diag_opcode(opcode)) {
+		struct net_buf *sent = hdev->sent_cmd;
+		uint16_t expected = sent ? cmd(sent)->opcode : 0;
+
+		syslog(LOG_INFO,
+		       "ov_ble_hci_init_cmd_diag event=0x%02x opcode=0x%04x ncmd=%u status=0x%02x sent=%p expected=0x%04x match=%u\n",
+		       BT_HCI_EVT_CMD_COMPLETE, opcode, ncmd, status, sent, expected,
+		       sent != NULL && expected == opcode);
+	}
+#endif
 
 	/* HOST_NUM_COMPLETED_PACKETS should not generate a response under normal operation.
 	 * The generation of this command ignores `ncmd_sem`, so should not be given here.
@@ -2638,7 +2908,37 @@ static void hci_cmd_status(struct bt_dev *hdev, struct net_buf *buf)
 
 	evt = net_buf_pull_mem(buf, sizeof(*evt));
 	opcode = sys_le16_to_cpu(evt->opcode);
+
+#if OV_BLE_HCI_RX_RING_SNAPSHOT_DIAG
+	if (ov_ble_hci_rx_snapshot_opcode(opcode)) {
+		ov_ble_hci_rx_snapshot_log(opcode, "status");
+	}
+#endif
 	ncmd = evt->ncmd;
+
+#if OV_BLE_HCI_ADV_LIFECYCLE_HOST_DIAG
+	if (ov_ble_hci_adv_lifecycle_diag_opcode(opcode)) {
+		struct net_buf *sent = hdev->sent_cmd;
+		uint16_t expected = sent ? cmd(sent)->opcode : 0;
+
+		syslog(LOG_INFO,
+		       "ov_ble_hci_adv_lifecycle_diag host event=0x%02x opcode=0x%04x ncmd=%u status=0x%02x sent=%p expected=0x%04x match=%u\n",
+		       BT_HCI_EVT_CMD_STATUS, opcode, ncmd, evt->status, sent, expected,
+		       sent != NULL && expected == opcode);
+	}
+#endif
+
+#if OV_BLE_HCI_INIT_CMD_DIAG
+	if (ov_ble_hci_init_cmd_diag_opcode(opcode)) {
+		struct net_buf *sent = hdev->sent_cmd;
+		uint16_t expected = sent ? cmd(sent)->opcode : 0;
+
+		syslog(LOG_INFO,
+		       "ov_ble_hci_init_cmd_diag event=0x%02x opcode=0x%04x ncmd=%u status=0x%02x sent=%p expected=0x%04x match=%u\n",
+		       BT_HCI_EVT_CMD_STATUS, opcode, ncmd, evt->status, sent, expected,
+		       sent != NULL && expected == opcode);
+	}
+#endif
 
 	LOG_DBG("opcode 0x%04x %s", opcode, bt_hci_opcode_to_str(opcode));
 
@@ -3181,9 +3481,39 @@ static void hci_core_send_cmd(struct bt_dev *hdev)
 
 	hdev->sent_cmd = net_buf_ref(buf);
 
+#if OV_BLE_HCI_ADV_LIFECYCLE_HOST_DIAG
+	if (ov_ble_hci_adv_lifecycle_diag_opcode(cmd(buf)->opcode)) {
+		syslog(LOG_INFO,
+		       "ov_ble_hci_adv_lifecycle_diag host opcode=0x%04x phase=sent_cmd buf=%p sent=%p\n",
+		       cmd(buf)->opcode, buf, hdev->sent_cmd);
+	}
+#endif
+
+#if OV_BLE_HCI_INIT_CMD_DIAG
+	if (ov_ble_hci_init_cmd_diag_opcode(cmd(buf)->opcode)) {
+		syslog(LOG_INFO,
+		       "ov_ble_hci_init_cmd_diag opcode=0x%04x phase=sent_wait buf=%p sent=%p\n",
+		       cmd(buf)->opcode, buf, hdev->sent_cmd);
+	}
+#endif
+
+#if OV_BLE_HCI_ADV_DIAG
+	if (ov_ble_hci_adv_diag_opcode(cmd(buf)->opcode)) {
+		syslog(LOG_INFO, "ov_ble_hci_adv_diag host opcode=0x%04x phase=sent_cmd_set buf=%p sent=%p\n",
+			cmd(buf)->opcode, buf, hdev->sent_cmd);
+	}
+#endif
+
 	LOG_DBG("Sending command 0x%04x %s (buf %p) to driver", cmd(buf)->opcode, bt_hci_opcode_to_str(cmd(buf)->opcode), buf);
 
 	err = bt_send(hdev, buf);
+#if OV_BLE_HCI_RX_RING_SNAPSHOT_DIAG
+	if (!err && ov_ble_hci_rx_snapshot_opcode(cmd(buf)->opcode)) {
+		ov_ble_hci_rx_baseline_opcode = cmd(buf)->opcode;
+		ov_ble_hci_rx_baseline_valid =
+			bt_hci_rx_ring_snapshot(&ov_ble_hci_rx_baseline) == 0;
+	}
+#endif
 	if (err) {
 		LOG_ERR("Unable to send to driver (err %d)", err);
 		k_sem_give(&hdev->ncmd_sem);
@@ -3216,6 +3546,16 @@ static void read_local_ver_complete(struct bt_dev *hdev, struct net_buf *buf)
 	struct bt_hci_rp_read_local_version_info *rp = (void *)buf->data;
 
 	LOG_DBG("status 0x%02x %s", rp->status, bt_hci_err_to_str(rp->status));
+
+#if OV_BLE_CONTROLLER_IDENTITY_DIAG
+	if (rp->status == BT_HCI_ERR_SUCCESS) {
+		syslog(LOG_INFO,
+		       "ov_ble_controller_identity_diag opcode=0x1001 hci_version=0x%02x hci_revision=0x%04x lmp_version=0x%02x manufacturer=0x%04x lmp_subversion=0x%04x\n",
+		       rp->hci_version, sys_le16_to_cpu(rp->hci_revision),
+		       rp->lmp_version, sys_le16_to_cpu(rp->manufacturer),
+		       sys_le16_to_cpu(rp->lmp_subversion));
+	}
+#endif
 
 	hdev->hci_version = rp->hci_version;
 	hdev->hci_revision = sys_le16_to_cpu(rp->hci_revision);
@@ -3343,6 +3683,16 @@ static void read_local_features_complete(struct bt_dev *hdev, struct net_buf *bu
 	struct bt_hci_rp_read_local_features *rp = (void *)buf->data;
 
 	LOG_DBG("status 0x%02x %s", rp->status, bt_hci_err_to_str(rp->status));
+
+#if OV_BLE_CONTROLLER_IDENTITY_DIAG
+	if (rp->status == BT_HCI_ERR_SUCCESS) {
+		syslog(LOG_INFO,
+		       "ov_ble_controller_identity_diag opcode=0x1003 features=%02x%02x%02x%02x%02x%02x%02x%02x\n",
+		       rp->features[0], rp->features[1], rp->features[2],
+		       rp->features[3], rp->features[4], rp->features[5],
+		       rp->features[6], rp->features[7]);
+	}
+#endif
 
 	memcpy(hdev->features[0], rp->features, sizeof(hdev->features[0]));
 }
@@ -4384,6 +4734,7 @@ static void init_work(struct k_work *work)
 	struct bt_dev *hdev = CONTAINER_OF(work, struct bt_dev, init);
 
 	err = bt_init(hdev);
+	service_trace_note(22, err, atomic_test_bit(hdev->flags, BT_DEV_ENABLE), 0);
 	if (hdev->ready_cb) {
 		hdev->ready_cb(hdev->dev_id, err);
 	}
@@ -4469,6 +4820,8 @@ int bt_enable_mc(uint8_t dev_id, bt_ready_cb_t cb)
 	struct bt_dev *hdev;
 
 	hdev = bt_dev_alloc(dev_id);
+	service_trace_note(21, hdev ? 0 : -ENODEV,
+				  hdev ? hdev->hci != NULL : bt_is_initialized_mc(dev_id), dev_id);
 	if (!hdev) {
 		return -ENODEV;
 	}
@@ -4490,6 +4843,7 @@ int bt_enable_mc(uint8_t dev_id, bt_ready_cb_t cb)
 	atomic_clear_bit(hdev->flags, BT_DEV_DISABLE);
 
 	if (atomic_test_and_set_bit(hdev->flags, BT_DEV_ENABLE)) {
+		service_trace_note(23, 0, hdev->flags[0], 0);
 		if (cb) {
 			cb(hdev->dev_id, 0);
 		}
@@ -4550,6 +4904,7 @@ int bt_enable_mc(uint8_t dev_id, bt_ready_cb_t cb)
 		LOG_ERR("HCI driver open failed (%d)", err);
 		return err;
 	}
+	service_trace_note(24, 0, hdev->flags[0], 0);
 
 	bt_monitor_send(BT_MONITOR_OPEN_INDEX, NULL, 0);
 
@@ -4564,10 +4919,13 @@ int bt_enable_mc(uint8_t dev_id, bt_ready_cb_t cb)
 int bt_disable_mc(uint8_t dev_id)
 {
 	int err;
+	int reset_err = 0;
 	struct bt_dev *hdev;
 
 	hdev = bt_dev_get(dev_id);
+	service_trace_note(40, 0, hdev && hdev->hci != NULL, dev_id);
 	if (!hdev) {
+		service_trace_note(41, -ENODEV, 0, dev_id);
 		return -ENODEV;
 	}
 
@@ -4585,6 +4943,7 @@ int bt_disable_mc(uint8_t dev_id)
 #endif
 
 	if (atomic_test_and_set_bit(hdev->flags, BT_DEV_DISABLE)) {
+		service_trace_note(42, -EALREADY, hdev->flags[0], dev_id);
 		bt_dev_free(hdev);
 		return -EALREADY;
 	}
@@ -4616,16 +4975,18 @@ int bt_disable_mc(uint8_t dev_id)
 	if (!drv_quirk_no_reset(hdev)) {
 
 		err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_RESET, NULL, NULL);
+		service_trace_note(43, err, hdev->flags[0], BT_HCI_OP_RESET);
 		if (err) {
 			LOG_ERR("Failed to reset BLE controller");
-			return err;
+			reset_err = err;
+		} else {
+			hci_reset_complete(hdev);
 		}
-
-		hci_reset_complete(hdev);
 	}
 
 #if DT_HAS_CHOSEN(zephyr_bt_hci)
 	err = bt_hci_close(hdev->hci);
+	service_trace_note(44, err, hdev->hci != NULL, dev_id);
 	if (err == -ENOSYS) {
 		atomic_clear_bit(hdev->flags, BT_DEV_DISABLE);
 		atomic_set_bit(hdev->flags, BT_DEV_READY);
@@ -4677,9 +5038,11 @@ int bt_disable_mc(uint8_t dev_id)
 	 */
 	atomic_clear_bit(hdev->flags, BT_DEV_ENABLE);
 
+	service_trace_note(45, 0, hdev->hci != NULL, dev_id);
 	bt_dev_free(hdev);
+	service_trace_note(46, 0, hdev->hci != NULL, dev_id);
 
-	return 0;
+	return reset_err;
 }
 
 bool bt_is_ready_mc(uint8_t dev_id)
@@ -5014,6 +5377,14 @@ static bool process_pending_cmd(struct bt_dev *hdev, k_timeout_t timeout)
 {
 	if (!k_fifo_is_empty(&hdev->cmd_tx_queue)) {
 		if (k_sem_take(&hdev->ncmd_sem, timeout) == 0) {
+#if OV_BLE_HCI_ADV_DIAG
+			struct net_buf *pending = k_fifo_peek_head(&hdev->cmd_tx_queue);
+
+			if (pending && ov_ble_hci_adv_diag_opcode(cmd(pending)->opcode)) {
+				syslog(LOG_INFO, "ov_ble_hci_adv_diag host opcode=0x%04x phase=credit_acquired buf=%p\n",
+					cmd(pending)->opcode, pending);
+			}
+#endif
 			hci_core_send_cmd(hdev);
 			return true;
 		}

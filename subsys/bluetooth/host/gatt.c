@@ -11,6 +11,7 @@
 #include <string.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <syslog.h>
 #include <stdlib.h>
 #include <zephyr/sys/atomic.h>
 #include <zephyr/sys/byteorder.h>
@@ -1430,6 +1431,10 @@ static void sc_indicate_rsp(struct bt_conn *conn,
 #endif
 
 	LOG_DBG("err 0x%02x", err);
+	syslog(LOG_INFO, "A4_SC_CONFIRM err=0x%02x pending_before=%u range_changed=%u\n",
+	       err,
+	       atomic_test_bit(hdev->gatt_ctx->gatt_sc.flags, SC_INDICATE_PENDING),
+	       atomic_test_bit(hdev->gatt_ctx->gatt_sc.flags, SC_RANGE_CHANGED));
 
 	atomic_clear_bit(hdev->gatt_ctx->gatt_sc.flags, SC_INDICATE_PENDING);
 
@@ -1482,9 +1487,15 @@ static void sc_process(struct k_work *work)
 	sc->params.chan_opt = BT_ATT_CHAN_OPT_NONE;
 #endif /* CONFIG_BT_EATT */
 
-	if (bt_gatt_indicate(NULL, &sc->params)) {
+	{
+		int submit_err = bt_gatt_indicate(NULL, &sc->params);
+		syslog(LOG_INFO, "A4_SC_SUBMIT start=0x%04x end=0x%04x err=%d pending_before=%u\n",
+		       sc_range[0], sc_range[1], submit_err,
+		       atomic_test_bit(sc->flags, SC_INDICATE_PENDING));
+		if (submit_err) {
 		/* No connections to indicate */
 		return;
+		}
 	}
 
 	atomic_set_bit(sc->flags, SC_INDICATE_PENDING);
@@ -1737,6 +1748,10 @@ static void sc_indicate(struct bt_dev *hdev, uint16_t start, uint16_t end)
 #if defined(CONFIG_BT_GATT_DYNAMIC_DB) ||                                                          \
 	(defined(CONFIG_BT_GATT_CACHING) && defined(CONFIG_BT_SETTINGS))
 	LOG_DBG("start 0x%04x end 0x%04x", start, end);
+	syslog(LOG_INFO, "A4_SC_RANGE start=0x%04x end=0x%04x pending=%u changed=%u\n",
+	       start, end,
+	       atomic_test_bit(hdev->gatt_ctx->gatt_sc.flags, SC_INDICATE_PENDING),
+	       atomic_test_bit(hdev->gatt_ctx->gatt_sc.flags, SC_RANGE_CHANGED));
 
 	if (!atomic_test_and_set_bit(hdev->gatt_ctx->gatt_sc.flags, SC_RANGE_CHANGED)) {
 		hdev->gatt_ctx->gatt_sc.start = start;
@@ -1751,6 +1766,7 @@ static void sc_indicate(struct bt_dev *hdev, uint16_t start, uint16_t end)
 submit:
 	if (atomic_test_bit(hdev->gatt_ctx->gatt_sc.flags, SC_INDICATE_PENDING)) {
 		LOG_DBG("indicate pending, waiting until complete...");
+		syslog(LOG_INFO, "A4_SC_PENDING start=0x%04x end=0x%04x\n", start, end);
 		return;
 	}
 

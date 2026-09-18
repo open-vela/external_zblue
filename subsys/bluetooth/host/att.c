@@ -10,6 +10,7 @@
 #include <string.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <syslog.h>
 #include <zephyr/sys/atomic.h>
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/util.h>
@@ -33,6 +34,150 @@
 #define LOG_LEVEL CONFIG_BT_ATT_LOG_LEVEL
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(bt_att);
+
+/* Bounded A2 discovery diagnostics.  This is deliberately local to ATT:
+ * it does not alter protocol behaviour, queue ownership, or callback ABI. */
+#define BT_ATT_DIAG_CAP 128
+#define BT_ATT_DIAG_EARLY 32
+#define BT_ATT_DIAG_TAIL (BT_ATT_DIAG_CAP - BT_ATT_DIAG_EARLY)
+enum bt_att_diag_kind {
+	BT_ATT_DIAG_RX = 1, BT_ATT_DIAG_HANDLER, BT_ATT_DIAG_RSP,
+	BT_ATT_DIAG_SEND, BT_ATT_DIAG_QUEUE, BT_ATT_DIAG_COMPLETE,
+};
+struct bt_att_diag_event {
+	uint32_t seq;
+	uint32_t t_ms;
+	uint32_t generation;
+	uintptr_t chan;
+	uint8_t kind;
+	uint8_t opcode;
+	uint16_t len;
+	uint16_t h1;
+	uint16_t h2;
+	int16_t err;
+	uint8_t prefix_len;
+	uint8_t prefix_truncated;
+	uint8_t prefix[8];
+};
+struct bt_att_chan;
+static struct bt_att_diag_event bt_att_diag_events[BT_ATT_DIAG_CAP];
+static struct bt_att_diag_event bt_att_diag_snapshot[BT_ATT_DIAG_CAP];
+static atomic_t bt_att_diag_count;
+static atomic_t bt_att_diag_dropped;
+static atomic_t bt_att_diag_total;
+static atomic_t bt_att_diag_early;
+static atomic_t bt_att_diag_tail_count;
+static atomic_t bt_att_diag_tail_next;
+static atomic_t bt_att_diag_generation;
+static atomic_t bt_att_diag_banner;
+static struct bt_conn *bt_att_diag_conn;
+K_MUTEX_DEFINE(bt_att_diag_lock);
+
+static void bt_att_diag_record_ex(struct bt_att_chan *chan, uint8_t kind,
+				       uint8_t opcode, uint16_t len,
+				       uint16_t h1, uint16_t h2, int err,
+				       const uint8_t *prefix, uint8_t prefix_len)
+{
+	int slot;
+	uint32_t seq;
+	k_mutex_lock(&bt_att_diag_lock, K_FOREVER);
+	seq = (uint32_t)atomic_get(&bt_att_diag_total);
+	atomic_inc(&bt_att_diag_total);
+	if (atomic_get(&bt_att_diag_early) < BT_ATT_DIAG_EARLY) {
+		slot = atomic_get(&bt_att_diag_early);
+		atomic_inc(&bt_att_diag_early);
+	} else {
+		slot = BT_ATT_DIAG_EARLY + atomic_get(&bt_att_diag_tail_next);
+		atomic_set(&bt_att_diag_tail_next,
+			   (atomic_get(&bt_att_diag_tail_next) + 1) % BT_ATT_DIAG_TAIL);
+		if (atomic_get(&bt_att_diag_tail_count) < BT_ATT_DIAG_TAIL) {
+			atomic_inc(&bt_att_diag_tail_count);
+		} else {
+			atomic_inc(&bt_att_diag_dropped);
+		}
+	}
+	if (slot < 0 || slot >= BT_ATT_DIAG_CAP) {
+		atomic_inc(&bt_att_diag_dropped);
+		k_mutex_unlock(&bt_att_diag_lock);
+		return;
+	}
+	atomic_set(&bt_att_diag_count, MIN(BT_ATT_DIAG_CAP,
+						 atomic_get(&bt_att_diag_count) + 1));
+	bt_att_diag_events[slot] = (struct bt_att_diag_event){
+		.seq = seq, .t_ms = k_uptime_get_32(),
+		.generation = (uint32_t)atomic_get(&bt_att_diag_generation),
+		.chan = (uintptr_t)chan,
+		.kind = kind, .opcode = opcode, .len = len,
+		.h1 = h1, .h2 = h2, .err = (int16_t)err,
+	};
+	bt_att_diag_events[slot].prefix_len = MIN(prefix_len, 8);
+	bt_att_diag_events[slot].prefix_truncated = prefix_len > 8;
+	if (prefix && bt_att_diag_events[slot].prefix_len)
+		memcpy(bt_att_diag_events[slot].prefix, prefix,
+		       bt_att_diag_events[slot].prefix_len);
+	k_mutex_unlock(&bt_att_diag_lock);
+}
+
+static void bt_att_diag_record(struct bt_att_chan *chan, uint8_t kind,
+				       uint8_t opcode, uint16_t len,
+				       uint16_t h1, uint16_t h2, int err)
+{
+	bt_att_diag_record_ex(chan, kind, opcode, len, h1, h2, err, NULL, 0);
+}
+
+static void bt_att_diag_dump(void)
+{
+	int count;
+	int dropped;
+	uint32_t generation;
+	int limit;
+	int early_count;
+	int tail_count;
+	int tail_next;
+	int i;
+	k_mutex_lock(&bt_att_diag_lock, K_FOREVER);
+	count = atomic_get(&bt_att_diag_count);
+	limit = MIN(count, BT_ATT_DIAG_CAP);
+	dropped = atomic_get(&bt_att_diag_dropped);
+	generation = (uint32_t)atomic_get(&bt_att_diag_generation);
+	early_count = atomic_get(&bt_att_diag_early);
+	tail_count = atomic_get(&bt_att_diag_tail_count);
+	tail_next = atomic_get(&bt_att_diag_tail_next);
+	memcpy(bt_att_diag_snapshot, bt_att_diag_events,
+	       sizeof(bt_att_diag_snapshot));
+	atomic_set(&bt_att_diag_count, 0);
+	atomic_set(&bt_att_diag_dropped, 0);
+	atomic_set(&bt_att_diag_total, 0);
+	atomic_set(&bt_att_diag_early, 0);
+	atomic_set(&bt_att_diag_tail_count, 0);
+	atomic_set(&bt_att_diag_tail_next, 0);
+	k_mutex_unlock(&bt_att_diag_lock);
+	syslog(LOG_INFO, "A4_ATT_DUMP generation=%u count=%d dropped=%d\n",
+	       generation, limit, dropped);
+	for (i = 0; i < early_count; i++) {
+		struct bt_att_diag_event *e = &bt_att_diag_snapshot[i];
+		syslog(LOG_INFO, "A4_ATT_EVT seq=%u t=%u gen=%u chan=%p kind=%u op=0x%02x len=%u h1=%u h2=%u err=%d prefix_len=%u trunc=%u p=%02x%02x%02x%02x%02x%02x%02x%02x\n",
+			e->seq, e->t_ms, e->generation, (void *)e->chan, e->kind,
+			e->opcode, e->len, e->h1, e->h2, e->err,
+			e->prefix_len, e->prefix_truncated, e->prefix[0], e->prefix[1],
+			e->prefix[2], e->prefix[3], e->prefix[4], e->prefix[5],
+			e->prefix[6], e->prefix[7]);
+	}
+	if (dropped) {
+		syslog(LOG_INFO, "A4_ATT_GAP omitted=%d (early events and tail retained)\n", dropped);
+	}
+	/* Tail slots are emitted in chronological ring order. */
+	for (i = 0; i < tail_count; i++) {
+		int ring = (tail_next - tail_count + i + BT_ATT_DIAG_TAIL) % BT_ATT_DIAG_TAIL;
+		struct bt_att_diag_event *e = &bt_att_diag_snapshot[BT_ATT_DIAG_EARLY + ring];
+		syslog(LOG_INFO, "A4_ATT_EVT seq=%u t=%u gen=%u chan=%p kind=%u op=0x%02x len=%u h1=%u h2=%u err=%d prefix_len=%u trunc=%u p=%02x%02x%02x%02x%02x%02x%02x%02x\n",
+			e->seq, e->t_ms, e->generation, (void *)e->chan, e->kind,
+			e->opcode, e->len, e->h1, e->h2, e->err,
+			e->prefix_len, e->prefix_truncated, e->prefix[0], e->prefix[1],
+			e->prefix[2], e->prefix[3], e->prefix[4], e->prefix[5],
+			e->prefix[6], e->prefix[7]);
+	}
+}
 
 #define ATT_CHAN(_ch) CONTAINER_OF(_ch, struct bt_att_chan, chan.chan)
 #if defined(CONFIG_BT_ATT_OVER_BR)
@@ -336,6 +481,8 @@ static void att_sent(void *user_data)
 	}
 
 	LOG_DBG("conn %p chan %p", conn, chan);
+	bt_att_diag_record(att_chan, BT_ATT_DIAG_COMPLETE, data->opcode, 0, 0, 0,
+				  data->err);
 
 	/* For EATT, `bt_att_sent` is assigned to the `.sent` L2 callback.
 	 * L2CAP will then call it once the SDU has finished sending.
@@ -363,11 +510,16 @@ static int chan_send(struct bt_att_chan *chan, struct net_buf *buf)
 	struct bt_l2cap_chan *l2cap_chan;
 
 	hdr = (void *)buf->data;
+	uint8_t diag_opcode = hdr->code;
+	uint16_t diag_len = buf->len;
+	bt_att_diag_record(chan, BT_ATT_DIAG_SEND, diag_opcode, diag_len, 0, 0, 0);
 
 	LOG_DBG("code 0x%02x", hdr->code);
 
 	if (!atomic_test_bit(chan->flags, ATT_CONNECTED)) {
 		LOG_ERR("ATT channel not connected");
+		bt_att_diag_record(chan, BT_ATT_DIAG_SEND, diag_opcode, diag_len, 0, 0,
+				   -EINVAL);
 		return -EINVAL;
 	}
 
@@ -456,6 +608,7 @@ static int chan_send(struct bt_att_chan *chan, struct net_buf *buf)
 		data->att_chan = prev_chan;
 		data->err = err;
 	}
+	bt_att_diag_record(chan, BT_ATT_DIAG_SEND, diag_opcode, diag_len, 0, 0, err);
 
 	return err;
 }
@@ -823,10 +976,15 @@ static void att_send_process(struct bt_att *att)
 static void bt_att_chan_send_rsp(struct bt_att_chan *chan, struct net_buf *buf)
 {
 	int err;
+	uint8_t opcode = buf->len ? buf->data[0] : 0;
+	bt_att_diag_record_ex(chan, BT_ATT_DIAG_RSP, opcode, buf->len, 0, 0, 0,
+				      buf->len > 1 ? &buf->data[1] : NULL,
+				      buf->len > 1 ? buf->len - 1 : 0);
 
 	err = chan_send(chan, buf);
 	if (err) {
 		/* Responses need to be sent back using the same channel */
+		bt_att_diag_record(chan, BT_ATT_DIAG_QUEUE, opcode, buf->len, 0, 0, err);
 		k_fifo_put(&chan->tx_queue, buf);
 	}
 }
@@ -851,6 +1009,8 @@ static void send_err_rsp(struct bt_att_chan *chan, uint8_t req, uint16_t handle,
 	rsp->request = req;
 	rsp->handle = sys_cpu_to_le16(handle);
 	rsp->error = err;
+	bt_att_diag_record(chan, BT_ATT_DIAG_RSP, BT_ATT_OP_ERROR_RSP,
+				   sizeof(*rsp), handle, err, 0);
 
 	bt_att_chan_send_rsp(chan, buf);
 }
@@ -3047,6 +3207,7 @@ static int bt_att_recv(struct bt_l2cap_chan *chan, struct net_buf *buf)
 	struct bt_att_hdr *hdr;
 	const struct att_handler *handler;
 	uint8_t err;
+	uint16_t h1 = 0, h2 = 0;
 	size_t i;
 
 	if (buf->len < sizeof(*hdr)) {
@@ -3055,6 +3216,48 @@ static int bt_att_recv(struct bt_l2cap_chan *chan, struct net_buf *buf)
 	}
 
 	hdr = net_buf_pull_mem(buf, sizeof(*hdr));
+	if (!atomic_get(&bt_att_diag_banner)) {
+		atomic_set(&bt_att_diag_banner, 1);
+		syslog(LOG_INFO, "A4 ATT diagnostics active; bounded discovery trace enabled\n");
+	}
+	if (bt_att_diag_conn != conn) {
+		k_mutex_lock(&bt_att_diag_lock, K_FOREVER);
+		bt_att_diag_conn = conn;
+		atomic_inc(&bt_att_diag_generation);
+		atomic_set(&bt_att_diag_count, 0);
+		atomic_set(&bt_att_diag_dropped, 0);
+		atomic_set(&bt_att_diag_total, 0);
+		atomic_set(&bt_att_diag_early, 0);
+		atomic_set(&bt_att_diag_tail_count, 0);
+		atomic_set(&bt_att_diag_tail_next, 0);
+		k_mutex_unlock(&bt_att_diag_lock);
+	}
+	/* All discovery range requests and Service Changed carry two-byte handles;
+	 * check the remaining PDU length before decoding either field. */
+	if ((hdr->code == BT_ATT_OP_FIND_INFO_REQ ||
+	     hdr->code == BT_ATT_OP_READ_TYPE_REQ ||
+	     hdr->code == BT_ATT_OP_READ_GROUP_REQ ||
+	     hdr->code == BT_ATT_OP_INDICATE) && buf->len >= 4) {
+		h1 = sys_get_le16(buf->data);
+		h2 = sys_get_le16(buf->data + 2);
+	}
+	if ((hdr->code == BT_ATT_OP_READ_REQ ||
+	     hdr->code == BT_ATT_OP_READ_BLOB_REQ) && buf->len >= 2) {
+		h1 = sys_get_le16(buf->data);
+		if (hdr->code == BT_ATT_OP_READ_BLOB_REQ && buf->len >= 4)
+			h2 = sys_get_le16(buf->data + 2);
+	}
+	if (hdr->code == BT_ATT_OP_CONFIRM) {
+		bt_att_diag_record(att_chan, BT_ATT_DIAG_RX, hdr->code, buf->len,
+				   0, 0, 0);
+	} else {
+		if (hdr->code == BT_ATT_OP_READ_TYPE_REQ && buf->len > 4)
+			bt_att_diag_record_ex(att_chan, BT_ATT_DIAG_RX, hdr->code, buf->len,
+					       h1, h2, 0, &buf->data[4], buf->len - 4);
+		else
+			bt_att_diag_record(att_chan, BT_ATT_DIAG_RX, hdr->code, buf->len,
+					   h1, h2, 0);
+	}
 	LOG_DBG("Received ATT chan %p code 0x%02x len %zu", att_chan, hdr->code,
 		net_buf_frags_len(buf));
 
@@ -3091,6 +3294,8 @@ static int bt_att_recv(struct bt_l2cap_chan *chan, struct net_buf *buf)
 	} else {
 		err = handler->func(att_chan, buf);
 	}
+	bt_att_diag_record(att_chan, BT_ATT_DIAG_HANDLER, hdr->code, buf->len,
+				   h1, h2, err);
 
 	if (handler->type == ATT_REQUEST && err) {
 		LOG_DBG("ATT error 0x%02x", err);
@@ -3389,6 +3594,7 @@ static void bt_att_disconnected(struct bt_l2cap_chan *chan)
 		LOG_DBG("Ignore disconnect on detached ATT chan");
 		return;
 	}
+	bt_att_diag_dump();
 
 	att_chan_detach(att_chan);
 
@@ -4223,6 +4429,7 @@ void bt_att_over_br_init(struct bt_dev *hdev)
 void bt_att_init(struct bt_dev *hdev)
 {
 	hdev->att_ctx = &att_ctx_pool[hdev->dev_id];
+	syslog(LOG_INFO, "A4 ATT diagnostics active; bounded discovery trace enabled\n");
 
 	bt_gatt_init(hdev);
 
