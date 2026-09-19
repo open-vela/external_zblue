@@ -12,6 +12,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <zephyr/net_buf.h>
 #include <zephyr/sys/atomic.h>
 #include <zephyr/sys/check.h>
@@ -3063,6 +3065,8 @@ static const struct event_handler normal_events[] = {
 		      sizeof(struct bt_hci_evt_user_passkey_req)),
 	EVENT_HANDLER(BT_HCI_EVT_INQUIRY_COMPLETE, bt_hci_inquiry_complete,
 		      sizeof(struct bt_hci_evt_inquiry_complete)),
+	/* R103: basic Inquiry Result (0x02) - LCPU sends this instead of 0x22 */
+	EVENT_HANDLER(0x02, bt_hci_inquiry_result, 0),
 	EVENT_HANDLER(BT_HCI_EVT_INQUIRY_RESULT_WITH_RSSI,
 		      bt_hci_inquiry_result_with_rssi,
 		      sizeof(struct bt_hci_evt_inquiry_result_with_rssi)),
@@ -3378,10 +3382,23 @@ static void le_read_resolving_list_size_complete(struct bt_dev *hdev, struct net
 }
 #endif /* defined(CONFIG_BT_SMP) */
 
+/* TEMP-DIAG: probe inode tree health by opening /dev/urandom (the exact
+ * path that hardfaults when the inode list is corrupted). */
+static void probe_inode(const char *tag)
+{
+	int fd = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
+	LOG_INF("%s: open=%d", tag, fd);
+	if (fd >= 0) {
+		close(fd);
+	}
+}
+
 static int common_init(struct bt_dev *hdev)
 {
 	struct net_buf *rsp;
 	int err;
+
+	probe_inode("z-cmn-entry");
 
 	if (!drv_quirk_no_reset(hdev)) {
 		/* Send HCI_RESET */
@@ -3393,6 +3410,8 @@ static int common_init(struct bt_dev *hdev)
 		hci_reset_complete(hdev);
 	}
 
+	probe_inode("z-cmn-reset");
+
 	/* Read Local Supported Features */
 	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_READ_LOCAL_FEATURES, NULL, &rsp);
 	if (err) {
@@ -3400,6 +3419,8 @@ static int common_init(struct bt_dev *hdev)
 	}
 	read_local_features_complete(hdev, rsp);
 	net_buf_unref(rsp);
+	
+	probe_inode("z-cmn-features");
 
 	/* Read Local Version Information */
 	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_READ_LOCAL_VERSION_INFO, NULL,
@@ -3409,6 +3430,8 @@ static int common_init(struct bt_dev *hdev)
 	}
 	read_local_ver_complete(hdev, rsp);
 	net_buf_unref(rsp);
+	
+	probe_inode("z-cmn-version");
 
 	/* Read Local Supported Commands */
 	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_READ_SUPPORTED_COMMANDS, NULL,
@@ -3418,15 +3441,19 @@ static int common_init(struct bt_dev *hdev)
 	}
 	read_supported_commands_complete(hdev, rsp);
 	net_buf_unref(rsp);
+	
+	probe_inode("z-cmn-cmds");
 
 	if (IS_ENABLED(CONFIG_BT_HOST_CRYPTO_PRNG)) {
 		/* Initialize the PRNG so that it is safe to use it later
 		 * on in the initialization process.
 		 */
+		probe_inode("z-cmn-prng-before");
 		err = prng_init(hdev);
 		if (err) {
 			return err;
 		}
+		probe_inode("z-cmn-prng-after");
 	}
 
 #if defined(CONFIG_BT_HCI_ACL_FLOW_CONTROL)
@@ -3483,6 +3510,15 @@ static int le_set_event_mask(struct bt_dev *hdev)
 		} else {
 			mask |= BT_EVT_MASK_LE_CONN_COMPLETE;
 		}
+
+		/* SF32LB52 workaround: enable BOTH connection-complete events
+		 * regardless of the feature bits above. The emulated LE feature
+		 * set (all-zero) and the LCPU firmware disagree about which
+		 * subevent is produced; with only ENH_CONN_COMPLETE set
+		 * (observed mask 0x0f08) the controller's legacy 0x3E/0x01
+		 * event is masked and phone GATT connects never complete. */
+		mask |= BT_EVT_MASK_LE_CONN_COMPLETE;
+		mask |= BT_EVT_MASK_LE_ENH_CONN_COMPLETE;
 
 		mask |= BT_EVT_MASK_LE_CONN_UPDATE_COMPLETE;
 		mask |= BT_EVT_MASK_LE_REMOTE_FEAT_COMPLETE;
@@ -4396,14 +4432,14 @@ static void rx_work_handler(struct k_work *work)
 	struct bt_dev *hdev = CONTAINER_OF(work, struct bt_dev, rx_work);
 
 	LOG_DBG("dev:%d, Getting net_buf from queue", hdev->dev_id);
-	buf = net_buf_slist_get(&hdev->rx_queue);
-	if (!buf) {
-		return;
-	}
 
-	LOG_DBG("buf %p type %u len %u", buf, bt_buf_get_type(buf), buf->len);
+	/* Drain the queue in one pass: re-submitting this work item from inside
+	 * the handler is not reliably re-scheduled on this port, so events arriving
+	 * while rx_work runs would sit in rx_queue forever. */
+	while ((buf = net_buf_slist_get(&hdev->rx_queue)) != NULL) {
+		LOG_DBG("buf %p type %u len %u", buf, bt_buf_get_type(buf), buf->len);
 
-	switch (bt_buf_get_type(buf)) {
+		switch (bt_buf_get_type(buf)) {
 #if defined(CONFIG_BT_CONN)
 	case BT_BUF_ACL_IN:
 		hci_acl(hdev, buf);
@@ -4417,17 +4453,14 @@ static void rx_work_handler(struct k_work *work)
 	case BT_BUF_EVT:
 		hci_event(hdev, buf);
 		break;
-	default:
-		LOG_ERR("Unknown buf type %u", bt_buf_get_type(buf));
-		net_buf_unref(buf);
-		break;
+		default:
+			LOG_ERR("Unknown buf type %u", bt_buf_get_type(buf));
+			net_buf_unref(buf);
+			break;
+		}
 	}
 
-	/* Schedule the work handler to be executed again if there are
-	 * additional items in the queue. This allows for other users of the
-	 * work queue to get a chance at running, which wouldn't be possible if
-	 * we used a while() loop with a k_yield() statement.
-	 */
+	/* Re-schedule if new items arrived while we were draining. */
 	if (!sys_slist_is_empty(&hdev->rx_queue)) {
 
 #if defined(CONFIG_BT_RECV_WORKQ_SYS)

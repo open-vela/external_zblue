@@ -74,7 +74,7 @@ enum {
 	BT_CONN_PERIPHERAL_PARAM_SET,         /* If periph param were set from app */
 	BT_CONN_PERIPHERAL_PARAM_L2CAP,       /* If should force L2CAP for CPUP */
 	BT_CONN_FORCE_PAIR,                   /* Pairing even with existing keys. */
-#if defined(CONFIG_BT_GATT_CLIENT)
+#if 1 /* ATT MTU exchange is needed by GATT server too */
 	BT_CONN_ATT_MTU_EXCHANGED,            /* If ATT MTU has been exchanged. */
 #endif /* CONFIG_BT_GATT_CLIENT */
 

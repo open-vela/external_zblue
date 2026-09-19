@@ -158,6 +158,22 @@ extern struct net_buf_pool acl_tx_pool;
 struct net_buf_pool dummy_pool;
 // extern struct net_buf_pool a2dp_tx_pool; // for Zephyr shell
 extern struct net_buf_pool bt_a2dp_tx_pool; // for openvela sal
+/* openvela SAL pools. Every pool that is passed to net_buf_alloc()/
+ * bt_l2cap_create_pdu() MUST appear in _net_buf_pool_list[] below: on this
+ * port pool_id() resolves a pool pointer by searching that list and silently
+ * returns 0 when the pool is absent (the __ASSERT is compiled out). A buffer
+ * then carries pool_id 0, so fixed_data_alloc() reads _net_buf_pool_list[0]'s
+ * max_alloc_size and data_pool - the buffer gets the wrong size and points
+ * into a foreign pool's storage. */
+#if defined(CONFIG_BLUETOOTH_PAN)
+extern struct net_buf_pool pan_tx_pool;
+#endif /* CONFIG_BLUETOOTH_PAN */
+#if defined(CONFIG_BLUETOOTH_SPP)
+extern struct net_buf_pool rfcomm_tx_pool;
+#endif /* CONFIG_BLUETOOTH_SPP */
+#if defined(CONFIG_BLUETOOTH_AVRCP_CONTROL) || defined(CONFIG_BLUETOOTH_AVRCP_TARGET)
+extern struct net_buf_pool bt_avrcp_tx_pool;
+#endif
 
 struct net_buf_pool *_net_buf_pool_list[] = {
 #if defined(CONFIG_BT_HCI)
@@ -266,6 +282,18 @@ struct net_buf_pool *_net_buf_pool_list[] = {
 	&usb_out_buf_pool,
 #endif /* CONFIG_USB_DEVICE_AUDIO */
 #endif /* CONFIG_BT_SHELL */
+
+/* openvela SAL pools - appended last so the indices of the zblue-internal
+ * pools above stay unchanged. */
+#if defined(CONFIG_BLUETOOTH_PAN)
+	&pan_tx_pool,
+#endif /* CONFIG_BLUETOOTH_PAN */
+#if defined(CONFIG_BLUETOOTH_SPP)
+	&rfcomm_tx_pool,
+#endif /* CONFIG_BLUETOOTH_SPP */
+#if defined(CONFIG_BLUETOOTH_AVRCP_CONTROL) || defined(CONFIG_BLUETOOTH_AVRCP_TARGET)
+	&bt_avrcp_tx_pool,
+#endif
 	NULL,
 };
 /* net_buf_pool END */
