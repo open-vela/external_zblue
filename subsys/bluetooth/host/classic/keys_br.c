@@ -12,6 +12,7 @@
 #include <zephyr/sys/util.h>
 
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <zephyr/bluetooth/bluetooth.h>
@@ -29,6 +30,17 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(bt_keys_br);
 
+/* Port note (2026-10-12): /data 是 littlefs, 挂载很晚(~10.6s); 而
+ * bluetoothd 可能在其之前就 mkdir /data/misc/bt —— 那次 mkdir 落在
+ * rootfs 上, 挂载后被 littlefs 遮住, 结果 open("/data/misc/bt/br_key.bin")
+ * 报 ENOENT, 保存/读取全部失败(旧实现无声无息)。这里在每次读写前
+ * 自行补建目录(EEXIST 容忍), 让 link key 持久化不依赖启动时序。 */
+static void bt_keys_link_key_ensure_dir(void)
+{
+	(void)mkdir("/data/misc", 0777);
+	(void)mkdir("/data/misc/bt", 0777);
+}
+
 /* Port note (2026-08-17): load BR link keys from the file written by
  * bt_keys_link_key_store() into the RAM pool, so a reboot no longer
  * forces re-pairing. Returns the key for addr, or NULL. See the store
@@ -41,6 +53,7 @@ struct bt_keys_link_key *bt_keys_link_key_load_file(struct bt_dev *hdev,
 	ssize_t got;
 	int fd;
 
+	bt_keys_link_key_ensure_dir();
 	fd = open(path, O_RDONLY);
 	if (fd < 0) {
 		/* Port note (2026-10-12): 这里是区分根因的关键日志 ——
@@ -214,6 +227,7 @@ void bt_keys_link_key_store(struct bt_dev *hdev, struct bt_keys_link_key *link_k
 			}
 		}
 
+		bt_keys_link_key_ensure_dir();
 		fd = open(path, O_WRONLY | O_CREAT | O_TRUNC);
 		if (fd >= 0) {
 			(void)write(fd, buf, n * 32);
