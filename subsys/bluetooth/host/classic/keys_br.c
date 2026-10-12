@@ -43,6 +43,10 @@ struct bt_keys_link_key *bt_keys_link_key_load_file(struct bt_dev *hdev,
 
 	fd = open(path, O_RDONLY);
 	if (fd < 0) {
+		/* Port note (2026-10-12): 这里是区分根因的关键日志 ——
+		 * 若冷启早期(system up < /data 挂载)就走到这里, fd<0 说明文件
+		 * 还不可读(挂载竞态); 若后期仍 fd<0 则是文件缺失/被写坏。 */
+		LOG_WRN("br_key load: open %s failed (fd %d)", path, fd);
 		return NULL;
 	}
 
@@ -163,12 +167,20 @@ void bt_keys_link_key_clear_addr(struct bt_dev *hdev, const bt_addr_t *addr)
 			key = &hdev->keys->br_key_pool[i];
 			bt_keys_link_key_clear(hdev, key);
 		}
+		/* Port note (2026-10-12): 内存清空后必须让 br_key.bin 同步失效,
+		 * 否则手机"忘记设备"后板子重启还会拿旧 key 去应答 -> 反复 auth 失败。
+		 * 说明: bt_keys_link_key_store() 的文件分支是整池重写, 与传入的
+		 * link_key 无关; 仅当将来打开 CONFIG_BT_SETTINGS 时才需要专门的
+		 * 文件专用 helper(那时 settings 分支会写入全 0, 需一并处理)。 */
+		bt_keys_link_key_store(hdev, &hdev->keys->br_key_pool[0]);
 		return;
 	}
 
 	key = bt_keys_find_link_key(hdev, addr);
 	if (key) {
 		bt_keys_link_key_clear(hdev, key);
+		/* 同上: unpair 后同步失效文件记录, 避免陈旧 key 复活 */
+		bt_keys_link_key_store(hdev, key);
 	}
 }
 

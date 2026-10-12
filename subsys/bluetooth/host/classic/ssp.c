@@ -584,6 +584,25 @@ void bt_hci_link_key_req(struct bt_dev *hdev, struct net_buf *buf)
 	LOG_DBG("link_key_req %s\n", bt_addr_str(&evt->bdaddr));
 	conn = bt_conn_lookup_addr_br_mc(hdev->dev_id, &evt->bdaddr);
 	if (!conn) {
+		/* Port note (2026-10-12): 控制器可能在 host 建立 bt_conn 之前就发
+		 * Link_Key_Request(冷启后手机主动回连很常见)。原实现在这里直接 neg
+		 * reply, **永远走不到下面的文件恢复**, 于是 br_key.bin 形同虚设。
+		 * 这里先查 RAM pool, 再查文件; 有 key 就直接应答, 都没有才 neg reply。
+		 * 应答不需要 conn 对象(link_key_reply 只用 hdev+bdaddr+key)。 */
+		struct bt_keys_link_key *fk;
+
+		LOG_WRN("link_key_req: no conn for %s, try pool/file\n",
+			bt_addr_str(&evt->bdaddr));
+		fk = bt_keys_find_link_key(hdev, &evt->bdaddr);
+		if (!fk) {
+			fk = bt_keys_link_key_load_file(hdev, &evt->bdaddr);
+		}
+		if (fk) {
+			LOG_WRN("link_key_req: (no conn) replied from %s\n",
+				"pool/file");
+			link_key_reply(hdev, &evt->bdaddr, fk->val);
+			return;
+		}
 		LOG_ERR("Can't find conn for %s", bt_addr_str(&evt->bdaddr));
 		LOG_ERR("link_key_req: NO CONN - neg reply\n");
 		link_key_neg_reply(hdev, &evt->bdaddr);
