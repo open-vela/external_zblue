@@ -12,6 +12,7 @@
 #include <zephyr/sys/util.h>
 
 #include <fcntl.h>
+#include <stdio.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -29,6 +30,29 @@
 #define LOG_LEVEL CONFIG_BT_KEYS_LOG_LEVEL
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(bt_keys_br);
+
+/* Port note (2026-10-12, R2): br_key.bin 现在是"写临时文件 + fsync +
+ * rename"的原子替换, 记录里带 CRC16, 防止掉电写坏后把 1 个 bond 槽位的
+ * 记录读成垃圾(旧实现 O_TRUNC+单次 write, 写一半掉电=全丢)。
+ * 记录仍为 32 字节, 向后兼容:
+ *   [0]=0xA5 [1]=key_type [2]=flags [3]=rsvd [4..9]=addr [10..25]=key
+ *   [26..27]=CRC16(小端, 覆盖 [0..25]) [28]=layout version(1) [29..31]=rsvd
+ * 旧文件这两个字节为 0 => 视为 legacy 记录直接接受(不做 CRC 校验), 只在
+ * 日志里说明; 新写的记录 CRC 非 0, 校验失败则跳过该记录。 */
+static uint16_t bt_keys_link_key_crc16(const uint8_t *p, size_t n)
+{
+	uint16_t crc = 0xFFFF;
+
+	for (size_t i = 0; i < n; i++) {
+		crc ^= (uint16_t)p[i] << 8;
+		for (int b = 0; b < 8; b++) {
+			crc = (crc & 0x8000) ? (uint16_t)((crc << 1) ^ 0x1021)
+					      : (uint16_t)(crc << 1);
+		}
+	}
+
+	return crc;
+}
 
 /* Port note (2026-10-12): /data 是 littlefs, 挂载很晚(~10.6s); 而
  * bluetoothd 可能在其之前就 mkdir /data/misc/bt —— 那次 mkdir 落在
@@ -68,6 +92,18 @@ struct bt_keys_link_key *bt_keys_link_key_load_file(struct bt_dev *hdev,
 
 		if (rec[0] != 0xA5) {
 			continue;
+		}
+
+		/* Port note (2026-10-12, R2): CRC 校验, 挡住掉电写坏的文件。
+		 * CRC 字段为 0 = 旧格式记录, 直接接受以保持向后兼容。 */
+		{
+			uint16_t want = (uint16_t)(rec[26] | ((uint16_t)rec[27] << 8));
+
+			if (want != 0 && want != bt_keys_link_key_crc16(rec, 26)) {
+				LOG_WRN("br_key load: bad crc (rec 0x%04x != calc 0x%04x), skip",
+					want, bt_keys_link_key_crc16(rec, 26));
+				continue;
+			}
 		}
 
 		if (!bt_addr_eq((const bt_addr_t *)&rec[4], addr)) {
@@ -204,8 +240,10 @@ void bt_keys_link_key_store(struct bt_dev *hdev, struct bt_keys_link_key *link_k
 	 * /data/misc/bt/br_key.bin (little endian, fixed 32 bytes/record):
 	 *   u8 valid (0xA5) | u8 key_type | u8 flags | u8 rsvd |
 	 *   u8 addr[6] | u8 key[16]
-	 * The whole file is rewritten on each store (few records, rare event)
-	 * so no fsync/seek consistency is needed. */
+	 * The whole file is rewritten on each store (few records, rare event).
+	 * Since 2026-10-12 it goes through br_key.bin.tmp + fsync + rename and
+	 * carries a CRC16 (see bt_keys_link_key_crc16), so a power cut mid-write
+	 * can no longer destroy the stored bond. */
 	{
 		char path[] = "/data/misc/bt/br_key.bin";
 		struct bt_keys_link_key *k;
@@ -216,26 +254,46 @@ void bt_keys_link_key_store(struct bt_dev *hdev, struct bt_keys_link_key *link_k
 		for (int i = 0; i < CONFIG_BT_MAX_PAIRED; i++) {
 			k = &hdev->keys->br_key_pool[i];
 			if (!bt_addr_eq(&k->addr, BT_ADDR_ANY) || k->val[0] || k->val[15]) {
+				uint16_t crc;
+
 				rec[0] = 0xA5;
 				rec[1] = k->key_type;
 				rec[2] = (uint8_t)k->flags;
 				rec[3] = 0;
 				memcpy(&rec[4], k->addr.val, 6);
 				memcpy(&rec[10], k->val, 16);
+				crc = bt_keys_link_key_crc16(rec, 26);
+				rec[26] = (uint8_t)(crc & 0xFF);
+				rec[27] = (uint8_t)(crc >> 8);
+				rec[28] = 1; /* layout version */
+				rec[29] = rec[30] = rec[31] = 0;
 				memcpy(&buf[n * 32], rec, 32);
 				n++;
 			}
 		}
 
+		char tmp[] = "/data/misc/bt/br_key.bin.tmp";
+
 		bt_keys_link_key_ensure_dir();
-		fd = open(path, O_WRONLY | O_CREAT | O_TRUNC);
+		/* Port note (2026-10-12, R2): 先写临时文件 + fsync, 再 rename 原子
+		 * 覆盖 —— 掉电时要么看到旧文件、要么看到新文件, 不会留下半截记录
+		 * (旧实现 O_TRUNC + 单次 write, 写一半掉电就把 bond 全丢了)。 */
+		fd = open(tmp, O_WRONLY | O_CREAT | O_TRUNC);
 		if (fd >= 0) {
-			(void)write(fd, buf, n * 32);
+			ssize_t wrote = write(fd, buf, n * 32);
+
+			(void)fsync(fd);
 			(void)close(fd);
-			LOG_DBG("br_key store: %d key(s)\n", n);
+			if (wrote == (ssize_t)(n * 32) && rename(tmp, path) == 0) {
+				LOG_DBG("br_key store: %d key(s)\n", n);
+			} else {
+				LOG_ERR("br_key store: write/rename failed (%d/%d)",
+					(int)wrote, errno);
+				(void)unlink(tmp);
+			}
 		} else {
 			LOG_ERR("br_key store: open %s failed (%d)\n",
-			       path, fd);
+			       tmp, fd);
 		}
 	}
 
