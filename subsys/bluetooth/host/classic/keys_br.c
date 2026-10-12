@@ -94,16 +94,22 @@ struct bt_keys_link_key *bt_keys_link_key_load_file(struct bt_dev *hdev,
 			continue;
 		}
 
-		/* Port note (2026-10-12, R2): CRC 校验, 挡住掉电写坏的文件。
-		 * CRC 字段为 0 = 旧格式记录, 直接接受以保持向后兼容。 */
-		{
+		/* Port note (2026-10-12, R2): 只有带 layout marker 的记录才做 CRC 校验。
+		 * 为什么不能"CRC 非 0 就算新格式": 旧实现只填了前 26 字节就把整个 32B
+		 * 结构写进文件, [26..31] 是**未初始化的栈垃圾**, 会被误判成损坏的 CRC
+		 * 而把唯一一条有效 bond 丢掉(真机踩到: rec 0x6000 != calc 0xb1ab)。
+		 * 因此用 3 字节 marker 区分: 没有 marker 的记录按 legacy 接受并提示,
+		 * 它在下次 store 时会被自动升级成带 CRC 的新格式。 */
+		if (rec[28] == 1 && rec[29] == 0x5A && rec[30] == 0xA5) {
 			uint16_t want = (uint16_t)(rec[26] | ((uint16_t)rec[27] << 8));
 
-			if (want != 0 && want != bt_keys_link_key_crc16(rec, 26)) {
+			if (want != bt_keys_link_key_crc16(rec, 26)) {
 				LOG_WRN("br_key load: bad crc (rec 0x%04x != calc 0x%04x), skip",
 					want, bt_keys_link_key_crc16(rec, 26));
 				continue;
 			}
+		} else {
+			LOG_WRN("br_key load: legacy record without crc, accepted (will be rewritten)");
 		}
 
 		if (!bt_addr_eq((const bt_addr_t *)&rec[4], addr)) {
@@ -265,8 +271,10 @@ void bt_keys_link_key_store(struct bt_dev *hdev, struct bt_keys_link_key *link_k
 				crc = bt_keys_link_key_crc16(rec, 26);
 				rec[26] = (uint8_t)(crc & 0xFF);
 				rec[27] = (uint8_t)(crc >> 8);
-				rec[28] = 1; /* layout version */
-				rec[29] = rec[30] = rec[31] = 0;
+				rec[28] = 1;      /* layout version */
+				rec[29] = 0x5A;   /* layout marker: 只有带 marker 的记录才做 CRC 校验 */
+				rec[30] = 0xA5;
+				rec[31] = 0;
 				memcpy(&buf[n * 32], rec, 32);
 				n++;
 			}
