@@ -140,6 +140,13 @@ struct bt_keys_link_key *bt_keys_find_link_key(struct bt_dev *hdev, const bt_add
 	struct bt_keys_link_key *key;
 	int i;
 
+	/* Port note (2026-10-12): bt_dev_get() already returns a valid bt_dev
+	 * before bt_keys_init() has allocated hdev->keys, so the pool must be
+	 * checked as well (the SAL link key restore path can run that early). */
+	if (!hdev || !hdev->keys) {
+		return NULL;
+	}
+
 	LOG_DBG("%s", bt_addr_str(addr));
 
 	for (i = 0; i < ARRAY_SIZE(hdev->keys->br_key_pool); i++) {
@@ -156,6 +163,12 @@ struct bt_keys_link_key *bt_keys_find_link_key(struct bt_dev *hdev, const bt_add
 struct bt_keys_link_key *bt_keys_get_link_key(struct bt_dev *hdev, const bt_addr_t *addr)
 {
 	struct bt_keys_link_key *key;
+
+	/* Same early-call guard as bt_keys_find_link_key(): the caller must get
+	 * NULL instead of dereferencing a pool that does not exist yet. */
+	if (!hdev || !hdev->keys) {
+		return NULL;
+	}
 
 	key = bt_keys_find_link_key(hdev, addr);
 	if (key) {
