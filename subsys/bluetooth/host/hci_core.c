@@ -504,9 +504,38 @@ int bt_hci_cmd_send_sync(struct bt_dev *hdev, uint16_t opcode, struct net_buf *b
 
 	/* Now that we have sent the command, suspend until the LL replies */
 	err = k_sem_take(&sync_sem, HCI_CMD_TIMEOUT);
-	BT_ASSERT_MSG(err == 0,
-		      "Controller unresponsive, command opcode 0x%04x %s timeout with err %d",
-		      opcode, bt_hci_opcode_to_str(opcode), err);
+
+	/* ★ 控制器超时不再断言自杀(本仓 2026-10-14 改; 上游此处是
+	 *   BT_ASSERT_MSG(err == 0, "Controller unresponsive, ... timeout"))。
+	 *
+	 * 真机取证(addr2line 对固件 Oct 14 2026 00:31:13, 两次崩溃都断在这一行):
+	 *   z_fatal_error(fatal.c:49) <- bt_hci_cmd_send_sync(hci_core.c:507)
+	 *   ① <- bt_conn_enter_sniff_mode(conn.c:4671) <- zblue_set_power_mode
+	 *   ② <- bt_br_write_local_name(br.c:1473) <- bt_set_name <- zblue_set_name
+	 *
+	 * 触发源是 vendor HCI 层: 日志里反复出现
+	 *   "sf32lb52 bth4: swallowed CC for injected op" /
+	 *   "OpCode 0x0c24 completed instead of expected 0x0c18" /
+	 *   "<wrn> opcode 0x0803 status 0x0c"
+	 * —— 驱动在合成/吞掉命令完成事件, 主机的"命令-应答"配对因此错位, 某些
+	 * 命令**永远等不到应答**。原来的断言把这种"可恢复的传输层超时"升级成
+	 * 致命错误: z_fatal_error -> bluetoothd 整个进程死掉 -> ps 里
+	 * bluetoothd / bt_service_* / sysworkq 全部消失 -> **蓝牙永久失效**
+	 * (真机表现: 手机蓝牙共享开着也连不上, 只能重启板子)。
+	 *
+	 * 改成记一条错误日志 + 归还 net_buf + 返回 -ETIMEDOUT, 让调用者自己决定
+	 * (SAL 侧用 SAL_CHECK(..., 0) 记录后继续), 蓝牙栈继续活着。 */
+	if (err != 0) {
+		LOG_ERR("Controller unresponsive, command opcode 0x%04x %s timeout with err %d",
+			opcode, bt_hci_opcode_to_str(opcode), err);
+
+		/* 必须先把 sync 摘掉再返回: 这条命令的完成事件若**迟到**, 完成处理
+		 * 会 k_sem_give(cmd(buf)->sync)(本文件 2588 行), 而 &sync_sem 是
+		 * 本函数的**栈变量** —— 不摘就是 use-after-free。 */
+		cmd(buf)->sync = NULL;
+		net_buf_unref(buf);
+		return -ETIMEDOUT;
+	}
 
 	status = cmd(buf)->status;
 	if (status) {
