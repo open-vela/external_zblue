@@ -1075,7 +1075,13 @@ static void l2cap_br_conn_req(struct bt_l2cap_br *l2cap, uint8_t ident,
 	 */
 	if (server->accept(conn, server, &chan) < 0) {
 		result = BT_L2CAP_BR_ERR_NO_RESOURCES;
-		goto no_chan;
+		/* The application refused this channel, not the ACL. The ACL is
+		 * shared with other profiles (A2DP/HFP/SPP), so reject only this
+		 * L2CAP attempt and leave the link up. Security/CID violations
+		 * before accept() still take the no_chan disconnect path.
+		 */
+		l2cap_br_send_conn_rsp(conn, scid, 0, ident, result);
+		return;
 	}
 
 	br_chan = BR_CHAN(chan);
