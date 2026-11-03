@@ -454,8 +454,8 @@ int bt_hci_cmd_send_sync(struct bt_dev *hdev, uint16_t opcode, struct net_buf *b
 	} else {
 		/* `cmd(buf)` depends on this  */
 		if (net_buf_pool_get(buf->pool_id) != &hci_cmd_pool) {
-			__ASSERT_NO_MSG(false);
-			return -EINVAL;
+			syslog(LOG_INFO, "hci_core: send_sync 0x%04x pool check fail\n", opcode);
+			return -EIO;
 		}
 	}
 
@@ -496,19 +496,25 @@ int bt_hci_cmd_send_sync(struct bt_dev *hdev, uint16_t opcode, struct net_buf *b
 			 */
 			__maybe_unused bool success = process_pending_cmd(hdev, HCI_CMD_TIMEOUT);
 
-			BT_ASSERT_MSG(success, "command opcode 0x%04x %s timeout", opcode, bt_hci_opcode_to_str(opcode));
+			if (!success) {
+                                LOG_ERR("cmd_send_sync 0x%04x: process_pending_cmd timeout", opcode);
+                                net_buf_unref(buf);
+                                return -EIO;
+                        }
 		} while (buf != cmd);
 	}
 
 	/* Now that we have sent the command, suspend until the LL replies */
 	err = k_sem_take(&sync_sem, HCI_CMD_TIMEOUT);
-	BT_ASSERT_MSG(err == 0,
-		      "Controller unresponsive, command opcode 0x%04x %s timeout with err %d",
-		      opcode, bt_hci_opcode_to_str(opcode), err);
+	if (err != 0) {
+                LOG_ERR("cmd_send_sync 0x%04x: sem_take timeout err=%d", opcode, err);
+                net_buf_unref(buf);
+                return -EIO;
+        }
 
 	status = cmd(buf)->status;
 	if (status) {
-		LOG_WRN("opcode 0x%04x %s status 0x%02x %s", opcode, bt_hci_opcode_to_str(opcode),
+		syslog(LOG_INFO, "hci_core: send_sync 0x%04x COMPLETED status=0x%02x\n", opcode, status); LOG_WRN("opcode 0x%04x %s status 0x%02x %s", opcode, bt_hci_opcode_to_str(opcode),
 			status, bt_hci_err_to_str(status));
 		net_buf_unref(buf);
 

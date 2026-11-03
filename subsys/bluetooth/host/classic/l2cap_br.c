@@ -1091,6 +1091,8 @@ static void l2cap_br_conn_req(struct bt_l2cap_br *l2cap, uint8_t ident,
 	/* Disable fragmentation of l2cap rx pdu */
 	BR_CHAN(chan)->rx.mtu = MIN(BR_CHAN(chan)->rx.mtu, BT_L2CAP_RX_MTU);
 
+	br_chan->required_sec_level = BT_SECURITY_L0;
+	syslog(LOG_INFO, "[SEC-CHK] encrypt=%d sec=%d", conn->encrypt, br_chan->required_sec_level);
 	switch (l2cap_br_conn_security(chan, psm)) {
 	case L2CAP_CONN_SECURITY_PENDING:
 		result = BT_L2CAP_BR_PENDING;
@@ -1208,7 +1210,7 @@ int bt_l2cap_br_server_register_mc(uint8_t dev_id, struct bt_l2cap_server *serve
 		return -EINVAL;
 	} else if (server->sec_level == BT_SECURITY_L0 &&
 		   server->psm != L2CAP_BR_PSM_SDP) {
-		server->sec_level = BT_SECURITY_L1;
+		/* PAN-FIX: keep L0 */ /* server->sec_level = BT_SECURITY_L1; */
 	}
 
 	/* Check if given PSM is already in use */
@@ -1735,7 +1737,7 @@ int bt_l2cap_br_chan_connect(struct bt_conn *conn, struct bt_l2cap_chan *chan,
 		return -EINVAL;
 	} else if (br_chan->required_sec_level == BT_SECURITY_L0 &&
 		   psm != L2CAP_BR_PSM_SDP) {
-		br_chan->required_sec_level = BT_SECURITY_L1;
+		/* PAN-FIX: keep L0 */ /* br_chan->required_sec_level = BT_SECURITY_L1; */
 	}
 
 	switch (br_chan->state) {
@@ -1760,6 +1762,7 @@ int bt_l2cap_br_chan_connect(struct bt_conn *conn, struct bt_l2cap_chan *chan,
 	bt_l2cap_br_chan_set_state(chan, BT_L2CAP_CONNECTING);
 	atomic_set_bit(BR_CHAN(chan)->flags, L2CAP_FLAG_CONN_PENDING);
 
+	syslog(LOG_INFO, "[SEC-CHK] encrypt=%d sec=%d", conn->encrypt, br_chan->required_sec_level);
 	switch (l2cap_br_conn_security(chan, psm)) {
 	case L2CAP_CONN_SECURITY_PENDING:
 		/*

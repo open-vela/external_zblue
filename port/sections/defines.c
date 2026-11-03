@@ -157,9 +157,10 @@ extern struct net_buf_pool acl_in_pool;
 extern struct net_buf_pool acl_tx_pool;
 struct net_buf_pool dummy_pool;
 // extern struct net_buf_pool a2dp_tx_pool; // for Zephyr shell
-extern struct net_buf_pool bt_a2dp_tx_pool; // for openvela sal
+extern struct net_buf_pool bt_a2dp_tx_pool;
+extern struct net_buf_pool bnep_tx_pool; /* our BNEP TX pool */
 
-struct net_buf_pool *_net_buf_pool_list[] = {
+_net_buf_pool_list[] = {
 #if defined(CONFIG_BT_HCI)
 #if defined(CONFIG_BT_HCI_RAW)
 	&hci_acl_pool,
@@ -266,7 +267,10 @@ struct net_buf_pool *_net_buf_pool_list[] = {
 	&usb_out_buf_pool,
 #endif /* CONFIG_USB_DEVICE_AUDIO */
 #endif /* CONFIG_BT_SHELL */
-	NULL,
+#if defined(CONFIG_BLUETOOTH_PAN)
+	&bnep_tx_pool,
+#endif /* CONFIG_BLUETOOTH_PAN */
+    NULL,
 };
 /* net_buf_pool END */
 
