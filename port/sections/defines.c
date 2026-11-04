@@ -165,9 +165,6 @@ extern struct net_buf_pool bt_a2dp_tx_pool; // for openvela sal
  * then carries pool_id 0, so fixed_data_alloc() reads _net_buf_pool_list[0]'s
  * max_alloc_size and data_pool - the buffer gets the wrong size and points
  * into a foreign pool's storage. */
-#if defined(CONFIG_BLUETOOTH_PAN)
-extern struct net_buf_pool pan_tx_pool;
-#endif /* CONFIG_BLUETOOTH_PAN */
 #if defined(CONFIG_BLUETOOTH_SPP)
 extern struct net_buf_pool rfcomm_tx_pool;
 #endif /* CONFIG_BLUETOOTH_SPP */
@@ -285,9 +282,6 @@ struct net_buf_pool *_net_buf_pool_list[] = {
 
 /* openvela SAL pools - appended last so the indices of the zblue-internal
  * pools above stay unchanged. */
-#if defined(CONFIG_BLUETOOTH_PAN)
-	&pan_tx_pool,
-#endif /* CONFIG_BLUETOOTH_PAN */
 #if defined(CONFIG_BLUETOOTH_SPP)
 	&rfcomm_tx_pool,
 #endif /* CONFIG_BLUETOOTH_SPP */

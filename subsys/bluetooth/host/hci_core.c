@@ -3411,23 +3411,10 @@ static void le_read_resolving_list_size_complete(struct bt_dev *hdev, struct net
 }
 #endif /* defined(CONFIG_BT_SMP) */
 
-/* TEMP-DIAG: probe inode tree health by opening /dev/urandom (the exact
- * path that hardfaults when the inode list is corrupted). */
-static void probe_inode(const char *tag)
-{
-	int fd = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
-	LOG_INF("%s: open=%d", tag, fd);
-	if (fd >= 0) {
-		close(fd);
-	}
-}
-
 static int common_init(struct bt_dev *hdev)
 {
 	struct net_buf *rsp;
 	int err;
-
-	probe_inode("z-cmn-entry");
 
 	if (!drv_quirk_no_reset(hdev)) {
 		/* Send HCI_RESET */
@@ -3439,8 +3426,6 @@ static int common_init(struct bt_dev *hdev)
 		hci_reset_complete(hdev);
 	}
 
-	probe_inode("z-cmn-reset");
-
 	/* Read Local Supported Features */
 	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_READ_LOCAL_FEATURES, NULL, &rsp);
 	if (err) {
@@ -3449,8 +3434,6 @@ static int common_init(struct bt_dev *hdev)
 	read_local_features_complete(hdev, rsp);
 	net_buf_unref(rsp);
 	
-	probe_inode("z-cmn-features");
-
 	/* Read Local Version Information */
 	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_READ_LOCAL_VERSION_INFO, NULL,
 				   &rsp);
@@ -3460,8 +3443,6 @@ static int common_init(struct bt_dev *hdev)
 	read_local_ver_complete(hdev, rsp);
 	net_buf_unref(rsp);
 	
-	probe_inode("z-cmn-version");
-
 	/* Read Local Supported Commands */
 	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_READ_SUPPORTED_COMMANDS, NULL,
 				   &rsp);
@@ -3471,18 +3452,14 @@ static int common_init(struct bt_dev *hdev)
 	read_supported_commands_complete(hdev, rsp);
 	net_buf_unref(rsp);
 	
-	probe_inode("z-cmn-cmds");
-
 	if (IS_ENABLED(CONFIG_BT_HOST_CRYPTO_PRNG)) {
 		/* Initialize the PRNG so that it is safe to use it later
 		 * on in the initialization process.
 		 */
-		probe_inode("z-cmn-prng-before");
 		err = prng_init(hdev);
 		if (err) {
 			return err;
 		}
-		probe_inode("z-cmn-prng-after");
 	}
 
 #if defined(CONFIG_BT_HCI_ACL_FLOW_CONTROL)
