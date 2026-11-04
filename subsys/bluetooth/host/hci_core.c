@@ -12,6 +12,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <zephyr/net_buf.h>
 #include <zephyr/sys/atomic.h>
 #include <zephyr/sys/check.h>
@@ -502,9 +504,38 @@ int bt_hci_cmd_send_sync(struct bt_dev *hdev, uint16_t opcode, struct net_buf *b
 
 	/* Now that we have sent the command, suspend until the LL replies */
 	err = k_sem_take(&sync_sem, HCI_CMD_TIMEOUT);
-	BT_ASSERT_MSG(err == 0,
-		      "Controller unresponsive, command opcode 0x%04x %s timeout with err %d",
-		      opcode, bt_hci_opcode_to_str(opcode), err);
+
+	/* ★ 控制器超时不再断言自杀(本仓 2026-10-14 改; 上游此处是
+	 *   BT_ASSERT_MSG(err == 0, "Controller unresponsive, ... timeout"))。
+	 *
+	 * 真机取证(addr2line 对固件 Oct 14 2026 00:31:13, 两次崩溃都断在这一行):
+	 *   z_fatal_error(fatal.c:49) <- bt_hci_cmd_send_sync(hci_core.c:507)
+	 *   ① <- bt_conn_enter_sniff_mode(conn.c:4671) <- zblue_set_power_mode
+	 *   ② <- bt_br_write_local_name(br.c:1473) <- bt_set_name <- zblue_set_name
+	 *
+	 * 触发源是 vendor HCI 层: 日志里反复出现
+	 *   "sf32lb52 bth4: swallowed CC for injected op" /
+	 *   "OpCode 0x0c24 completed instead of expected 0x0c18" /
+	 *   "<wrn> opcode 0x0803 status 0x0c"
+	 * —— 驱动在合成/吞掉命令完成事件, 主机的"命令-应答"配对因此错位, 某些
+	 * 命令**永远等不到应答**。原来的断言把这种"可恢复的传输层超时"升级成
+	 * 致命错误: z_fatal_error -> bluetoothd 整个进程死掉 -> ps 里
+	 * bluetoothd / bt_service_* / sysworkq 全部消失 -> **蓝牙永久失效**
+	 * (真机表现: 手机蓝牙共享开着也连不上, 只能重启板子)。
+	 *
+	 * 改成记一条错误日志 + 归还 net_buf + 返回 -ETIMEDOUT, 让调用者自己决定
+	 * (SAL 侧用 SAL_CHECK(..., 0) 记录后继续), 蓝牙栈继续活着。 */
+	if (err != 0) {
+		LOG_ERR("Controller unresponsive, command opcode 0x%04x %s timeout with err %d",
+			opcode, bt_hci_opcode_to_str(opcode), err);
+
+		/* 必须先把 sync 摘掉再返回: 这条命令的完成事件若**迟到**, 完成处理
+		 * 会 k_sem_give(cmd(buf)->sync)(本文件 2588 行), 而 &sync_sem 是
+		 * 本函数的**栈变量** —— 不摘就是 use-after-free。 */
+		cmd(buf)->sync = NULL;
+		net_buf_unref(buf);
+		return -ETIMEDOUT;
+	}
 
 	status = cmd(buf)->status;
 	if (status) {
@@ -3063,6 +3094,8 @@ static const struct event_handler normal_events[] = {
 		      sizeof(struct bt_hci_evt_user_passkey_req)),
 	EVENT_HANDLER(BT_HCI_EVT_INQUIRY_COMPLETE, bt_hci_inquiry_complete,
 		      sizeof(struct bt_hci_evt_inquiry_complete)),
+	/* R103: basic Inquiry Result (0x02) - LCPU sends this instead of 0x22 */
+	EVENT_HANDLER(0x02, bt_hci_inquiry_result, 0),
 	EVENT_HANDLER(BT_HCI_EVT_INQUIRY_RESULT_WITH_RSSI,
 		      bt_hci_inquiry_result_with_rssi,
 		      sizeof(struct bt_hci_evt_inquiry_result_with_rssi)),
@@ -3400,7 +3433,7 @@ static int common_init(struct bt_dev *hdev)
 	}
 	read_local_features_complete(hdev, rsp);
 	net_buf_unref(rsp);
-
+	
 	/* Read Local Version Information */
 	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_READ_LOCAL_VERSION_INFO, NULL,
 				   &rsp);
@@ -3409,7 +3442,7 @@ static int common_init(struct bt_dev *hdev)
 	}
 	read_local_ver_complete(hdev, rsp);
 	net_buf_unref(rsp);
-
+	
 	/* Read Local Supported Commands */
 	err = bt_hci_cmd_send_sync(hdev, BT_HCI_OP_READ_SUPPORTED_COMMANDS, NULL,
 				   &rsp);
@@ -3418,7 +3451,7 @@ static int common_init(struct bt_dev *hdev)
 	}
 	read_supported_commands_complete(hdev, rsp);
 	net_buf_unref(rsp);
-
+	
 	if (IS_ENABLED(CONFIG_BT_HOST_CRYPTO_PRNG)) {
 		/* Initialize the PRNG so that it is safe to use it later
 		 * on in the initialization process.
@@ -3483,6 +3516,15 @@ static int le_set_event_mask(struct bt_dev *hdev)
 		} else {
 			mask |= BT_EVT_MASK_LE_CONN_COMPLETE;
 		}
+
+		/* SF32LB52 workaround: enable BOTH connection-complete events
+		 * regardless of the feature bits above. The emulated LE feature
+		 * set (all-zero) and the LCPU firmware disagree about which
+		 * subevent is produced; with only ENH_CONN_COMPLETE set
+		 * (observed mask 0x0f08) the controller's legacy 0x3E/0x01
+		 * event is masked and phone GATT connects never complete. */
+		mask |= BT_EVT_MASK_LE_CONN_COMPLETE;
+		mask |= BT_EVT_MASK_LE_ENH_CONN_COMPLETE;
 
 		mask |= BT_EVT_MASK_LE_CONN_UPDATE_COMPLETE;
 		mask |= BT_EVT_MASK_LE_REMOTE_FEAT_COMPLETE;
@@ -4396,14 +4438,14 @@ static void rx_work_handler(struct k_work *work)
 	struct bt_dev *hdev = CONTAINER_OF(work, struct bt_dev, rx_work);
 
 	LOG_DBG("dev:%d, Getting net_buf from queue", hdev->dev_id);
-	buf = net_buf_slist_get(&hdev->rx_queue);
-	if (!buf) {
-		return;
-	}
 
-	LOG_DBG("buf %p type %u len %u", buf, bt_buf_get_type(buf), buf->len);
+	/* Drain the queue in one pass: re-submitting this work item from inside
+	 * the handler is not reliably re-scheduled on this port, so events arriving
+	 * while rx_work runs would sit in rx_queue forever. */
+	while ((buf = net_buf_slist_get(&hdev->rx_queue)) != NULL) {
+		LOG_DBG("buf %p type %u len %u", buf, bt_buf_get_type(buf), buf->len);
 
-	switch (bt_buf_get_type(buf)) {
+		switch (bt_buf_get_type(buf)) {
 #if defined(CONFIG_BT_CONN)
 	case BT_BUF_ACL_IN:
 		hci_acl(hdev, buf);
@@ -4417,17 +4459,14 @@ static void rx_work_handler(struct k_work *work)
 	case BT_BUF_EVT:
 		hci_event(hdev, buf);
 		break;
-	default:
-		LOG_ERR("Unknown buf type %u", bt_buf_get_type(buf));
-		net_buf_unref(buf);
-		break;
+		default:
+			LOG_ERR("Unknown buf type %u", bt_buf_get_type(buf));
+			net_buf_unref(buf);
+			break;
+		}
 	}
 
-	/* Schedule the work handler to be executed again if there are
-	 * additional items in the queue. This allows for other users of the
-	 * work queue to get a chance at running, which wouldn't be possible if
-	 * we used a while() loop with a k_yield() statement.
-	 */
+	/* Re-schedule if new items arrived while we were draining. */
 	if (!sys_slist_is_empty(&hdev->rx_queue)) {
 
 #if defined(CONFIG_BT_RECV_WORKQ_SYS)

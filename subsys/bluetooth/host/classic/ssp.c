@@ -7,6 +7,7 @@
 
 #include <errno.h>
 #include <stdint.h>
+#include <syslog.h> /* unconditional diagnostics for contest debugging */
 
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/sys/byteorder.h>
@@ -526,8 +527,10 @@ void bt_hci_link_key_notify(struct bt_dev *hdev, struct net_buf *buf)
 		break;
 	}
 
-	if (IS_ENABLED(CONFIG_BT_SETTINGS) &&
-	    !atomic_test_bit(conn->flags, BT_CONN_BR_NOBOND)) {
+	/* Port note (2026-08-17): store unconditionally - the function
+	 * writes the file-backed store (always) plus settings (when
+	 * CONFIG_BT_SETTINGS is enabled). */
+	if (!atomic_test_bit(conn->flags, BT_CONN_BR_NOBOND)) {
 		bt_keys_link_key_store(hdev, conn->br.link_key);
 	}
 
@@ -578,9 +581,30 @@ void bt_hci_link_key_req(struct bt_dev *hdev, struct net_buf *buf)
 
 	LOG_DBG("%s", bt_addr_str(&evt->bdaddr));
 
+	LOG_DBG("link_key_req %s\n", bt_addr_str(&evt->bdaddr));
 	conn = bt_conn_lookup_addr_br_mc(hdev->dev_id, &evt->bdaddr);
 	if (!conn) {
+		/* Port note (2026-10-12): 控制器可能在 host 建立 bt_conn 之前就发
+		 * Link_Key_Request(冷启后手机主动回连很常见)。原实现在这里直接 neg
+		 * reply, **永远走不到下面的文件恢复**, 于是 br_key.bin 形同虚设。
+		 * 这里先查 RAM pool, 再查文件; 有 key 就直接应答, 都没有才 neg reply。
+		 * 应答不需要 conn 对象(link_key_reply 只用 hdev+bdaddr+key)。 */
+		struct bt_keys_link_key *fk;
+
+		LOG_WRN("link_key_req: no conn for %s, try pool/file\n",
+			bt_addr_str(&evt->bdaddr));
+		fk = bt_keys_find_link_key(hdev, &evt->bdaddr);
+		if (!fk) {
+			fk = bt_keys_link_key_load_file(hdev, &evt->bdaddr);
+		}
+		if (fk) {
+			LOG_WRN("link_key_req: (no conn) replied from %s\n",
+				"pool/file");
+			link_key_reply(hdev, &evt->bdaddr, fk->val);
+			return;
+		}
 		LOG_ERR("Can't find conn for %s", bt_addr_str(&evt->bdaddr));
+		LOG_ERR("link_key_req: NO CONN - neg reply\n");
 		link_key_neg_reply(hdev, &evt->bdaddr);
 		return;
 	}
@@ -589,7 +613,14 @@ void bt_hci_link_key_req(struct bt_dev *hdev, struct net_buf *buf)
 		conn->br.link_key = bt_keys_find_link_key(hdev, &evt->bdaddr);
 	}
 
+	/* Port note (2026-08-17): RAM miss - try the file-backed store before
+	 * giving up (no settings subsystem in this port, see keys_br.c). */
 	if (!conn->br.link_key) {
+		conn->br.link_key = bt_keys_link_key_load_file(hdev, &evt->bdaddr);
+	}
+
+	if (!conn->br.link_key) {
+		LOG_WRN("link_key_req: no key - neg reply\n");
 		link_key_neg_reply(hdev, &evt->bdaddr);
 		bt_conn_unref(conn);
 		return;
@@ -633,6 +664,11 @@ void bt_hci_io_capa_resp(struct bt_dev *hdev, struct net_buf *buf)
 	struct bt_hci_evt_io_capa_resp *evt = (void *)buf->data;
 	struct bt_conn *conn;
 
+	LOG_DBG("io_capa_resp len=%u addr=%02x:%02x:%02x:%02x:%02x:%02x cap=0x%02x oob=0x%02x auth=0x%02x\n",
+	       buf->len, evt->bdaddr.val[0], evt->bdaddr.val[1],
+	       evt->bdaddr.val[2], evt->bdaddr.val[3], evt->bdaddr.val[4],
+	       evt->bdaddr.val[5], evt->capability, evt->oob_data,
+	       evt->authentication);
 	LOG_DBG("remote %s, IOcapa 0x%02x, auth 0x%02x", bt_addr_str(&evt->bdaddr), evt->capability,
 		evt->authentication);
 
@@ -676,6 +712,10 @@ void bt_hci_io_capa_req(struct bt_dev *hdev, struct net_buf *buf)
 	struct bt_hci_cp_io_capability_reply *cp;
 	uint8_t auth;
 
+	LOG_DBG("io_capa_req len=%u addr=%02x:%02x:%02x:%02x:%02x:%02x\n",
+	       buf->len, evt->bdaddr.val[0], evt->bdaddr.val[1],
+	       evt->bdaddr.val[2], evt->bdaddr.val[3], evt->bdaddr.val[4],
+	       evt->bdaddr.val[5]);
 	LOG_DBG("");
 
 	conn = bt_conn_lookup_addr_br_mc(hdev->dev_id, &evt->bdaddr);
@@ -766,6 +806,10 @@ void bt_hci_user_confirm_req(struct bt_dev *hdev, struct net_buf *buf)
 	struct bt_hci_evt_user_confirm_req *evt = (void *)buf->data;
 	struct bt_conn *conn;
 
+	LOG_DBG("user_confirm_req len=%u addr=%02x:%02x:%02x:%02x:%02x:%02x passkey=%u\n",
+	       buf->len, evt->bdaddr.val[0], evt->bdaddr.val[1],
+	       evt->bdaddr.val[2], evt->bdaddr.val[3], evt->bdaddr.val[4],
+	       evt->bdaddr.val[5], (unsigned)sys_le32_to_cpu(evt->passkey));
 	conn = bt_conn_lookup_addr_br_mc(hdev->dev_id, &evt->bdaddr);
 	if (!conn) {
 		LOG_ERR("Can't find conn for %s", bt_addr_str(&evt->bdaddr));

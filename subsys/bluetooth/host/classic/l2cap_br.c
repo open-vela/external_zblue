@@ -762,12 +762,17 @@ static void l2cap_br_conf(struct bt_l2cap_chan *chan)
 
 	conf->dcid = sys_cpu_to_le16(BR_CHAN(chan)->tx.cid);
 	/*
-	 * Add MTU option if app set non default BR/EDR L2CAP MTU,
-	 * otherwise sent empty configuration data meaning default MTU
-	 * to be used.
+	 * Always send the MTU option: Android BNEP (NAP) rejects an empty
+	 * configuration with CONF_RSP result=UNACCEPTABLE_PARAMS
+	 * (observed 2026-08-15 on Redmi Note 12 Turbo). If the app never
+	 * set rx.mtu (0), fall back to the BR/EDR default.
 	 */
-	if (BR_CHAN(chan)->rx.mtu != L2CAP_BR_DEFAULT_MTU) {
-		l2cap_br_conf_add_mtu(buf, BR_CHAN(chan)->rx.mtu);
+	{
+		uint16_t mtu = BR_CHAN(chan)->rx.mtu;
+		if (mtu == 0) {
+			mtu = L2CAP_BR_DEFAULT_MTU;
+		}
+		l2cap_br_conf_add_mtu(buf, mtu);
 	}
 
 	hdr->len = sys_cpu_to_le16(buf->len - sizeof(*hdr));
@@ -1075,7 +1080,12 @@ static void l2cap_br_conn_req(struct bt_l2cap_br *l2cap, uint8_t ident,
 	 */
 	if (server->accept(conn, server, &chan) < 0) {
 		result = BT_L2CAP_BR_ERR_NO_RESOURCES;
-		goto no_chan;
+		/* The application refused this channel, not the ACL. The ACL is
+		 * shared with other profiles (A2DP/HFP/SPP), so reject only this
+		 * L2CAP attempt and leave the link up. Security/CID violations
+		 * before accept() still take the no_chan disconnect path. */
+		l2cap_br_send_conn_rsp(conn, scid, 0, ident, result);
+		return;
 	}
 
 	br_chan = BR_CHAN(chan);
@@ -1167,6 +1177,10 @@ static void l2cap_br_conf_rsp(struct bt_l2cap_br *l2cap, uint8_t ident,
 	switch (result) {
 	case BT_L2CAP_CONF_SUCCESS:
 		atomic_set_bit(br_chan->flags, L2CAP_FLAG_CONN_LCONF_DONE);
+		printk("[l2cap_br] conf_rsp SUCCESS scid=0x%04x LCONF_DONE rx.cid=0x%04x tx.cid=0x%04x state=%u RCONF=%d\n",
+		       scid, br_chan->rx.cid, br_chan->tx.cid,
+		       (unsigned int)br_chan->state,
+		       atomic_test_bit(br_chan->flags, L2CAP_FLAG_CONN_RCONF_DONE));
 
 		if (br_chan->state == BT_L2CAP_CONFIG &&
 		    atomic_test_bit(br_chan->flags,
@@ -1417,6 +1431,11 @@ static void l2cap_br_conf_req(struct bt_l2cap_br *l2cap, uint8_t ident,
 	LOG_DBG("dcid 0x%04x flags 0x%02x len %u", dcid, flags, opt_len);
 
 	chan = bt_l2cap_br_lookup_rx_cid(conn, dcid);
+	printk("[l2cap_br] conf_req dcid=0x%04x chan=%p rx=0x%04x tx=0x%04x state=%u\n",
+	       dcid, chan,
+	       chan ? BR_CHAN(chan)->rx.cid : 0,
+	       chan ? BR_CHAN(chan)->tx.cid : 0,
+	       chan ? (unsigned int)BR_CHAN(chan)->state : 0);
 	if (!chan) {
 		LOG_ERR("rx channel mismatch!");
 		struct bt_l2cap_cmd_reject_cid_data data = {

@@ -666,6 +666,7 @@ void bt_hci_conn_complete(struct bt_dev *hdev, struct net_buf *buf);
 
 
 void bt_hci_inquiry_complete(struct bt_dev *hdev, struct net_buf *buf);
+void bt_hci_inquiry_result(struct bt_dev *hdev, struct net_buf *buf);
 void bt_hci_inquiry_result_with_rssi(struct bt_dev *hdev, struct net_buf *buf);
 void bt_hci_extended_inquiry_result(struct bt_dev *hdev, struct net_buf *buf);
 void bt_hci_remote_name_request_complete(struct bt_dev *hdev, struct net_buf *buf);
